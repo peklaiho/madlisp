@@ -49,11 +49,6 @@ class MLHash extends MLCollection
 
         throw new MadLispException("hash does not contain key $key");
     }
-
-    public function set(string $key, $value): void
-    {
-        $this->data[$key] = $value;
-    }
 }
 
 class MLEnv extends MLHash
@@ -74,6 +69,11 @@ class MLEnv extends MLHash
         }
 
         throw new MadLispException("symbol $key not defined");
+    }
+
+    public function set(string $key, $value): void
+    {
+        $this->data[$key] = $value;
     }
 }
 

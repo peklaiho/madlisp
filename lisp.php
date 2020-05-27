@@ -149,14 +149,23 @@ function ml_eval($expr, MLEnv $env)
         // Evaluate list contents
         $results = array_map(fn ($a) => ml_eval($a, $env), $expr->getData());
 
-        if ($results[0] instanceof Closure) {
+        $fn = $results[0];
+
+        if ($fn instanceof Closure) {
             // If the first item is a function, call it
             $args = array_slice($results, 1);
-            return ($results[0])(...$args);
+            return $fn(...$args);
         } else {
             // Otherwise return new list with evaluated contents
             return new MLList($results);
         }
+    } elseif ($expr instanceof MLHash) {
+        // Hash: return new hash with all items evaluated
+        $items = [];
+        foreach ($expr->getData() as $key => $val) {
+            $items[$key] = ml_eval($val, $env);
+        }
+        return new MLHash($items);
     } elseif ($expr instanceof MLSymbol) {
         return $env->get($expr->name());
     }
@@ -170,6 +179,12 @@ function ml_print($a): string
         return '<function>';
     } elseif ($a instanceof MLList) {
         return '(' . implode(' ', array_map('ml_print', $a->getData())) . ')';
+    } elseif ($a instanceof MLHash) {
+        $items = [];
+        foreach ($a->getData() as $key => $val) {
+            $items[] = ml_print($key) . ':' . ml_print($val);
+        }
+        return '{' . implode(' ', $items) . '}';
     } elseif ($a instanceof MLSymbol) {
         return $a->name();
     } elseif ($a === true) {
