@@ -1,12 +1,16 @@
 <?php
 
-class MadLispException extends Exception {}
+require_once('classes.php');
 
+// types
 define("SYMBOL", "SYMBOL");
 define("STRING", "STRING");
 define("NUMBER", "NUMBER");
 define("START", "START");
 define("END", "END");
+
+// special sign for symbols
+define("MAGIC", "§");
 
 function ml_tokenize(string $a): array
 {
@@ -15,10 +19,21 @@ function ml_tokenize(string $a): array
     $string = false;
     $parens = 0;
 
-    $addCurrent = function($addEmpty = false) use (&$string, &$tokens, &$current) {
-        if ($current !== '' || $addEmpty) {
-            $type = $string ? STRING : (is_numeric($current) ? NUMBER : SYMBOL);
-            $tokens[] = [$type, $current];
+    $addCurrent = function ($string = false) use (&$tokens, &$current) {
+        if ($current !== '' || $string) {
+            if ($string) {
+                $tokens[] = [STRING, $current];
+            } elseif ($current == 'true') {
+                $tokens[] = [true];
+            } elseif ($current == 'false') {
+                $tokens[] = [false];
+            } elseif ($current == 'null') {
+                $tokens[] = [null];
+            } elseif (is_numeric($current)) {
+                $tokens[] = [NUMBER, $current];
+            } else {
+                $tokens[] = [SYMBOL, $current];
+            }
             $current = '';
         }
     };
@@ -63,11 +78,7 @@ function ml_tokenize(string $a): array
     $addCurrent();
 
     // Check for errors
-    if (empty($tokens)) {
-        throw new MadLispException("no input");
-    } elseif ($tokens[0][0] !== START) {
-        throw new MadLispException("missing opening parenthesis");
-    } elseif ($parens != 0) {
+    if ($parens != 0) {
         throw new MadLispException("missing closing parenthesis");
     } elseif ($string) {
         throw new MadLispException("unterminated string");
@@ -76,44 +87,129 @@ function ml_tokenize(string $a): array
     return $tokens;
 }
 
-function ml_parse_expressions($tokens, &$index)
+function ml_read_form(array $tokens, int &$index)
+{
+    $a = $tokens[$index];
+
+    if ($a[0] == START) {
+        return ml_read_list($tokens, $index);
+    } else {
+        return ml_read_atom($tokens, $index);
+    }
+}
+
+function ml_read_list(array $tokens, int &$index): array
 {
     $result = [];
 
-    for (; $index < count($tokens); ) {
-        if ($token[0] == START) {
+    // start tag
+    $index++;
 
+    while ($tokens[$index][0] != END) {
+        $result[] = ml_read_form($tokens, $index);
+    }
+
+    // end tag
+    $index++;
+
+    return $result;
+}
+
+function ml_read_atom(array $tokens, int &$index)
+{
+    $a = $tokens[$index++];
+
+    if ($a[0] == STRING) {
+        return $a[1];
+    } elseif ($a[0] == SYMBOL) {
+        return MAGIC . $a[1];
+    } elseif ($a[0] == NUMBER) {
+        if (filter_var($a[1], FILTER_VALIDATE_INT) !== false) {
+            return intval($a[1]);
+        } else {
+            return floatval($a[1]);
         }
-        if ($token[0] == END) {
-            break;
-        }
+    } else {
+        return $a[0];
+    }
+}
+
+function ml_parse(array $tokens): array
+{
+    $result = [];
+    $index = 0;
+
+    while ($index < count($tokens)) {
+        $result[] = ml_read_form($tokens, $index);
     }
 
     return $result;
 }
 
-function ml_read($a)
+function ml_is_symbol($a)
 {
-    $tokens = ml_tokenize($a);
+    return substr($a, 0, strlen(MAGIC)) === MAGIC;
+}
 
-    $index = 0;
-    $expressions = ml_parse_expressions($tokens, $index);
+function ml_strip_symbol($a)
+{
+    return substr($a, strlen(MAGIC));
+}
+
+function ml_read(string $code): array
+{
+    $tokens = ml_tokenize($code);
+
+    $expressions = ml_parse($tokens);
 
     return $expressions;
 }
 
-function ml_eval($a)
+function ml_eval($expr, Env $env)
 {
-    return $a;
+    if (is_array($expr)) {
+        // Evaluate list items
+        $expr = array_map(fn ($a) => ml_eval($a, $env), $expr);
+
+        // If the first item is a function, call it
+        $fn = $expr[0] ?? null;
+        if ($fn && $fn instanceof Closure) {
+            $args = array_slice($expr, 1);
+            return $fn(...$args);
+        }
+    } elseif (ml_is_symbol($expr)) {
+        return $env->get(ml_strip_symbol($expr));
+    }
+
+    return $expr;
 }
 
-function ml_print($a)
+function ml_print($a): string
 {
-    // print(implode('*', $a));
-    print_r($a);
+    if ($a instanceof Closure) {
+        return '<function>';
+    } elseif (is_array($a)) {
+        return '(' . implode(' ', array_map('ml_print', $a)) . ')';
+    } elseif ($a === true) {
+        return 'true';
+    } elseif ($a === false) {
+        return 'false';
+    } elseif ($a === null) {
+        return 'null';
+    } elseif (ml_is_symbol($a)) {
+        return ml_strip_symbol($a);
+    } elseif (is_string($a)) {
+        return '"' . $a . '"';
+    } else {
+        return $a;
+    }
 }
 
-function ml_rep($a)
+function ml_rep(string $input, Env $env): string
 {
-    ml_print(ml_eval(ml_read($a)));
+    $expressions = ml_read($input);
+
+    $results = array_map(fn ($expr) => ml_eval($expr, $env), $expressions);
+
+    return implode(" ", array_map('ml_print', $results));
 }
