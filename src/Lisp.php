@@ -143,37 +143,14 @@ class Lisp
         return $expr;
     }
 
-    public function print($a): string
+    public function print(array $items): void
     {
-        $result = $a;
-
-        if ($a instanceof Closure) {
-            $result = '<function>';
-        } elseif ($a instanceof MList) {
-            $items = [];
-            foreach ($a->getData() as $val) {
-                $items[] = $this->print($val);
+        for ($i = 0; $i < count($items); $i++) {
+            if ($i > 0) {
+                print(' ');
             }
-            $result = '(' . implode(' ', $items) . ')';
-        } elseif ($a instanceof Hash) {
-            $items = [];
-            foreach ($a->getData() as $key => $val) {
-                $items[] = $this->print($key) . ':' . $this->print($val);
-            }
-            $result = '{' . implode(' ', $items) . '}';
-        } elseif ($a instanceof Symbol) {
-            $result = $a->getName();
-        } elseif ($a === true) {
-            $result = 'true';
-        } elseif ($a === false) {
-            $result = 'false';
-        } elseif ($a === null) {
-            $result = 'null';
-        } elseif (is_string($a)) {
-            $result = '"' . $a . '"';
+            $this->doPrint($items[$i]);
         }
-
-        return $result;
     }
 
     public function rep(string $input, Env $env): void
@@ -182,9 +159,47 @@ class Lisp
 
         $results = array_map(fn ($expr) => $this->eval($expr, $env), $expressions);
 
-        $output = array_map(fn ($res) => $this->print($res), $results);
+        $this->print($results);
+    }
 
-        print(implode(' ', $output));
+    private function doPrint($a): void
+    {
+        if ($a instanceof Closure) {
+            print('<function>');
+        } elseif ($a instanceof MList) {
+            print('(');
+            for ($i = 0; $i < $a->count(); $i++) {
+                if ($i > 0) {
+                    print(' ');
+                }
+                $this->doPrint($a->get($i));
+            }
+            print(')');
+        } elseif ($a instanceof Hash) {
+            print('{');
+            $keys = array_keys($a->getData());
+            for ($i = 0; $i < count($keys); $i++) {
+                if ($i > 0) {
+                    print(' ');
+                }
+                $this->doPrint($keys[$i]);
+                print(':');
+                $this->doPrint($a->get($keys[$i]));
+            }
+            print('}');
+        } elseif ($a instanceof Symbol) {
+            print($a->getName());
+        } elseif ($a === true) {
+            print('true');
+        } elseif ($a === false) {
+            print('false');
+        } elseif ($a === null) {
+            print('null');
+        } elseif (is_string($a)) {
+            print('"' . $a . '"');
+        } else {
+            print($a);
+        }
     }
 
     private function readForm(array $tokens, int &$index)
