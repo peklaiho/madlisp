@@ -99,19 +99,35 @@ class Lisp
     public function eval($expr, Env $env)
     {
         if ($expr instanceof MList && $expr->count() > 0) {
-            // Evaluate list contents
-            $results = array_map(fn ($a) => $this->eval($a, $env), $expr->getData());
+            $first = $expr->get(0);
 
-            $fn = $results[0];
+            if ($first instanceof Symbol) {
+                // Special built-in features
+                if ($first->getName() == 'env') {
+                    return $env;
+                } elseif ($first->getName() == 'quote') {
+                    if ($expr->count() != 2) {
+                        throw new MadLispException("quote requires exactly 1 argument");
+                    }
 
-            if ($fn instanceof Closure) {
-                // If the first item is a function, call it
-                $args = array_slice($results, 1);
-                return $fn(...$args);
-            } else {
-                // Otherwise return new list with evaluated contents
-                return new MList($results);
+                    return $expr->get(1);
+                }
+
+                // Normal symbol, fetch from env
+                $first = $env->get($first->getName());
             }
+
+            if (!($first instanceof Closure)) {
+                throw new MadLispException("first argument of list is not function");
+            }
+
+            $args = array_slice($expr->getData(), 1);
+
+            // Evaluate args
+            $args = array_map(fn ($a) => $this->eval($a, $env), $args);
+
+            // Call func and return result
+            return $first(...$args);
         } elseif ($expr instanceof Hash) {
             // Hash: return new hash with all items evaluated
             $items = [];
@@ -120,9 +136,10 @@ class Lisp
             }
             return new Hash($items);
         } elseif ($expr instanceof Symbol) {
-            return $env->get($expr->name());
+            return $env->get($expr->getName());
         }
 
+        // Return the expression unchanged
         return $expr;
     }
 
@@ -145,7 +162,7 @@ class Lisp
             }
             $result = '{' . implode(' ', $items) . '}';
         } elseif ($a instanceof Symbol) {
-            $result = $a->name();
+            $result = $a->getName();
         } elseif ($a === true) {
             $result = 'true';
         } elseif ($a === false) {

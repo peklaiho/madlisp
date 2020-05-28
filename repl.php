@@ -9,7 +9,7 @@ while (true) {
 
     try {
         $lisp->rep($input, $env);
-    } catch (MadLispException $ex) {
+    } catch (MadLisp\MadLispException $ex) {
         print('error: ' . $ex->getMessage());
     }
 

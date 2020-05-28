@@ -10,7 +10,7 @@ class Symbol
         $this->name = $name;
     }
 
-    public function name(): string
+    public function getName(): string
     {
         return $this->name;
     }

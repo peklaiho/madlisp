@@ -149,8 +149,5 @@ class Core implements ILib
 
             return new Hash($data);
         });
-
-        // for debugging!
-        $env->set('eval', fn ($a) => ml_eval($a, $env));
     }
 }
