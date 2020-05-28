@@ -22,9 +22,17 @@ class Evaller
             // Lookup symbol from env
             return $env->get($ast->getName());
         } elseif ($ast instanceof MList) {
-            // Eval contents and return new list
-            $results = array_map(fn ($a) => $this->doEval($a, $env), $ast->getData());
+            $results = [];
+            foreach ($ast->getData() as $val) {
+                $results[] = $this->doEval($val, $env);
+            }
             return new MList($results);
+        } elseif ($ast instanceof Hash) {
+            $results = [];
+            foreach ($ast->getData() as $key => $val) {
+                $results[$key] = $this->doEval($val, $env);
+            }
+            return new Hash($results);
         }
 
         return $ast;
@@ -40,6 +48,19 @@ class Evaller
         // Empty list
         if ($ast->count() == 0) {
             return $ast;
+        }
+
+        $first = $ast->get(0);
+
+        // Handle special keywords
+        if ($first instanceof Symbol) {
+            if ($first->getName() == 'quote') {
+                if ($ast->count() != 2) {
+                    throw new MadLispException("quote requires exactly 1 argument");
+                }
+
+                return $ast->get(1);
+            }
         }
 
         // Get new evaluated list
