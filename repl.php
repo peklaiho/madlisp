@@ -2,7 +2,7 @@
 require('bootstrap.php');
 
 $env = ml_get_env();
-$lisp = new MadLisp\Lisp();
+$lisp = ml_get_lisp();
 
 while (true) {
     $input = readline('> ');
