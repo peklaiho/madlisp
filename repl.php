@@ -1,15 +1,14 @@
 <?php
-
-require_once('lib.php');
-require_once('lisp.php');
+require('bootstrap.php');
 
 $env = ml_get_env();
+$lisp = new MadLisp\Lisp();
 
 while (true) {
     $input = readline('> ');
 
     try {
-        print(ml_rep($input, $env));
+        $lisp->rep($input, $env);
     } catch (MadLispException $ex) {
         print('error: ' . $ex->getMessage());
     }

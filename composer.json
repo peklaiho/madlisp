@@ -1,0 +1,22 @@
+{
+    "name": "maddy83/madlisp",
+    "description": "Lisp interpreter for the MadLisp language.",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Pekka Laiho",
+            "email": "pekka.i.laiho@gmail.com"
+        }
+    ],
+    "require": {
+
+    },
+    "require-dev": {
+
+    },
+    "autoload": {
+        "psr-4": {
+            "MadLisp\\": "src/"
+        }
+    }
+}
