@@ -111,6 +111,20 @@ class Lisp
                     }
 
                     return $expr->get(1);
+                } elseif ($first->getName() == 'if') {
+                    if ($expr->count() != 4) {
+                        throw new MadLispException("if requires exactly 3 arguments");
+                    }
+
+                    // Eval condition
+                    $result = $this->eval($expr->get(1), $env);
+
+                    // Eval true or false branch and return it
+                    if ($result == true) {
+                        return $this->eval($expr->get(2), $env);
+                    } else {
+                        return $this->eval($expr->get(3), $env);
+                    }
                 }
 
                 // Normal symbol, fetch from env
