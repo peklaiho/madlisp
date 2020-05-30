@@ -60,6 +60,20 @@ class Evaller
 
                 $value = $this->doEval($ast->get(2), $env);
                 return $env->set($ast->get(1)->getName(), $value);
+            } elseif ($ast->get(0)->getName() == 'if') {
+                if ($ast->count() < 3 || $ast->count() > 4) {
+                    throw new MadLispException("if requires 2 or 3 arguments");
+                }
+
+                $result = $this->doEval($ast->get(1), $env);
+
+                if ($result == true) {
+                    return $this->doEval($ast->get(2), $env);
+                } elseif ($ast->count() == 4) {
+                    return $this->doEval($ast->get(3), $env);
+                } else {
+                    return null;
+                }
             } elseif ($ast->get(0)->getName() == 'let') {
                 if ($ast->count() != 3) {
                     throw new MadLispException("let requires exactly 2 arguments");
