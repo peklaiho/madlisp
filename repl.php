@@ -1,8 +1,7 @@
 <?php
 require('bootstrap.php');
 
-$env = ml_get_env();
-$lisp = ml_get_lisp();
+list($lisp, $env) = ml_get_lisp();
 
 while (true) {
     $input = readline('> ');

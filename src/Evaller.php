@@ -40,21 +40,56 @@ class Evaller
 
     public function doEval($ast, Env $env)
     {
-        // Not list
+        // Not list or empty list
         if (!($ast instanceof MList)) {
             return $this->evalAst($ast, $env);
-        }
-
-        // Empty list
-        if ($ast->count() == 0) {
+        } elseif ($ast->count() == 0) {
             return $ast;
         }
 
-        $first = $ast->get(0);
-
         // Handle special keywords
-        if ($first instanceof Symbol) {
-            if ($first->getName() == 'quote') {
+        if ($ast->get(0) instanceof Symbol) {
+            if ($ast->get(0)->getName() == 'def') {
+                if ($ast->count() != 3) {
+                    throw new MadLispException("def requires exactly 2 arguments");
+                }
+
+                if (!($ast->get(1) instanceof Symbol)) {
+                    throw new MadLispException("first argument to def is not symbol");
+                }
+
+                $value = $this->doEval($ast->get(2), $env);
+                return $env->set($ast->get(1)->getName(), $value);
+            } elseif ($ast->get(0)->getName() == 'let') {
+                if ($ast->count() != 3) {
+                    throw new MadLispException("let requires exactly 2 arguments");
+                }
+
+                if (!($ast->get(1) instanceof MList)) {
+                    throw new MadLispException("first argument to let is not list");
+                }
+
+                $bindings = $ast->get(1)->getData();
+
+                if (count($bindings) % 2 == 1) {
+                    throw new MadLispException("uneven number of bindings for let");
+                }
+
+                $newEnv = new Env($env);
+
+                for ($i = 0; $i < count($bindings) - 1; $i += 2) {
+                    $key = $bindings[$i];
+
+                    if (!($key instanceof Symbol)) {
+                        throw new MadLispException("binding key for let is not symbol");
+                    }
+
+                    $val = $this->doEval($bindings[$i + 1], $newEnv);
+                    $newEnv->set($key->getName(), $val);
+                }
+
+                return $this->doEval($ast->get(2), $newEnv);
+            } elseif ($ast->get(0)->getName() == 'quote') {
                 if ($ast->count() != 2) {
                     throw new MadLispException("quote requires exactly 1 argument");
                 }
@@ -66,14 +101,12 @@ class Evaller
         // Get new evaluated list
         $ast = $this->evalAst($ast, $env);
 
-        $first = $ast->get(0);
-
-        if (!($first instanceof Closure)) {
+        // Call first argument as function
+        $func = $ast->get(0);
+        if (!($func instanceof Closure)) {
             throw new MadLispException("first item of list is not function");
         }
-
         $args = array_slice($ast->getData(), 1);
-
-        return $first(...$args);
+        return $func(...$args);
     }
 }
