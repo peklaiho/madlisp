@@ -22,5 +22,10 @@ function ml_get_lisp(): array
         return $results[count($results) - 1];
     });
 
+    $env->set('print', function (...$args) use ($printer) {
+        $printer->print($args);
+        return null;
+    });
+
     return [$lisp, $env];
 }
