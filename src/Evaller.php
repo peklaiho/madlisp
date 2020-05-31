@@ -68,6 +68,31 @@ class Evaller
                 }
 
                 return $value;
+            } elseif ($ast->get(0)->getName() == 'fn') {
+                if ($ast->count() != 3) {
+                    throw new MadLispException("fn requires exactly 2 arguments");
+                }
+
+                if (!($ast->get(1) instanceof MList)) {
+                    throw new MadLispException("first argument to fn is not list");
+                }
+
+                $bindings = $ast->get(1)->getData();
+                foreach ($bindings as $bind) {
+                    if (!($bind instanceof Symbol)) {
+                        throw new MadLispException("binding key for fn is not symbol");
+                    }
+                }
+
+                return function (...$args) use ($bindings, $ast, $env) {
+                    $newEnv = new Env($env);
+
+                    for ($i = 0; $i < count($bindings); $i++) {
+                        $newEnv->set($bindings[$i]->getName(), $args[$i] ?? null);
+                    }
+
+                    return $this->doEval($ast->get(2), $newEnv);
+                };
             } elseif ($ast->get(0)->getName() == 'if') {
                 if ($ast->count() < 3 || $ast->count() > 4) {
                     throw new MadLispException("if requires 2 or 3 arguments");
