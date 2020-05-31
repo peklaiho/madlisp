@@ -1,7 +1,7 @@
 <?php
 namespace MadLisp;
 
-class MList extends Seq
+class Vector extends Seq
 {
     public function get(int $index)
     {
@@ -9,6 +9,6 @@ class MList extends Seq
             return $this->data[$index];
         }
 
-        throw new MadLispException("list does not contain index $index");
+        throw new MadLispException("vector does not contain index $index");
     }
 }

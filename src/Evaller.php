@@ -22,11 +22,9 @@ class Evaller
             // Lookup symbol from env
             return $env->get($ast->getName());
         } elseif ($ast instanceof MList) {
-            $results = [];
-            foreach ($ast->getData() as $val) {
-                $results[] = $this->doEval($val, $env);
-            }
-            return new MList($results);
+            return new MList(array_map(fn ($a) => $this->doEval($a, $env), $ast->getData()));
+        } elseif ($ast instanceof Vector) {
+            return new Vector(array_map(fn ($a) => $this->doEval($a, $env), $ast->getData()));
         } elseif ($ast instanceof Hash) {
             $results = [];
             foreach ($ast->getData() as $key => $val) {

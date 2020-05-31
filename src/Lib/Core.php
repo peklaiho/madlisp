@@ -4,9 +4,10 @@ namespace MadLisp\Lib;
 use Closure;
 use MadLisp\Env;
 use MadLisp\Hash;
+use MadLisp\MadLispException;
 use MadLisp\MList;
 use MadLisp\Symbol;
-use MadLisp\MadLispException;
+use MadLisp\Util;
 
 class Core implements ILib
 {
@@ -130,24 +131,7 @@ class Core implements ILib
         });
 
         $env->set('hash', function (...$args) {
-            if (count($args) % 2 == 1) {
-                throw new MadLispException('uneven number of arguments for hash');
-            }
-
-            $data = [];
-
-            for ($i = 0; $i < count($args) - 1; $i += 2) {
-                $key = $args[$i];
-                $val = $args[$i + 1];
-
-                if (!is_string($key)) {
-                    throw new MadLispException('invalid key for hash (not string)');
-                }
-
-                $data[$key] = $val;
-            }
-
-            return new Hash($data);
+            return Util::makeHash($args);
         });
     }
 }

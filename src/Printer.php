@@ -7,51 +7,34 @@ class Printer
 {
     public function print(array $items): void
     {
-        for ($i = 0; $i < count($items); $i++) {
-            if ($i > 0) {
-                print(' ');
-            }
-            $this->doPrint($items[$i]);
-        }
+        $strings = array_map(fn ($a) => $this->doPrint($a), $items);
+
+        print(implode(' ', $strings));
     }
 
-    private function doPrint($a): void
+    private function doPrint($a): string
     {
         if ($a instanceof Closure) {
-            print('<function>');
+            return '<function>';
         } elseif ($a instanceof MList) {
-            print('(');
-            for ($i = 0; $i < $a->count(); $i++) {
-                if ($i > 0) {
-                    print(' ');
-                }
-                $this->doPrint($a->get($i));
-            }
-            print(')');
+            return '(' . implode(' ', array_map(fn ($b) => $this->doPrint($b), $a->getData())) . ')';
+        } elseif ($a instanceof Vector) {
+            return '[' . implode(' ', array_map(fn ($b) => $this->doPrint($b), $a->getData())) . ']';
         } elseif ($a instanceof Hash) {
-            print('{');
-            $keys = array_keys($a->getData());
-            for ($i = 0; $i < count($keys); $i++) {
-                if ($i > 0) {
-                    print(' ');
-                }
-                $this->doPrint($keys[$i]);
-                print(':');
-                $this->doPrint($a->get($keys[$i]));
-            }
-            print('}');
+            return '{' . implode(' ', array_map(fn ($key, $val) => $this->doPrint($key) . ':' . $this->doPrint($val),
+                                                array_keys($a->getData()), array_values($a->getData()))) . '}';
         } elseif ($a instanceof Symbol) {
-            print($a->getName());
+            return $a->getName();
         } elseif ($a === true) {
-            print('true');
+            return 'true';
         } elseif ($a === false) {
-            print('false');
+            return 'false';
         } elseif ($a === null) {
-            print('null');
+            return 'null';
         } elseif (is_string($a)) {
-            print('"' . $a . '"');
+            return '"' . $a . '"';
         } else {
-            print($a);
+            return $a;
         }
     }
 }

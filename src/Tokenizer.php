@@ -28,7 +28,7 @@ class Tokenizer
                 // Inside string, add all characters
                 $current .= $c;
 
-                // Stop at double quote
+                // Stop at first double quote
                 if ($c == '"') {
                     $addCurrent();
                     $isString = false;

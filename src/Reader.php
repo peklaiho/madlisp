@@ -19,6 +19,10 @@ class Reader
     {
         if ($tokens[$index] == '(') {
             return $this->readList($tokens, $index);
+        } elseif ($tokens[$index] == '[') {
+            return $this->readVector($tokens, $index);
+        } elseif ($tokens[$index] == '{') {
+            return $this->readHash($tokens, $index);
         } else {
             return $this->readAtom($tokens, $index);
         }
@@ -26,19 +30,35 @@ class Reader
 
     private function readList(array $tokens, int &$index): MList
     {
+        return new MList($this->readCollection($tokens, $index, ')'));
+    }
+
+    private function readVector(array $tokens, int &$index): Vector
+    {
+        return new Vector($this->readCollection($tokens, $index, ']'));
+    }
+
+    private function readHash(array $tokens, int &$index): Hash
+    {
+        $contents = $this->readCollection($tokens, $index, '}');
+        return Util::makeHash($contents);
+    }
+
+    private function readCollection(array $tokens, int &$index, string $endTag): array
+    {
         $result = [];
 
         // start tag
         $index++;
 
-        while ($tokens[$index] != ')') {
+        while ($tokens[$index] != $endTag) {
             $result[] = $this->readForm($tokens, $index);
         }
 
         // end tag
         $index++;
 
-        return new MList($result);
+        return $result;
     }
 
     private function readAtom(array $tokens, int &$index)
