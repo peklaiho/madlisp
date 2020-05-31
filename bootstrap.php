@@ -14,9 +14,9 @@ function ml_get_lisp(): array
 
     $env = new MadLisp\Env();
 
-    $core = new MadLisp\Lib\Core();
-    $core->register($env);
+    (new MadLisp\Lib\Math())->register($env);
 
+    /*
     $env->set('eval', function (...$args) use ($eval, $env) {
         $results = $eval->eval($args, $env);
         return $results[count($results) - 1];
@@ -26,6 +26,7 @@ function ml_get_lisp(): array
         $printer->print($args);
         return null;
     });
+    */
 
     return [$lisp, $env];
 }

@@ -1,8 +1,6 @@
 <?php
 namespace MadLisp;
 
-use Closure;
-
 class Evaller
 {
     public function eval(array $expressions, Env $env): array
@@ -150,10 +148,10 @@ class Evaller
 
         // Call first argument as function
         $func = $ast->get(0);
-        if (!($func instanceof Closure)) {
+        if (!($func instanceof Func)) {
             throw new MadLispException("first item of list is not function");
         }
         $args = array_slice($ast->getData(), 1);
-        return $func(...$args);
+        return $func->call($args);
     }
 }

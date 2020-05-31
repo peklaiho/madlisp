@@ -1,8 +1,8 @@
 <?php
 namespace MadLisp\Lib;
 
-use Closure;
 use MadLisp\Env;
+use MadLisp\Func;
 use MadLisp\Hash;
 use MadLisp\MadLispException;
 use MadLisp\MList;
@@ -13,71 +13,7 @@ class Core implements ILib
 {
     public function register(Env $env): void
     {
-        // logic
-
-        $env->set('or', function (...$args) {
-            // return first true
-            for ($i = 0; $i < count($args) - 1; $i++) {
-                if ($args[$i] == true) {
-                    return $args[$i];
-                }
-            }
-
-            // return last
-            return $args[count($args) - 1];
-        });
-
-        $env->set('and', function (...$args) {
-            // return first false
-            for ($i = 0; $i < count($args) - 1; $i++) {
-                if ($args[$i] == false) {
-                    return $args[$i];
-                }
-            }
-
-            // return last
-            return $args[count($args) - 1];
-        });
-
-        $env->set('not', fn ($a) => !$a);
-
         // arithmetic
-
-        $env->set('+', function (...$args) {
-            return array_sum($args);
-        });
-
-        $env->set('-', function (...$args) {
-            $result = $args[0] ?? null;
-            for ($i = 1; $i < count($args); $i++) {
-                $result -= $args[$i];
-            }
-            return $result;
-        });
-
-        $env->set('*', function (...$args) {
-            $result = $args[0] ?? null;
-            for ($i = 1; $i < count($args); $i++) {
-                $result *= $args[$i];
-            }
-            return $result;
-        });
-
-        $env->set('/', function (...$args) {
-            $result = $args[0] ?? null;
-            for ($i = 1; $i < count($args); $i++) {
-                $result /= $args[$i];
-            }
-            return $result;
-        });
-
-        $env->set('%', function (...$args) {
-            $result = $args[0] ?? null;
-            for ($i = 1; $i < count($args); $i++) {
-                $result %= $args[$i];
-            }
-            return $result;
-        });
 
         // comparison
 
@@ -91,7 +27,7 @@ class Core implements ILib
         // types
 
         $env->set('type?', function ($a) {
-            if ($a instanceof Closure) {
+            if ($a instanceof Func) {
                 return 'function';
             } elseif ($a instanceof MList) {
                 return 'list';
@@ -112,7 +48,7 @@ class Core implements ILib
             }
         });
 
-        $env->set('fn?', fn ($a) => $a instanceof Closure);
+        $env->set('fn?', fn ($a) => $a instanceof Func);
         $env->set('list?', fn ($a) => $a instanceof MList);
         $env->set('hash?', fn ($a) => $a instanceof Hash);
         $env->set('sym?', fn ($a) => $a instanceof Symbol);
@@ -124,14 +60,5 @@ class Core implements ILib
         $env->set('float?', fn ($a) => is_float($a));
         $env->set('str?', fn ($a) => is_string($a));
 
-        // collections
-
-        $env->set('list', function (...$args) {
-            return new MList($args);
-        });
-
-        $env->set('hash', function (...$args) {
-            return Util::makeHash($args);
-        });
     }
 }

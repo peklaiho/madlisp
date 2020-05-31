@@ -1,8 +1,6 @@
 <?php
 namespace MadLisp;
 
-use Closure;
-
 class Printer
 {
     public function print(array $items): void
@@ -14,7 +12,7 @@ class Printer
 
     private function doPrint($a): string
     {
-        if ($a instanceof Closure) {
+        if ($a instanceof Func) {
             return '<function>';
         } elseif ($a instanceof MList) {
             return '(' . implode(' ', array_map(fn ($b) => $this->doPrint($b), $a->getData())) . ')';
