@@ -13,17 +13,6 @@ class Core implements ILib
 {
     public function register(Env $env): void
     {
-        // arithmetic
-
-        // comparison
-
-        $env->set('=', fn ($a, $b) => $a == $b);
-        $env->set('<', fn ($a, $b) => $a < $b);
-        $env->set('>', fn ($a, $b) => $a > $b);
-        $env->set('<=', fn ($a, $b) => $a <= $b);
-        $env->set('>=', fn ($a, $b) => $a >= $b);
-        $env->set('!=', fn ($a, $b) => $a != $b);
-
         // types
 
         $env->set('type?', function ($a) {
