@@ -26,4 +26,24 @@ class Lisp
 
         $this->printer->print($results);
     }
+
+    public function register(Env $env): void
+    {
+        $env->set('eval', new CoreFunc('eval', 'Evaluate arguments.', 1, -1,
+            function (...$args) use ($env) {
+                $results = $this->eval->eval($args, $env);
+
+                // Return last evaluated value
+                return $results[count($results) - 1];
+            }
+        ));
+
+        $env->set('print', new CoreFunc('print', 'Print arguments.', 1, -1,
+            function (...$args) {
+                $this->printer->print($args);
+
+                return null;
+            }
+        ));
+    }
 }

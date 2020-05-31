@@ -10,25 +10,16 @@ function ml_get_lisp(): array
 
     $lisp = new MadLisp\Lisp($tokenizer, $reader, $eval, $printer);
 
-    // environment
-
+    // Environment
     $env = new MadLisp\Env();
 
+    // Register core functions
+    $lisp->register($env);
+
+    // Register libraries
     (new MadLisp\Lib\Math())->register($env);
     (new MadLisp\Lib\Compare())->register($env);
     (new MadLisp\Lib\Types())->register($env);
-
-    /*
-    $env->set('eval', function (...$args) use ($eval, $env) {
-        $results = $eval->eval($args, $env);
-        return $results[count($results) - 1];
-    });
-
-    $env->set('print', function (...$args) use ($printer) {
-        $printer->print($args);
-        return null;
-    });
-    */
 
     return [$lisp, $env];
 }
