@@ -17,7 +17,14 @@ class Reader
 
     private function readForm(array $tokens, int &$index)
     {
-        if ($tokens[$index] == '(') {
+        if ($tokens[$index] == "'") {
+            $index++;
+            $contents = [new Symbol('quote')];
+            if ($index < count($tokens) && !in_array($tokens[$index], [')', ']', '}'])) {
+                $contents[] = $this->readForm($tokens, $index);
+            }
+            return new MList($contents);
+        } elseif ($tokens[$index] == '(') {
             return $this->readList($tokens, $index);
         } elseif ($tokens[$index] == '[') {
             return $this->readVector($tokens, $index);
