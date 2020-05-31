@@ -7,8 +7,12 @@ class Tokenizer
     {
         $tokens = [];
         $current = '';
-        $string = false;
-        $parens = 0;
+
+        $isString = false;
+        $isComment = false;
+
+        $parens = [0, 0, 0];
+        $parenIndexes = ['(' => 0, ')' => 0, '[' => 1, ']' => 1, '{' => 2, '}' => 2];
 
         $addCurrent = function () use (&$tokens, &$current) {
             if ($current !== '') {
@@ -20,39 +24,52 @@ class Tokenizer
         for ($i = 0; $i < strlen($a); $i++) {
             $c = substr($a, $i, 1);
 
-            if ($string) {
+            if ($isString) {
                 // Inside string, add all characters
                 $current .= $c;
 
-                // Stop at "
+                // Stop at double quote
                 if ($c == '"') {
                     $addCurrent();
-                    $string = false;
+                    $isString = false;
+                }
+            } elseif ($isComment) {
+                // Comments stop at first newline
+                if ($c == "\n" || $c == "\r") {
+                    $isComment = false;
                 }
             } else {
-                // Not inside string
+                // Not inside string or comment
 
                 if ($c == '"') {
                     // Start of string
                     $addCurrent();
                     $current .= $c;
-                    $string = true;
+                    $isString = true;
+                } elseif ($c == ';') {
+                    // Start of comment
+                    $addCurrent();
+                    $isComment = true;
                 } elseif ($c == ' ' || $c == "\t" || $c == "\n" || $c == "\r") {
                     // Whitespace is ignored
                     $addCurrent();
-                } elseif ($c == '(') {
-                    // Start of list
+                } elseif ($c == '(' || $c == '[' || $c == '{') {
+                    // Start of collection
                     $addCurrent();
-                    $tokens[] = '(';
-                    $parens++;
-                } elseif ($c == ')') {
-                    // End of list
-                    if ($parens == 0) {
-                        throw new MadLispException("unexpected closing parenthesis");
+                    $tokens[] = $c;
+                    $parens[$parenIndexes[$c]]++;
+                } elseif ($c == ')' || $c == ']' || $c == '}') {
+                    // End of collection
+                    if ($parens[$parenIndexes[$c]] == 0) {
+                        throw new MadLispException("unexpected closing $c");
                     }
                     $addCurrent();
-                    $tokens[] = ')';
-                    $parens--;
+                    $tokens[] = $c;
+                    $parens[$parenIndexes[$c]]--;
+                } elseif ($c == "'") {
+                    // Other special characters
+                    $addCurrent();
+                    $tokens[] = $c;
                 } else {
                     // All other characters
                     $current .= $c;
@@ -60,13 +77,17 @@ class Tokenizer
             }
         }
 
-        // Add last also
+        // Add last token
         $addCurrent();
 
         // Check for errors
-        if ($parens != 0) {
-            throw new MadLispException("missing closing parenthesis");
-        } elseif ($string) {
+        if ($parens[0] != 0) {
+            throw new MadLispException("missing closing )");
+        } elseif ($parens[1] != 0) {
+            throw new MadLispException("missing closing ]");
+        } elseif ($parens[2] != 0) {
+            throw new MadLispException("missing closing }");
+        } elseif ($isString) {
             throw new MadLispException("unterminated string");
         }
 
