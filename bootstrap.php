@@ -16,6 +16,7 @@ function ml_get_lisp(): array
 
     (new MadLisp\Lib\Math())->register($env);
     (new MadLisp\Lib\Compare())->register($env);
+    (new MadLisp\Lib\Types())->register($env);
 
     /*
     $env->set('eval', function (...$args) use ($eval, $env) {
