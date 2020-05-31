@@ -14,6 +14,24 @@ class Types implements ILib
 {
     public function register(Env $env): void
     {
+        // Conversions
+
+        $env->set('to-bool', new CoreFunc('to-bool', 'Convert argument to boolean.', 1, 1,
+            fn ($a) => boolval($a)
+        ));
+
+        $env->set('to-float', new CoreFunc('to-float', 'Convert argument to float.', 1, 1,
+            fn ($a) => floatval($a)
+        ));
+
+        $env->set('to-int', new CoreFunc('to-int', 'Convert argument to integer.', 1, 1,
+            fn ($a) => intval($a)
+        ));
+
+        $env->set('to-str', new CoreFunc('fn?', 'Convert argument to string.', 1, 1,
+            fn ($a) => strval($a)
+        ));
+
         // Test types
 
         $env->set('type?', new CoreFunc('type?', 'Return the type of argument as a string.', 1, 1,
