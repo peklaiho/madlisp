@@ -45,5 +45,7 @@ class Math implements ILib
                 return array_reduce(array_slice($args, 1), fn ($a, $b) => $a % $b, $args[0]);
             }
         ));
+
+        // TODO: add pow, sqrt, floor, ceil, abs
     }
 }

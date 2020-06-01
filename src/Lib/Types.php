@@ -16,20 +16,20 @@ class Types implements ILib
     {
         // Conversions
 
-        $env->set('to-bool', new CoreFunc('to-bool', 'Convert argument to boolean.', 1, 1,
+        $env->set('bool', new CoreFunc('bool', 'Convert argument to boolean.', 1, 1,
             fn ($a) => boolval($a)
         ));
 
-        $env->set('to-float', new CoreFunc('to-float', 'Convert argument to float.', 1, 1,
+        $env->set('float', new CoreFunc('float', 'Convert argument to float.', 1, 1,
             fn ($a) => floatval($a)
         ));
 
-        $env->set('to-int', new CoreFunc('to-int', 'Convert argument to integer.', 1, 1,
+        $env->set('int', new CoreFunc('int', 'Convert argument to integer.', 1, 1,
             fn ($a) => intval($a)
         ));
 
-        $env->set('to-str', new CoreFunc('fn?', 'Convert argument to string.', 1, 1,
-            fn ($a) => strval($a)
+        $env->set('str', new CoreFunc('str', 'Convert arguments to string and concatenate them together.', 1, -1,
+            fn (...$args) => implode('', array_map('strval', $args))
         ));
 
         // Test types
