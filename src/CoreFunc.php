@@ -6,17 +6,16 @@ use Closure;
 class CoreFunc extends Func
 {
     protected string $name;
-    protected string $doc;
     protected int $minArgs;
     protected int $maxArgs;
 
     public function __construct(string $name, string $doc, int $minArgs, int $maxArgs, Closure $closure)
     {
+        parent::__construct($closure, $doc);
+
         $this->name = $name;
-        $this->doc = $doc;
         $this->minArgs = $minArgs;
         $this->maxArgs = $maxArgs;
-        $this->closure = $closure;
     }
 
     public function call(array $args)

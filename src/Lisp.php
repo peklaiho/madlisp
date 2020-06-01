@@ -29,6 +29,16 @@ class Lisp
 
     public function register(Env $env): void
     {
+        $env->set('doc', new CoreFunc('doc', 'Get documentation for a function.', 1, 1,
+            function ($a) {
+                if ($a instanceof Func) {
+                    return $a->getDoc();
+                }
+
+                throw new MadLispException('first argument to doc is not function');
+            }
+        ));
+
         $env->set('eval', new CoreFunc('eval', 'Evaluate arguments.', 1, -1,
             function (...$args) use ($env) {
                 $results = $this->eval->eval($args, $env);
