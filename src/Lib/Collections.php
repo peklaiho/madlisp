@@ -30,10 +30,14 @@ class Collections implements ILib
             fn (...$args) => new Vector($args)
         ));
 
-        // Other
+        // Read information
 
         $env->set('empty?', new CoreFunc('empty?', 'Return true if collection is empty.', 1, 1,
             fn (Collection $a) => $a->count() == 0
+        ));
+
+        $env->set('get', new CoreFunc('get', 'Get the item from first argument (collection) by using the second argument as index or key.', 2, 2,
+            fn (Collection $a, $b) => $a->get($b)
         ));
 
         $env->set('len', new CoreFunc('len', 'Return the length of string or number of elements in collection.', 1, 1,
@@ -47,6 +51,8 @@ class Collections implements ILib
                 throw new MadLispException('len required string or collection as argument');
             }
         ));
+
+        // Get partial list
 
         $env->set('first', new CoreFunc('first', 'Return the first element of a sequence or null.', 1, 1,
             fn (Seq $a) => $a->getData()[0] ?? null
@@ -74,6 +80,18 @@ class Collections implements ILib
             }
         ));
 
+        // Manipulate list
+
+        $env->set('push', new CoreFunc('push', 'Push the remaining arguments at the end of the sequence (first argument).', 2, -1,
+            function (Seq $a, ...$b) {
+                $data = $a->getData();
+                foreach ($b as $c) {
+                    $data[] = $c;
+                }
+                return $a::new($data);
+            }
+        ));
+
         $env->set('map', new CoreFunc('map', 'Apply the first argument (function) to all elements of second argument (sequence).', 2, 2,
             function (Func $f, Seq $a) {
                 return $a::new(array_map($f->getClosure(), $a->getData()));
@@ -83,6 +101,28 @@ class Collections implements ILib
         $env->set('reduce', new CoreFunc('reduce', 'Apply the first argument (function) to each element of second argument (sequence) incrementally. Optional third argument is the initial value to be used as first input for function and it defaults to null.', 2, 3,
             function (Func $f, Seq $a, $initial = null) {
                 return array_reduce($a->getData(), $f->getClosure(), $initial);
+            }
+        ));
+
+        // Hash map functions
+
+        $env->set('key?', new CoreFunc('key?', 'Return true if first argument (hash-map) contains the second argument as key.', 2, 2,
+            fn (Hash $a, string $b) => $a->has($b)
+        ));
+
+        $env->set('set', new CoreFunc('set', 'Create new hash-map from first argument and set key (second argument) to value given by third argument.', 3, 3,
+            function (Hash $a, string $key, $val) {
+                // Immutable version
+                $hash = new Hash($a->getData());
+                $hash->set($key, $val);
+                return $hash;
+            }
+        ));
+
+        $env->set('set!', new CoreFunc('set!', 'Modify the hash-map (first argument) and set key (second argument) to value given by third argument and return the value.', 3, 3,
+            function (Hash $a, string $key, $val) {
+                // Mutable version
+                return $a->set($key, $val);
             }
         ));
 

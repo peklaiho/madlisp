@@ -11,4 +11,10 @@ class Hash extends Collection
 
         throw new MadLispException("hash does not contain key $key");
     }
+
+    public function set(string $key, $value)
+    {
+        $this->data[$key] = $value;
+        return $value;
+    }
 }

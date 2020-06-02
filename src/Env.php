@@ -20,10 +20,4 @@ class Env extends Hash
 
         throw new MadLispException("symbol $key not defined in env");
     }
-
-    public function set(string $key, $value)
-    {
-        $this->data[$key] = $value;
-        return $value;
-    }
 }
