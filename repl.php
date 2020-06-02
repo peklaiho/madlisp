@@ -10,6 +10,8 @@ while (true) {
         $lisp->rep($input, $env);
     } catch (MadLisp\MadLispException $ex) {
         print('error: ' . $ex->getMessage());
+    } catch (TypeError $ex) {
+        print('error: invalid argument type: ' . $ex->getMessage());
     }
 
     print(PHP_EOL);

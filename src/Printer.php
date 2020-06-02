@@ -28,7 +28,7 @@ class Printer
         } elseif ($a === false) {
             return 'false';
         } elseif ($a === null) {
-            return '';
+            return 'null';
         } elseif (is_string($a)) {
             return '"' . $a . '"';
         } else {

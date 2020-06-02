@@ -28,7 +28,7 @@ class Types implements ILib
             fn ($a) => intval($a)
         ));
 
-        $env->set('str', new CoreFunc('str', 'Convert arguments to string and concatenate them together.', 1, -1,
+        $env->set('str', new CoreFunc('str', 'Convert arguments to string and concatenate them together.', 0, -1,
             fn (...$args) => implode('', array_map('strval', $args))
         ));
 
@@ -110,6 +110,24 @@ class Types implements ILib
 
         $env->set('str?', new CoreFunc('str?', 'Return true if argument is a string.', 1, 1,
             fn ($a) => is_string($a)
+        ));
+
+        // Helpers for numbers
+
+        $env->set('zero?', new CoreFunc('zero?', 'Return true if argument is an integer with value 0.', 1, 1,
+            fn ($a) => $a === 0
+        ));
+
+        $env->set('one?', new CoreFunc('one?', 'Return true if argument is an integer with value 1.', 1, 1,
+            fn ($a) => $a === 1
+        ));
+
+        $env->set('even?', new CoreFunc('even?', 'Return true if argument is divisible by 2.', 1, 1,
+            fn ($a) => $a % 2 === 0
+        ));
+
+        $env->set('odd?', new CoreFunc('odd?', 'Return true if argument is not divisible by 2.', 1, 1,
+            fn ($a) => $a % 2 !== 0
         ));
     }
 }

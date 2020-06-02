@@ -82,7 +82,7 @@ class Evaller
                     }
                 }
 
-                return function (...$args) use ($bindings, $ast, $env) {
+                return new UserFunc(function (...$args) use ($bindings, $ast, $env) {
                     $newEnv = new Env($env);
 
                     for ($i = 0; $i < count($bindings); $i++) {
@@ -90,7 +90,7 @@ class Evaller
                     }
 
                     return $this->doEval($ast->get(2), $newEnv);
-                };
+                });
             } elseif ($ast->get(0)->getName() == 'if') {
                 if ($ast->count() < 3 || $ast->count() > 4) {
                     throw new MadLispException("if requires 2 or 3 arguments");
