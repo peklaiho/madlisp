@@ -6,6 +6,7 @@ use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Func;
 use MadLisp\Hash;
+use MadLisp\MadLispException;
 use MadLisp\MList;
 use MadLisp\Seq;
 use MadLisp\Util;
@@ -39,9 +40,11 @@ class Collections implements ILib
             function ($a) {
                 if ($a instanceof Collection) {
                     return $a->count();
-                } else {
+                } elseif (is_string($a)) {
                     return strlen($a);
                 }
+
+                throw new MadLispException('len required string or collection as argument');
             }
         ));
 
