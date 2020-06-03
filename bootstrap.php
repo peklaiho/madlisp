@@ -21,6 +21,7 @@ function ml_get_lisp(): array
     (new MadLisp\Lib\Compare())->register($env);
     (new MadLisp\Lib\Math())->register($env);
     (new MadLisp\Lib\Strings())->register($env);
+    (new MadLisp\Lib\Time())->register($env);
     (new MadLisp\Lib\Types())->register($env);
 
     return [$lisp, $env];
