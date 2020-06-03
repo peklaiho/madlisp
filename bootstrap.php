@@ -19,6 +19,7 @@ function ml_get_lisp(): array
     // Register libraries
     (new MadLisp\Lib\Collections())->register($env);
     (new MadLisp\Lib\Compare())->register($env);
+    (new MadLisp\Lib\IO())->register($env);
     (new MadLisp\Lib\Math())->register($env);
     (new MadLisp\Lib\Strings())->register($env);
     (new MadLisp\Lib\Time())->register($env);
