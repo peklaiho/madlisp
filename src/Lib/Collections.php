@@ -104,6 +104,10 @@ class Collections implements ILib
             }
         ));
 
+        $env->set('reverse', new CoreFunc('reverse', 'Create new sequence with reversed order.', 1, 1,
+            fn (Seq $a) => $a::new(array_reverse($a->getData()))
+        ));
+
         // Hash map functions
 
         $env->set('key?', new CoreFunc('key?', 'Return true if first argument (hash-map) contains the second argument as key.', 2, 2,
@@ -132,6 +136,26 @@ class Collections implements ILib
 
         $env->set('values', new CoreFunc('values', 'Return the values of a hash-map as a list.', 1, 1,
             fn (Hash $a) => new MList(array_values($a->getData()))
+        ));
+
+        $env->set('zip', new CoreFunc('zip', 'Create new hash-map using first argument as keys and second argument as values.', 2, 2,
+            function (Seq $keys, Seq $vals) {
+                if ($keys->count() != $vals->count()) {
+                    throw new MadLispException('zip requires equal number of keys and values');
+                }
+
+                return new Hash(array_combine($keys->getData(), $vals->getData()));
+            }
+        ));
+
+        // Sorting
+
+        $env->set('sort', new CoreFunc('sort', 'Sort the sequence in ascending order.', 1, 1,
+            function (Seq $a) {
+                $data = $a->getData();
+                sort($data);
+                return $a::new($data);
+            }
         ));
     }
 }

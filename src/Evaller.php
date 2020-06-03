@@ -66,6 +66,8 @@ class Evaller
                 }
 
                 return $value;
+            } elseif ($ast->get(0)->getName() == 'env') {
+                return $env;
             } elseif ($ast->get(0)->getName() == 'fn') {
                 if ($ast->count() != 3) {
                     throw new MadLispException("fn requires exactly 2 arguments");
