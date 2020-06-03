@@ -32,6 +32,10 @@ class Types implements ILib
             fn (...$args) => implode('', array_map('strval', $args))
         ));
 
+        $env->set('symbol', new CoreFunc('symbol', 'Convert argument to symbol.', 1, 1,
+            fn (string $a) => new Symbol($a)
+        ));
+
         // Test types
 
         $env->set('type?', new CoreFunc('type?', 'Return the type of argument as a string.', 1, 1,
