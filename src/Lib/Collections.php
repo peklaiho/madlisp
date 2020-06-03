@@ -30,6 +30,18 @@ class Collections implements ILib
             fn (...$args) => new Vector($args)
         ));
 
+        $env->set('range', new CoreFunc('range', 'Return vector which contains values from 0 to first argument (exclusive). Two arguments can be used to give start and end values.', 1, 3,
+            function (...$args) {
+                if (count($args) == 1) {
+                    $data = range(0, $args[0] - 1);
+                } else {
+                    $data = range($args[0], $args[1] - 1, $args[2] ?? 1);
+                }
+
+                return new Vector($data);
+            }
+        ));
+
         // Read information
 
         $env->set('empty?', new CoreFunc('empty?', 'Return true if collection is empty.', 1, 1,
@@ -48,7 +60,7 @@ class Collections implements ILib
                     return strlen($a);
                 }
 
-                throw new MadLispException('len required string or collection as argument');
+                throw new MadLispException('argument to len is not collection or string');
             }
         ));
 
@@ -92,15 +104,50 @@ class Collections implements ILib
             }
         ));
 
+        $env->set('pull', new CoreFunc('pull', 'Insert the other arguments at the beginning of the sequence (last argument).', 2, -1,
+            function (...$args) {
+                $seq = $args[count($args) - 1];
+                if (!($seq instanceof Seq)) {
+                    throw new MadLispException('last argument to pull is not sequence');
+                }
+
+                $data = [];
+                for ($i = 0; $i < count($args) - 1; $i++) {
+                    $data[] = $args[$i];
+                }
+                foreach ($seq->getData() as $val) {
+                    $data[] = $val;
+                }
+
+                return $seq::new($data);
+            }
+        ));
+
         $env->set('map', new CoreFunc('map', 'Apply the first argument (function) to all elements of second argument (sequence).', 2, 2,
             function (Func $f, Seq $a) {
                 return $a::new(array_map($f->getClosure(), $a->getData()));
             }
         ));
 
+        $env->set('map2', new CoreFunc('map2', 'Apply the first argument (function) to each element from second and third argument (sequences).', 3, 3,
+            function (Func $f, Seq $a, Seq $b) {
+                if ($a->count() != $b->count()) {
+                    throw new MadLispException('map2 requires equal number of elements in both sequences');
+                }
+
+                return $a::new(array_map($f->getClosure(), $a->getData(), $b->getData()));
+            }
+        ));
+
         $env->set('reduce', new CoreFunc('reduce', 'Apply the first argument (function) to each element of second argument (sequence) incrementally. Optional third argument is the initial value to be used as first input for function and it defaults to null.', 2, 3,
             function (Func $f, Seq $a, $initial = null) {
                 return array_reduce($a->getData(), $f->getClosure(), $initial);
+            }
+        ));
+
+        $env->set('filter', new CoreFunc('filter', 'Create new sequence which contains items that evaluate to true using first argument (function) from the second argument (sequence).', 2, 2,
+            function (Func $f, Seq $a) {
+                return $a::new(array_values(array_filter($a->getData(), $f->getClosure())));
             }
         ));
 
