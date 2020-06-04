@@ -14,7 +14,20 @@ class Evaller
 
         // Handle special forms
         if ($ast->get(0) instanceof Symbol) {
-            if ($ast->get(0)->getName() == 'def') {
+            if ($ast->get(0)->getName() == 'and') {
+                if ($ast->count() == 1) {
+                    return true;
+                }
+
+                for ($i = 1; $i < $ast->count(); $i++) {
+                    $value = $this->eval($ast->get($i), $env);
+                    if ($value == false) {
+                        return $value;
+                    }
+                }
+
+                return $value;
+            } elseif ($ast->get(0)->getName() == 'def') {
                 if ($ast->count() != 3) {
                     throw new MadLispException("def requires exactly 2 arguments");
                 }
@@ -113,6 +126,19 @@ class Evaller
                 }
 
                 return $this->eval($ast->get(2), $newEnv);
+            } elseif ($ast->get(0)->getName() == 'or') {
+                if ($ast->count() == 1) {
+                    return false;
+                }
+
+                for ($i = 1; $i < $ast->count(); $i++) {
+                    $value = $this->eval($ast->get($i), $env);
+                    if ($value == true) {
+                        return $value;
+                    }
+                }
+
+                return $value;
             } elseif ($ast->get(0)->getName() == 'quote') {
                 if ($ast->count() != 2) {
                     throw new MadLispException("quote requires exactly 1 argument");
