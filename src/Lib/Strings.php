@@ -17,7 +17,7 @@ class Strings implements ILib
             fn (string $a) => strtoupper($a)
         ));
 
-        $env->set('locase', new CoreFunc('locase', 'Return string in lower case.', 1, 1,
+        $env->set('lowcase', new CoreFunc('lowcase', 'Return string in lower case.', 1, 1,
             fn (string $a) => strtolower($a)
         ));
 
@@ -29,6 +29,10 @@ class Strings implements ILib
                     return substr($a, $i, $l);
                 }
             }
+        ));
+
+        $env->set('replace', new CoreFunc('replace', 'Change occurrences in first argument from second argument to third argument.', 3, 3,
+            fn (string $a, string $b, string $c) => str_replace($b, $c, $a)
         ));
 
         $env->set('split', new CoreFunc('split', 'Split the second argument by the first argument into a list.', 2, 2,
