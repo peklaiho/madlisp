@@ -48,13 +48,15 @@ class Evaller
                     for ($i = 1; $i < $ast->count() - 1; $i += 2) {
                         $test = $this->eval($ast->get($i), $env);
                         if ($test == true) {
-                            return $this->eval($ast->get($i + 1), $env);
+                            $ast = $ast->get($i + 1);
+                            continue 2; // tco
                         }
                     }
 
                     // Last value, no test
                     if ($ast->count() % 2 == 0) {
-                        return $this->eval($ast->get($ast->count() - 1), $env);
+                        $ast = $ast->get($ast->count() - 1);
+                        continue; // tco
                     } else {
                         return null;
                     }
