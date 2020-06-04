@@ -94,6 +94,13 @@ class Collections implements ILib
 
         // Manipulate list
 
+        $env->set('chunk', new CoreFunc('chunk', 'Divide first argument (sequence) into new sequences with length of second argument (int).', 2, 2,
+            function (Seq $a, int $len) {
+                $chunks = array_chunk($a->getData(), $len);
+                return $a::new(array_map(fn ($b) => $a::new($b), $chunks));
+            }
+        ));
+
         $env->set('push', new CoreFunc('push', 'Push the remaining arguments at the end of the sequence (first argument).', 2, -1,
             function (Seq $a, ...$b) {
                 $data = $a->getData();
