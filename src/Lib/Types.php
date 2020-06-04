@@ -38,7 +38,7 @@ class Types implements ILib
 
         // Test types
 
-        $env->set('type?', new CoreFunc('type?', 'Return the type of argument as a string.', 1, 1,
+        $env->set('type', new CoreFunc('type', 'Return the type of argument as a string.', 1, 1,
             function ($a) {
                 if ($a instanceof Func) {
                     return 'function';
