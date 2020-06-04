@@ -3,11 +3,9 @@ namespace MadLisp;
 
 class Printer
 {
-    public function print(array $items): void
+    public function print($ast): void
     {
-        $strings = array_map(fn ($a) => $this->doPrint($a), $items);
-
-        print(implode(' ', $strings));
+        print($this->doPrint($ast));
     }
 
     private function doPrint($a): string

@@ -20,11 +20,11 @@ class Lisp
     {
         $tokens = $this->tokenizer->tokenize($input);
 
-        $expressions = $this->reader->read($tokens);
+        $expr = $this->reader->read($tokens);
 
-        $results = $this->eval->eval($expressions, $env);
+        $result = $this->eval->eval($expr, $env);
 
-        $this->printer->print($results);
+        $this->printer->print($result);
     }
 
     public function register(Env $env): void
@@ -39,19 +39,17 @@ class Lisp
             }
         ));
 
-        $env->set('eval', new CoreFunc('eval', 'Evaluate arguments.', 1, -1,
-            function (...$args) use ($env) {
-                $results = $this->eval->eval($args, $env);
-
-                // Return last evaluated value
-                return $results[count($results) - 1];
-            }
+        $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
+            fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
         ));
 
-        $env->set('print', new CoreFunc('print', 'Print arguments.', 1, -1,
-            function (...$args) {
-                $this->printer->print($args);
+        $env->set('eval', new CoreFunc('eval', 'Evaluate argument.', 1, 1,
+            fn ($a) => $this->eval->eval($a, $env)
+        ));
 
+        $env->set('print', new CoreFunc('print', 'Print argument.', 1, 1,
+            function ($a) {
+                $this->printer->print($a);
                 return null;
             }
         ));

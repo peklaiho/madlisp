@@ -3,16 +3,10 @@ namespace MadLisp;
 
 class Reader
 {
-    public function read(array $tokens): array
+    public function read(array $tokens)
     {
-        $result = [];
         $index = 0;
-
-        while ($index < count($tokens)) {
-            $result[] = $this->readForm($tokens, $index);
-        }
-
-        return $result;
+        return $this->readForm($tokens, $index);
     }
 
     private function readForm(array $tokens, int &$index)
