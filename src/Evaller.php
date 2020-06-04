@@ -12,7 +12,7 @@ class Evaller
             return $ast;
         }
 
-        // Handle special keywords
+        // Handle special forms
         if ($ast->get(0) instanceof Symbol) {
             if ($ast->get(0)->getName() == 'def') {
                 if ($ast->count() != 3) {
@@ -31,12 +31,20 @@ class Evaller
                 }
 
                 for ($i = 1; $i < $ast->count(); $i++) {
-                    $value = $this->evalAst($ast->get($i), $env);
+                    $value = $this->eval($ast->get($i), $env);
                 }
 
                 return $value;
             } elseif ($ast->get(0)->getName() == 'env') {
-                return $env;
+                if ($ast->count() >= 2) {
+                    if (!($ast->get(1) instanceof Symbol)) {
+                        throw new MadLispException("first argument to env is not symbol");
+                    }
+
+                    return $env->get($ast->get(1)->getName());
+                } else {
+                    return $env;
+                }
             } elseif ($ast->get(0)->getName() == 'fn') {
                 if ($ast->count() != 3) {
                     throw new MadLispException("fn requires exactly 2 arguments");
@@ -120,8 +128,9 @@ class Evaller
         // Call first argument as function
         $func = $ast->get(0);
         if (!($func instanceof Func)) {
-            throw new MadLispException("first item of list is not function");
+            throw new MadLispException("eval: first item of list is not function");
         }
+
         $args = array_slice($ast->getData(), 1);
         return $func->call($args);
     }
