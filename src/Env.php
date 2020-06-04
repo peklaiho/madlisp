@@ -20,4 +20,14 @@ class Env extends Hash
 
         throw new MadLispException("symbol $key not defined in env");
     }
+
+    public function set(string $key, $value)
+    {
+        // Do not allow overwriting values in root env
+        if ($this->has($key) && $this->parent == null) {
+            throw new MadLispException("attempt to overwrite $key in root env");
+        }
+
+        return parent::set($key, $value);
+    }
 }
