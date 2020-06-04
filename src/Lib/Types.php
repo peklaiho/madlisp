@@ -29,7 +29,7 @@ class Types implements ILib
         ));
 
         $env->set('str', new CoreFunc('str', 'Convert arguments to string and concatenate them together.', 0, -1,
-            fn (...$args) => implode('', array_map('strval', $args))
+            fn (...$args) => implode('', array_map([$this, 'getStrValue'], $args))
         ));
 
         $env->set('symbol', new CoreFunc('symbol', 'Convert argument to symbol.', 1, 1,
@@ -133,5 +133,14 @@ class Types implements ILib
         $env->set('odd?', new CoreFunc('odd?', 'Return true if argument is not divisible by 2.', 1, 1,
             fn ($a) => $a % 2 !== 0
         ));
+    }
+
+    private function getStrValue($a)
+    {
+        if ($a instanceof Symbol) {
+            return $a->getName();
+        }
+
+        return strval($a);
     }
 }
