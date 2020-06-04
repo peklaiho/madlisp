@@ -1,13 +1,16 @@
 <?php
 require('bootstrap.php');
 
-list($lisp, $env) = ml_get_lisp();
+list($lisp, $rootEnv) = ml_get_lisp();
+
+// Create new env for user definitions
+$userEnv = new MadLisp\Env($rootEnv);
 
 while (true) {
     $input = readline('> ');
 
     try {
-        $lisp->rep($input, $env);
+        $lisp->rep($input, $userEnv);
     } catch (MadLisp\MadLispException $ex) {
         print('error: ' . $ex->getMessage());
     } catch (TypeError $ex) {
