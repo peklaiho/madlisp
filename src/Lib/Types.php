@@ -36,6 +36,10 @@ class Types implements ILib
             fn (string $a) => new Symbol($a)
         ));
 
+        $env->set('not', new CoreFunc('not', 'Turns true to false and vice versa.', 1, 1,
+            fn ($a) => !$a
+        ));
+
         // Test types
 
         $env->set('type', new CoreFunc('type', 'Return the type of argument as a string.', 1, 1,
