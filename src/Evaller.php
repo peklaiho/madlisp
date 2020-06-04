@@ -27,6 +27,24 @@ class Evaller
                 }
 
                 return $value;
+            } elseif ($ast->get(0)->getName() == 'case') {
+                if ($ast->count() < 2) {
+                    throw new MadLispException("case requires at least 1 argument");
+                }
+
+                for ($i = 1; $i < $ast->count() - 1; $i += 2) {
+                    $test = $this->eval($ast->get($i), $env);
+                    if ($test == true) {
+                        return $this->eval($ast->get($i + 1), $env);
+                    }
+                }
+
+                // Last value, no test
+                if ($ast->count() % 2 == 0) {
+                    return $this->eval($ast->get($ast->count() - 1), $env);
+                } else {
+                    return null;
+                }
             } elseif ($ast->get(0)->getName() == 'def') {
                 if ($ast->count() != 3) {
                     throw new MadLispException("def requires exactly 2 arguments");
