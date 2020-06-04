@@ -5,6 +5,10 @@ class Reader
 {
     public function read(array $tokens)
     {
+        if (empty($tokens)) {
+            return null;
+        }
+
         $index = 0;
         return $this->readForm($tokens, $index);
     }
