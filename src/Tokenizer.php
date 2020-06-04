@@ -50,8 +50,8 @@ class Tokenizer
                     // Start of comment
                     $addCurrent();
                     $isComment = true;
-                } elseif ($c == ' ' || $c == "\t" || $c == "\n" || $c == "\r") {
-                    // Whitespace is ignored
+                } elseif ($c == ' ' || $c == "\t" || $c == "\n" || $c == "\r" || $c == ':') {
+                    // Whitespace and colon are ignored
                     $addCurrent();
                 } elseif ($c == '(' || $c == '[' || $c == '{') {
                     // Start of collection
