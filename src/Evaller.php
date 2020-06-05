@@ -3,18 +3,8 @@ namespace MadLisp;
 
 class Evaller
 {
-    private $p = null;
-
     public function eval($ast, Env $env)
     {
-        // Debug
-        if ($this->p == null) {
-            $this->p = new Printer();
-        }
-        print("eval: ");
-        $this->p->print($ast);
-        print("\n");
-
         while (true) {
 
             // Not list or empty list
@@ -108,7 +98,7 @@ class Evaller
                         }
                     }
 
-                    return new UserFunc(function (...$args) use ($bindings, $ast, $env) {
+                    $closure = function (...$args) use ($bindings, $ast, $env) {
                         $newEnv = new Env($env);
 
                         for ($i = 0; $i < count($bindings); $i++) {
@@ -116,7 +106,9 @@ class Evaller
                         }
 
                         return $this->eval($ast->get(2), $newEnv);
-                    });
+                    };
+
+                    return new UserFunc($closure, $ast->get(2), $env, $bindings);
                 } elseif ($ast->get(0)->getName() == 'if') {
                     if ($ast->count() < 3 || $ast->count() > 4) {
                         throw new MadLispException("if requires 2 or 3 arguments");
@@ -125,11 +117,9 @@ class Evaller
                     $result = $this->eval($ast->get(1), $env);
 
                     if ($result == true) {
-                        echo "if tco\n";
                         $ast = $ast->get(2);
                         continue;
                     } elseif ($ast->count() == 4) {
-                        echo "if tco\n";
                         $ast = $ast->get(3);
                         continue;
                     } else {
@@ -192,14 +182,18 @@ class Evaller
             // Get new evaluated list
             $ast = $this->evalAst($ast, $env);
 
-            // Call first argument as function
+            // First item is function, rest are arguments
             $func = $ast->get(0);
-            if (!($func instanceof Func)) {
+            $args = array_slice($ast->getData(), 1);
+
+            if ($func instanceof CoreFunc) {
+                return $func->call($args);
+            } elseif ($func instanceof UserFunc) {
+                $ast = $func->getAst();
+                $env = $func->getEnv($args);
+            } else {
                 throw new MadLispException("eval: first item of list is not function");
             }
-
-            $args = array_slice($ast->getData(), 1);
-            return $func->call($args);
         }
     }
 
