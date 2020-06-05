@@ -202,10 +202,12 @@ class Evaller
         if ($ast instanceof Symbol) {
             // Lookup symbol from env
             return $env->get($ast->getName());
-        } elseif ($ast instanceof MList) {
-            return new MList(array_map(fn ($a) => $this->eval($a, $env), $ast->getData()));
-        } elseif ($ast instanceof Vector) {
-            return new Vector(array_map(fn ($a) => $this->eval($a, $env), $ast->getData()));
+        } elseif ($ast instanceof Seq) {
+            $results = [];
+            foreach ($ast->getData() as $val) {
+                $results[] = $this->eval($val, $env);
+            }
+            return $ast::new($results);
         } elseif ($ast instanceof Hash) {
             $results = [];
             foreach ($ast->getData() as $key => $val) {
