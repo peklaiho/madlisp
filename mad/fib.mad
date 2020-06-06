@@ -1,11 +1,11 @@
-; Functions to calculate Fibonacci numbers
+;; Functions to calculate Fibonacci numbers
 
-; Slow recursive version
+;; Slow recursive version
 (def slowFib (fn (n) (if (< n 2) n (+ (slowFib (- n 1)) (slowFib (- n 2))))))
 
-; Return the sum of the last 2 numbers in a sequence
+;; Return the sum of the last 2 numbers in a sequence
 (def sumOfLast (fn (l) (+ (last l) (get l (- (len l) 2)))))
 
-; Faster version, return vector of n numbers
+;; Faster version, return vector of n numbers
 (def fibListRec (fn (n l) (if (< (len l) n) (fibListRec n (push l (sumOfLast l))) l)))
 (def fibList (fn (n) (fibListRec n [0 1])))
