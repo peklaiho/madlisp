@@ -25,5 +25,8 @@ function ml_get_lisp(): array
     (new MadLisp\Lib\Time())->register($env);
     (new MadLisp\Lib\Types())->register($env);
 
+    // Functions defined in lisp itself
+    $lisp->re('(def loadf (fn (f) (if (file? f) (eval (read (str "(do " (fread f) ")"))) (error (str "file " f " does not exist")))))', $env);
+
     return [$lisp, $env];
 }

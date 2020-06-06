@@ -16,13 +16,18 @@ class Lisp
         $this->printer = $printer;
     }
 
-    public function rep(string $input, Env $env): void
+    public function re(string $input, Env $env)
     {
         $tokens = $this->tokenizer->tokenize($input);
 
         $expr = $this->reader->read($tokens);
 
-        $result = $this->eval->eval($expr, $env);
+        return $this->eval->eval($expr, $env);
+    }
+
+    public function rep(string $input, Env $env): void
+    {
+        $result = $this->re($input, $env);
 
         $this->printer->print($result);
     }
@@ -51,6 +56,12 @@ class Lisp
             function ($a) {
                 $this->printer->print($a);
                 return null;
+            }
+        ));
+
+        $env->set('error', new CoreFunc('error', 'Throw an exception using argument (string) as message.', 1, 1,
+            function (string $error) {
+                throw new MadLispException($error);
             }
         ));
     }
