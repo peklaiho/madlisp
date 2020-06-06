@@ -5,8 +5,8 @@ function ml_get_lisp(): array
 {
     $tokenizer = new MadLisp\Tokenizer();
     $reader = new MadLisp\Reader();
-    $eval = new MadLisp\Evaller($tokenizer, $reader);
     $printer = new MadLisp\Printer();
+    $eval = new MadLisp\Evaller($tokenizer, $reader, $printer);
 
     $lisp = new MadLisp\Lisp($tokenizer, $reader, $eval, $printer);
 

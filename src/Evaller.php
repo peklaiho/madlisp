@@ -5,16 +5,35 @@ class Evaller
 {
     protected Tokenizer $tokenizer;
     protected Reader $reader;
+    protected Printer $printer;
 
-    public function __construct(Tokenizer $tokenizer, Reader $reader)
+    private const DEBUG = true;
+
+    public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer)
     {
         $this->tokenizer = $tokenizer;
         $this->reader = $reader;
+        $this->printer = $printer;
     }
 
     public function eval($ast, Env $env)
     {
+        if (self::DEBUG) {
+            print("eval: ");
+            $this->printer->print($ast);
+            print("\n");
+            $loops = 0;
+        }
+
         while (true) {
+
+            if (self::DEBUG) {
+                if ($loops++ > 0) {
+                    print("eval loop: ");
+                    $this->printer->print($ast);
+                    print("\n");
+                }
+            }
 
             // Not list or empty list
             if (!($ast instanceof MList)) {
