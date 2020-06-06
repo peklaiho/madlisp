@@ -94,6 +94,29 @@ class Collections implements ILib
 
         // Manipulate list
 
+        $env->set('apply', new CoreFunc('apply', 'Apply the first argument (function) using second argument (sequence) as arguments.', 2, -1,
+            function (...$args) {
+                $fn = $args[0];
+                $seq = $args[count($args) - 1];
+
+                if (!($fn instanceof Func)) {
+                    throw new MadLispException('first argument to apply is not function');
+                } elseif (!($seq instanceof Seq)) {
+                    throw new MadLispException('last argument to apply is not sequence');
+                }
+
+                $args2 = [];
+                for ($i = 1; $i < count($args) - 1; $i++) {
+                    $args2[] = $args[$i];
+                }
+                foreach ($seq->getData() as $a) {
+                    $args2[] = $a;
+                }
+
+                return $fn->call($args2);
+            }
+        ));
+
         $env->set('chunk', new CoreFunc('chunk', 'Divide first argument (sequence) into new sequences with length of second argument (int).', 2, 2,
             function (Seq $a, int $len) {
                 $chunks = array_chunk($a->getData(), $len);
