@@ -3,6 +3,15 @@ namespace MadLisp;
 
 class Evaller
 {
+    protected Tokenizer $tokenizer;
+    protected Reader $reader;
+
+    public function __construct(Tokenizer $tokenizer, Reader $reader)
+    {
+        $this->tokenizer = $tokenizer;
+        $this->reader = $reader;
+    }
+
     public function eval($ast, Env $env)
     {
         while (true) {
@@ -82,6 +91,13 @@ class Evaller
                     } else {
                         return $env;
                     }
+                } elseif ($ast->get(0)->getName() == 'eval') {
+                    if ($ast->count() == 1) {
+                        return null;
+                    }
+
+                    $ast = $this->eval($ast->get(1), $env);
+                    continue; // tco
                 } elseif ($ast->get(0)->getName() == 'fn') {
                     if ($ast->count() != 3) {
                         throw new MadLispException("fn requires exactly 2 arguments");
@@ -99,7 +115,7 @@ class Evaller
                     }
 
                     $closure = function (...$args) use ($bindings, $ast, $env) {
-                        $newEnv = new Env($env);
+                        $newEnv = new Env('closure', $env);
 
                         for ($i = 0; $i < count($bindings); $i++) {
                             $newEnv->set($bindings[$i]->getName(), $args[$i] ?? null);
@@ -140,7 +156,7 @@ class Evaller
                         throw new MadLispException("uneven number of bindings for let");
                     }
 
-                    $newEnv = new Env($env);
+                    $newEnv = new Env('let', $env);
 
                     for ($i = 0; $i < count($bindings) - 1; $i += 2) {
                         $key = $bindings[$i];
@@ -155,6 +171,31 @@ class Evaller
 
                     $ast = $ast->get(2);
                     $env = $newEnv;
+                    continue; // tco
+                } elseif ($ast->get(0)->getName() == 'load') {
+                    // Load is here because we want to load into
+                    // current $env which is hard otherwise.
+
+                    if ($ast->count() != 2) {
+                        throw new MadLispException("load requires exactly 1 argument");
+                    }
+
+                    $filename = $ast->get(1);
+
+                    if (!is_string($filename)) {
+                        throw new MadLispException("first argument to load is not string");
+                    } elseif (!is_readable($filename)) {
+                        throw new MadLispException("unable to read file $filename");
+                    }
+
+                    $input = @file_get_contents($filename);
+
+                    // Wrap input in a do to process multiple expressions
+                    $input = "(do $input)";
+
+                    $expr = $this->reader->read($this->tokenizer->tokenize($input));
+
+                    $ast = $this->eval($expr, $env);
                     continue; // tco
                 } elseif ($ast->get(0)->getName() == 'or') {
                     if ($ast->count() == 1) {

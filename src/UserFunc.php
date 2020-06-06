@@ -25,7 +25,7 @@ class UserFunc extends Func
 
     public function getEnv(array $args)
     {
-        $newEnv = new Env($this->tempEnv);
+        $newEnv = new Env('apply', $this->tempEnv);
 
         for ($i = 0; $i < count($this->bindings); $i++) {
             $newEnv->set($this->bindings[$i]->getName(), $args[$i] ?? null);

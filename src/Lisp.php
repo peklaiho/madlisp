@@ -16,18 +16,13 @@ class Lisp
         $this->printer = $printer;
     }
 
-    public function re(string $input, Env $env)
+    public function rep(string $input, Env $env): void
     {
         $tokens = $this->tokenizer->tokenize($input);
 
         $expr = $this->reader->read($tokens);
 
-        return $this->eval->eval($expr, $env);
-    }
-
-    public function rep(string $input, Env $env): void
-    {
-        $result = $this->re($input, $env);
+        $result = $this->eval->eval($expr, $env);
 
         $this->printer->print($result);
     }
@@ -46,10 +41,6 @@ class Lisp
 
         $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
             fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
-        ));
-
-        $env->set('eval', new CoreFunc('eval', 'Evaluate argument.', 1, 1,
-            fn ($a) => $this->eval->eval($a, $env)
         ));
 
         $env->set('print', new CoreFunc('print', 'Print argument.', 1, 1,

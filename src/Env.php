@@ -3,11 +3,22 @@ namespace MadLisp;
 
 class Env extends Hash
 {
+    protected string $name;
     protected ?Env $parent;
 
-    public function __construct(?Env $parent = null)
+    public function __construct(string $name, ?Env $parent = null)
     {
+        $this->name = $name;
         $this->parent = $parent;
+    }
+
+    public function getFullName(): string
+    {
+        if ($this->parent) {
+            return $this->parent->getFullName() . '/' . $this->name;
+        }
+
+        return $this->name;
     }
 
     public function get(string $key)
