@@ -6,6 +6,6 @@
 ;; Return the sum of the last 2 numbers in a sequence
 (def sumOfLast (fn (l) (+ (last l) (get l (- (len l) 2)))))
 
-;; Faster version, return vector of n numbers
+;; Faster version, return vector of n numbers, tail call optimized
 (def fibListRec (fn (n l) (if (< (len l) n) (fibListRec n (push l (sumOfLast l))) l)))
 (def fibList (fn (n) (fibListRec n [0 1])))

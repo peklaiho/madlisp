@@ -1,6 +1,6 @@
 ;; Functions to calculate factorial
 
-;; Recursive version
+;; Recursive version, not tail call optimized
 (def recFact (fn (n) (if (< n 2) 1 (* n (recFact (- n 1))))))
 
 ;; Apply version
