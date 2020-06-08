@@ -70,13 +70,19 @@ class Collections implements ILib
             fn (Seq $a) => $a->getData()[0] ?? null
         ));
 
+        $env->set('second', new CoreFunc('second', 'Return the second element of a sequence or null.', 1, 1,
+            fn (Seq $a) => $a->getData()[1] ?? null
+        ));
+
         $env->set('last', new CoreFunc('last', 'Return the last element of a sequence or null.', 1, 1,
             function (Seq $a) {
-                if ($a->count() == 0) {
-                    return null;
-                }
+                return $a->getData()[$a->count() - 1] ?? null;
+            }
+        ));
 
-                return $a->getData()[$a->count() - 1];
+        $env->set('penult', new CoreFunc('penult', 'Return the second last element of a sequence or null.', 1, 1,
+            function (Seq $a) {
+                return $a->getData()[$a->count() - 2] ?? null;
             }
         ));
 
