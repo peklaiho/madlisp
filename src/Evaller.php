@@ -7,7 +7,7 @@ class Evaller
     protected Reader $reader;
     protected Printer $printer;
 
-    private const DEBUG = true;
+    protected bool $debug = false;
 
     public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer)
     {
@@ -18,7 +18,7 @@ class Evaller
 
     public function eval($ast, Env $env)
     {
-        if (self::DEBUG) {
+        if ($this->debug) {
             print("eval: ");
             $this->printer->print($ast);
             print("\n");
@@ -27,7 +27,7 @@ class Evaller
 
         while (true) {
 
-            if (self::DEBUG) {
+            if ($this->debug) {
                 if ($loops++ > 0) {
                     print("eval loop: ");
                     $this->printer->print($ast);
@@ -255,6 +255,11 @@ class Evaller
                 throw new MadLispException("eval: first item of list is not function");
             }
         }
+    }
+
+    public function setDebug(bool $val): void
+    {
+        $this->debug = $val;
     }
 
     private function evalAst($ast, Env $env)

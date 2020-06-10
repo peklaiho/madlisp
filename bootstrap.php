@@ -1,16 +1,17 @@
 <?php
 require('vendor/autoload.php');
 
-function ml_get_lisp(): array
+function ml_get_lisp(bool $debug): array
 {
     $tokenizer = new MadLisp\Tokenizer();
     $reader = new MadLisp\Reader();
     $printer = new MadLisp\Printer();
     $eval = new MadLisp\Evaller($tokenizer, $reader, $printer);
+    $eval->setDebug($debug);
 
     $lisp = new MadLisp\Lisp($tokenizer, $reader, $eval, $printer);
 
-    // Environment
+    // Root environment
     $env = new MadLisp\Env('root');
 
     // Register core functions
@@ -24,6 +25,9 @@ function ml_get_lisp(): array
     (new MadLisp\Lib\Strings())->register($env);
     (new MadLisp\Lib\Time())->register($env);
     (new MadLisp\Lib\Types())->register($env);
+
+    // User environment
+    $env = new MadLisp\Env('user', $env);
 
     return [$lisp, $env];
 }
