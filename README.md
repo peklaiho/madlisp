@@ -2,6 +2,10 @@
 
 MadLisp is a [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) interpreter written in PHP. It is inspired by the [Make a Lisp](https://github.com/kanaka/mal) project, but does not follow that convention or syntax strictly.
 
+## Goals
+
+The goal of the project was to learn about the internals of programming languages and to build a simple language suitable for scripting and similar use cases.
+
 ## Features
 
 The implementation is pretty minimalistic, but there is a good collection of built-in functions. Also [tail call optimization](https://en.wikipedia.org/wiki/Tail_call) is included.
@@ -113,15 +117,15 @@ do    | `(do (print 1) 2)` | `12` | Evaluate multiple expressions and return the
 env   | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
 eval  | `(eval (quote (+ 1 2)))` | `3` | Evaluate the argument.
 fn    | `(fn (a b) (+ a b))` | `<function>` | Create a function.
-if    | `(if (< 1 2) "yes" "no")` | If the first argument evaluates to true, evaluate and return the second argument, otherwise the third argument. If the third argument is omitted `null` in its place.
-let   | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as value. The last argument is the body of the let-expression which is evaluated in this new environment.
-load  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a do expression.
+if    | `(if (< 1 2) "yes" "no")` | `"yes"` | If the first argument evaluates to true, evaluate and return the second argument, otherwise the third argument. If the third argument is omitted return `null` in its place.
+let   | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
+load  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
 or    | `(or false 0 1)` | `1` | Return the first value that evaluates to true, or the last value.
 quote | `(quote (1 2 3))` | `(1 2 3)` | Return the argument without evaluation. This is same as the `'` shortcut described above.
 
 ## Functions
 
-### Core
+### Core functions
 
 Name  | Example | Example result | Description
 ----- | ------- | -------------- | -----------
@@ -130,7 +134,7 @@ read  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return th
 print | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl).
 error | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
 
-### Collections
+### Collection functions
 
 Name    | Example | Example result | Description
 ------- | ------- | -------------- | -----------
@@ -160,7 +164,7 @@ filter  | `(filter odd? [1 2 3 4 5])` | `[1 3 5]` | Create a new sequence by usi
 reverse | `(reverse [1 2 3])` | `[3 2 1]` | Reverse the order of a sequence. Uses [array_reverse](https://www.php.net/manual/en/function.array-reverse.php) internally.
 key?    | `(key? {"a" "b"} "a")` | `true` | Return true if the hash-map contains the given key.
 set     | `(set {"a" 1} "b" 2)` | `{"a":1 "b":2}` | Create new hash-map which contains the given key-value pair.
-set!    | `(set! {"a" 1} "b" 2)` | `2` | Modify the given hash-map by setting the key-value pair and returning the set value. **This function is mutable!**
+set!    | `(set! {"a" 1} "b" 2)` | `2` | Modify the given hash-map by setting the given key-value pair and return the set value. **This function is mutable!**
 keys    | `(keys {"a" 1 "b" 2})` | `("a" "b")` | Return a list of the keys for a hash-map.
 values  | `(values {"a" 1 "b" 2})` | `(1 2)` | Return a list of the values for a hash-map.
 zip     | `(zip ["a" "b"] [1 2])` | `{"a":1 "b":2}` | Create a hash-map using the first sequence as keys and the second as values. Uses [array_combine](https://www.php.net/manual/en/function.array-combine.php) internally.
