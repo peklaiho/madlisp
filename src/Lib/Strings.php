@@ -9,6 +9,8 @@ class Strings implements ILib
 {
     public function register(Env $env): void
     {
+        $env->set('ln', \PHP_EOL);
+
         $env->set('trim', new CoreFunc('trim', 'Remove whitespace from beginning and end of string.', 1, 1,
             fn (string $a) => trim($a)
         ));

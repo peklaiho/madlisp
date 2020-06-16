@@ -8,6 +8,10 @@ class Math implements ILib
 {
     public function register(Env $env): void
     {
+        // Constants
+
+        $env->set('pi', \M_PI);
+
         // Basic arithmetic
 
         $env->set('+', new CoreFunc('+', 'Return the sum of all arguments.', 1, -1,
