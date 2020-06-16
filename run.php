@@ -17,7 +17,7 @@ function ml_repl($lisp, $env)
         $input = readline('> ');
 
         try {
-            $lisp->rep($input, $env);
+            $lisp->rep($input, $env, true);
 
             if ($input) {
                 readline_add_history($input);
@@ -42,10 +42,10 @@ function ml_run()
     list($lisp, $env) = ml_get_lisp($debug);
 
     if (array_key_exists('e', $args)) {
-        $lisp->rep($args['e'], $env);
+        $lisp->rep($args['e'], $env, false);
     } elseif (array_key_exists('f', $args)) {
         $input = "(load \"{$args['f']}\")";
-        $lisp->rep($input, $env);
+        $lisp->rep($input, $env, false);
     } elseif (array_key_exists('r', $args)) {
         ml_repl($lisp, $env);
     } else {

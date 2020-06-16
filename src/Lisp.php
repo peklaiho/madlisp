@@ -16,7 +16,7 @@ class Lisp
         $this->printer = $printer;
     }
 
-    public function rep(string $input, Env $env): void
+    public function rep(string $input, Env $env, bool $printReadable): void
     {
         $tokens = $this->tokenizer->tokenize($input);
 
@@ -24,7 +24,7 @@ class Lisp
 
         $result = $this->eval->eval($expr, $env);
 
-        $this->printer->print($result);
+        $this->printer->print($result, $printReadable);
     }
 
     public function register(Env $env): void
@@ -43,9 +43,9 @@ class Lisp
             fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
         ));
 
-        $env->set('print', new CoreFunc('print', 'Print argument.', 1, 1,
-            function ($a) {
-                $this->printer->print($a);
+        $env->set('print', new CoreFunc('print', 'Print argument. Give second argument as true to show strings in readable format.', 1, 2,
+            function ($a, bool $readable = false) {
+                $this->printer->print($a, $readable);
                 return null;
             }
         ));

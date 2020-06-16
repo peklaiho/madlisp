@@ -135,7 +135,7 @@ Name  | Example | Example result | Description
 ----- | ------- | -------------- | -----------
 doc   | `(doc +)` | `"Return the sum of all arguments."` | Show description of a built-in function.
 read  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
-print | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl).
+print | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
 error | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
 
 ### Collection functions
