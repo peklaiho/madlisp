@@ -275,10 +275,6 @@ odd? | Return true if the argument is odd number (1, 3, 5, ...).
 
 The project is easy to extend because it is trivial to add new functions whether the implementation is defined on the PHP or Lisp side. If the language ends up being used in the future, first plans are to add support for JSON serialization and a HTTP client.
 
-## Known issues
-
-Special characters such as `\"`, `\n` or `\r` are not handled/escaped correctly in strings yet.
-
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)

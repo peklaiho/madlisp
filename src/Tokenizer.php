@@ -30,8 +30,11 @@ class Tokenizer
 
                 // Stop at first double quote
                 if ($c == '"') {
-                    $addCurrent();
-                    $isString = false;
+                    // If previous character is not a backslash
+                    if (strlen($current) < 2 || substr($current, -2, 1) != "\\") {
+                        $addCurrent();
+                        $isString = false;
+                    }
                 }
             } elseif ($isComment) {
                 // Comments stop at first newline

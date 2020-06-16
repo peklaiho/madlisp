@@ -77,8 +77,13 @@ class Reader
         } elseif ($a === 'null') {
             return null;
         } elseif (substr($a, 0, 1) === '"') {
-            // string
-            return substr($a, 1, strlen($a) - 2);
+            // string, handle special characters
+            $a = substr($a, 1, -1);
+            $a = str_replace("\\\\", chr(0x7f), $a);
+            $a = str_replace("\\n", "\n", $a);
+            $a = str_replace("\\r", "\r", $a);
+            $a = str_replace("\\\"", "\"", $a);
+            return str_replace(chr(0x7f), "\\", $a);
         } elseif (is_numeric($a)) {
             if (filter_var($a, FILTER_VALIDATE_INT) !== false) {
                 return intval($a);
