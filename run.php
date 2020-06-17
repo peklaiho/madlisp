@@ -1,11 +1,11 @@
 <?php
-require('bootstrap.php');
+require(__DIR__ . '/vendor/autoload.php');
 
 if (php_sapi_name() != 'cli') {
     exit('Currently only cli usage is supported.');
 }
 
-function ml_repl($lisp, $env)
+function ml_repl($lisp)
 {
     // Read history
     $historyFile = $_SERVER['HOME'] . '/.madlisp_history';
@@ -17,7 +17,7 @@ function ml_repl($lisp, $env)
         $input = readline('> ');
 
         try {
-            $lisp->rep($input, $env, true);
+            $lisp->rep($input, true);
 
             if ($input) {
                 readline_add_history($input);
@@ -37,17 +37,16 @@ function ml_run()
 {
     $args = getopt('de:f:r');
 
-    $debug = array_key_exists('d', $args);
-
-    list($lisp, $env) = ml_get_lisp($debug);
+    $factory = new MadLisp\LispFactory();
+    $lisp = $factory->make();
 
     if (array_key_exists('e', $args)) {
-        $lisp->rep($args['e'], $env, false);
+        $lisp->rep($args['e'], false);
     } elseif (array_key_exists('f', $args)) {
         $input = "(load \"{$args['f']}\")";
-        $lisp->rep($input, $env, false);
+        $lisp->rep($input, false);
     } elseif (array_key_exists('r', $args)) {
-        ml_repl($lisp, $env);
+        ml_repl($lisp);
     } else {
         print("Usage:" . PHP_EOL);
         print("-d         :: Debug mode" . PHP_EOL);
