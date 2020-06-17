@@ -33,27 +33,36 @@ function ml_repl($lisp)
     }
 }
 
-function ml_run()
-{
-    $args = getopt('de:f:r');
+// Create the Lisp interpreter
+$factory = new MadLisp\LispFactory();
+$lisp = $factory->make();
 
-    $factory = new MadLisp\LispFactory();
-    $lisp = $factory->make();
-
-    if (array_key_exists('e', $args)) {
-        $lisp->rep($args['e'], false);
-    } elseif (array_key_exists('f', $args)) {
-        $input = "(load \"{$args['f']}\")";
+if ($argc < 2) {
+    // Read input from stdin
+    $input = file_get_contents('php://stdin');
+    $lisp->rep($input, false);
+} elseif ($argv[1] == '-r') {
+    // Run the repl
+    ml_repl($lisp);
+} elseif ($argv[1] == '-e') {
+    // Evaluate next argument
+    $lisp->rep($argv[2] ?? '', false);
+} elseif ($argv[1] == '-h') {
+    // Show help
+    print("Usage:" . PHP_EOL);
+    print("-e <code>       :: Evaluate code" . PHP_EOL);
+    print("-h              :: Show this help" . PHP_EOL);
+    print("-r              :: Run the interactive Repl" . PHP_EOL);
+    print("<filename>      :: Evaluate file" . PHP_EOL);
+    print("<no arguments>  :: Read from stdin" . PHP_EOL);
+} else {
+    // Read file
+    $file = $argv[1];
+    if (is_readable($file)) {
+        $input = "(load \"$file\")";
         $lisp->rep($input, false);
-    } elseif (array_key_exists('r', $args)) {
-        ml_repl($lisp);
     } else {
-        print("Usage:" . PHP_EOL);
-        print("-d         :: Debug mode" . PHP_EOL);
-        print("-e <code>  :: Evaluate code" . PHP_EOL);
-        print("-f <file>  :: Evaluate file" . PHP_EOL);
-        print("-r         :: Run the interactive repl" . PHP_EOL);
+        print("Unable to read file: $file\n");
+        exit(1); // exit with error code
     }
 }
-
-ml_run();
