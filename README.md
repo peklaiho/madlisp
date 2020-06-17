@@ -18,7 +18,7 @@ The core project does not have any dependencies to external [Composer](https://g
 
 ## Usage
 
-Use the **run.php** file to invoke the interpreter. You can invoke the Repl with the -r switch:
+Use the **run.php** file to invoke the interpreter. You can start the Repl with the -r switch:
 
 ```
 $ php run.php -r
@@ -31,10 +31,17 @@ $ php run.php -e "(+ 1 2 3)"
 6
 ```
 
-Or you can evaluate a file with the -f switch:
+You can evaluate a file by giving it as argument:
 
 ```
-$ php run.php -f file.mad
+$ php run.php file.mad
+```
+
+With no arguments the script will read input from stdin:
+
+```
+$ echo "(+ 1 2 3)" | php run.php
+6
 ```
 
 ## Types
@@ -270,6 +277,15 @@ zero? | Return true if the argument is integer 0 (strict comparison).
 one? | Return true if the argument is integer 1 (strict comparison).
 even? | Return true if the argument is even number (0, 2, 4, ...).
 odd? | Return true if the argument is odd number (1, 3, 5, ...).
+
+## Constants
+
+The following constants are defined by default:
+
+Name    | PHP constant
+------- | ------------
+pi      | M_PI
+ln      | PHP_EOL
 
 ## Extending
 
