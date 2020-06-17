@@ -8,6 +8,17 @@ class IO implements ILib
 {
     public function register(Env $env): void
     {
+        $env->set('dirsep', \DIRECTORY_SEPARATOR);
+        $env->set('homedir', $_SERVER['HOME'] . \DIRECTORY_SEPARATOR);
+
+        $env->set('wd', new CoreFunc('wd', 'Get the current working directory.', 0, 0,
+            fn () => getcwd() . \DIRECTORY_SEPARATOR
+        ));
+
+        $env->set('chdir', new CoreFunc('chdir', 'Change working directory.', 1, 1,
+            fn (string $dir) => chdir($dir)
+        ));
+
         $env->set('file?', new CoreFunc('file?', 'Check if file exists.', 1, 1,
             fn (string $filename) => file_exists($filename)
         ));

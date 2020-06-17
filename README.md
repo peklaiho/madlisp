@@ -197,6 +197,8 @@ Name    | Example | Example result | Description
 
 Name    | Example | Example result | Description
 ------- | ------- | -------------- | -----------
+wd      | `(wd)` | `"/home/pekka/code/madlisp/"` | Get the current working directory.
+chdir   | `(chdir "/tmp")` | `true` | Change the current working directory.
 file?   | `(file? "test.txt")` | `true` | Return true if the file exists.
 fread   | `(fread "test.txt")` | `"content"` | Read the contents of a file.
 fwrite  | `(fwrite "test.txt" "content")` | `true` | Write string to file. Give optional third parameter as `true` to append.
@@ -284,8 +286,10 @@ The following constants are defined by default:
 
 Name    | PHP constant
 ------- | ------------
-pi      | M_PI
+dirsep  | DIRECTORY_SEPARATOR
+homedir | $_SERVER['HOME']
 ln      | PHP_EOL
+pi      | M_PI
 
 ## Extending
 
