@@ -3,7 +3,7 @@ namespace MadLisp;
 
 class LispFactory
 {
-    public function make(array $libraries = []): Lisp
+    public function make(array $coreLibs = [], array $userLibs = []): Lisp
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
@@ -50,13 +50,18 @@ class LispFactory
         (new Lib\Time())->register($env);
         (new Lib\Types())->register($env);
 
-        // Register additional libraries
-        foreach ($libraries as $lib) {
+        // Register additional libs for root env
+        foreach ($coreLibs as $lib) {
             $lib->register($env);
         }
 
         // User environment
         $env = new Env('user', $env);
+
+        // Register additional libs for user env
+        foreach ($userLibs as $lib) {
+            $lib->register($env);
+        }
 
         return new Lisp($tokenizer, $reader, $eval, $printer, $env);
     }
