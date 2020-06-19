@@ -21,6 +21,11 @@ class Printer
                                                 array_keys($a->getData()), array_values($a->getData()))) . '}';
         } elseif ($a instanceof Symbol) {
             return $a->getName();
+        } elseif (is_object($a)) {
+            $class = get_class($a);
+            return "<object<$class>>";
+        } elseif (is_resource($a)) {
+            return '<resource>';
         } elseif ($a === true) {
             return 'true';
         } elseif ($a === false) {

@@ -1,6 +1,7 @@
 <?php
 namespace MadLisp\Lib;
 
+use MadLisp\Collection;
 use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Hash;
@@ -54,6 +55,10 @@ class Types implements ILib
                     return 'hash';
                 } elseif ($a instanceof Symbol) {
                     return 'symbol';
+                } elseif (is_object($a)) {
+                    return 'object';
+                } elseif (is_resource($a)) {
+                    return 'resource';
                 } elseif ($a === true || $a === false) {
                     return 'bool';
                 } elseif ($a === null) {
@@ -90,6 +95,21 @@ class Types implements ILib
 
         $env->set('symbol?', new CoreFunc('symbol?', 'Return true if argument is a symbol.', 1, 1,
             fn ($a) => $a instanceof Symbol
+        ));
+
+        $env->set('object?', new CoreFunc('object?', 'Return true if argument is an object.', 1, 1,
+            function ($a) {
+                // Skip classes which have their own types
+                if ($a instanceof Func || $a instanceof Collection || $a instanceof Symbol) {
+                    return false;
+                }
+
+                return is_object($a);
+            }
+        ));
+
+        $env->set('resource?', new CoreFunc('resource?', 'Return true if argument is a resource.', 1, 1,
+            fn ($a) => is_resource($a)
         ));
 
         $env->set('bool?', new CoreFunc('bool?', 'Return true if argument is a boolean.', 1, 1,

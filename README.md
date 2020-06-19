@@ -275,6 +275,8 @@ vector? | Return true if the argument is a vector.
 seq? | Return true if the argument is a sequence (list or vector).
 hash? | Return true if the argument is a hash-map.
 symbol? | Return true if the argument is a symbol.
+object? | Return true if the argument is an object.
+resource? | Return true if the argument is a resource.
 bool? | Return true if the argument is a boolean value (strict comparison).
 true? | Return true if the argument evaluates to true (non-strict comparison).
 false? | Return true if the argument evaluates to false (non-strict comparison).
