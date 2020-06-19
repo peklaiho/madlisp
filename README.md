@@ -193,6 +193,20 @@ Name    | Example | Example result | Description
 `>`     | `(> 1 2)` | `false` | Return true if first argument is greater than second.
 `>=`    | `(>= 1 2)` | `false` | Return true if first argument is greater or equal to second.
 
+### Database functions
+
+This is just a simple wrapper for [PDO](https://www.php.net/manual/en/book.pdo.php).
+
+Name        | Example | Example result | Description
+----------- | ------- | -------------- | -----------
+db-open     | `(def d (db-open "mysql:host=localhost;dbname=test" "testuser" "testpw"))` | `<object<PDO>>` | Open a database connection.
+db-execute  | `(db-execute d "INSERT INTO test_table (col1, col2) values (?, ?)" [1, 2])` | `1` | Execute a SQL statement and return the number of affected rows.
+db-query    | `(db-query d "SELECT * FROM test_table WHERE col1 = ?" [1])` | | Execute a SELECT statement.
+db-last-id  | `(db-last-id d)` | `"1"` | Return the last id of auto-increment column.
+db-trans    | `(db-trans d)` | `true` | Start a transaction.
+db-commit   | `(db-commit d)` | `true` | Commit a transaction.
+db-rollback | `(db-rollback d)` | `true` | Roll back a transaction.
+
 ### IO functions
 
 Name    | Example | Example result | Description
