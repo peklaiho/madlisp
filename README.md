@@ -203,6 +203,13 @@ file?   | `(file? "test.txt")` | `true` | Return true if the file exists.
 fread   | `(fread "test.txt")` | `"content"` | Read the contents of a file.
 fwrite  | `(fwrite "test.txt" "content")` | `true` | Write string to file. Give optional third parameter as `true` to append.
 
+### Json functions
+
+Name    | Example | Example result | Description
+------- | ------- | -------------- | -----------
+to-json | `(to-json { "a" [1 2 3] "b" [4 5 6] })` | `"{\"a\":[1,2,3],\"b\":[4,5,6]}"` | Encode the argument as a JSON string.
+from-json | `(from-json "{\"a\":[1,2,3],\"b\":[4,5,6]}")` | `{"a":[1 2 3] "b":[4 5 6]}` | Decode the JSON string given as argument.
+
 ### Math functions
 
 Name    | Example | Example result | Description
@@ -293,7 +300,7 @@ pi      | M_PI
 
 ## Extending
 
-The project is easy to extend because it is trivial to add new functions whether the implementation is defined on the PHP or Lisp side. If the language ends up being used in the future, first plans are to add support for JSON serialization and a HTTP client.
+The project is easy to extend because it is trivial to add new functions whether the implementation is defined on the PHP or Lisp side.
 
 ## License
 
