@@ -18,11 +18,6 @@ function ml_repl($lisp)
 
         try {
             $lisp->rep($input, true);
-
-            if ($input) {
-                readline_add_history($input);
-                readline_write_history($historyFile);
-            }
         } catch (MadLisp\MadLispException $ex) {
             print('error: ' . $ex->getMessage());
         } catch (TypeError $ex) {
@@ -30,6 +25,11 @@ function ml_repl($lisp)
         }
 
         print(PHP_EOL);
+
+        if ($input) {
+            readline_add_history($input);
+            readline_write_history($historyFile);
+        }
     }
 }
 
