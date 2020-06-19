@@ -25,13 +25,10 @@ class Json implements ILib
 
     private function getJsonData($a)
     {
-        if ($a instanceof Func) {
-            throw new MadLispException("unable to encode function as json");
-        } elseif ($a instanceof Collection) {
+        if ($a instanceof Collection) {
             return array_map([$this, 'getJsonData'], $a->getData());
-        } elseif ($a instanceof Symbol) {
-            // Does this make sense, as we cannot reverse this operation?
-            return $a->getName();
+        } elseif (is_object($a) || is_resource($a)) {
+            throw new MadLispException("invalid type for json");
         } else {
             return $a;
         }
