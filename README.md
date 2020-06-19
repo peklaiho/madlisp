@@ -200,8 +200,14 @@ Name    | Example | Example result | Description
 wd      | `(wd)` | `"/home/pekka/code/madlisp/"` | Get the current working directory.
 chdir   | `(chdir "/tmp")` | `true` | Change the current working directory.
 file?   | `(file? "test.txt")` | `true` | Return true if the file exists.
-fread   | `(fread "test.txt")` | `"content"` | Read the contents of a file.
-fwrite  | `(fwrite "test.txt" "content")` | `true` | Write string to file. Give optional third parameter as `true` to append.
+fget    | `(fget "test.txt")` | `"content"` | Read the contents of a file using [file_get_contents](https://www.php.net/manual/en/function.file-get-contents.php).
+fput    | `(fput "test.txt" "content")` | `true` | Write string to file using [file_put_contents](https://www.php.net/manual/en/function.file-put-contents.php). Give optional third parameter as `true` to append.
+fopen   | `(def f (fopen "test.txt" "w"))` | `<resource>` | Open a file for reading or writing. Give the mode as second argument.
+fclose  | `(fclose f)` | `true` | Close a file resource.
+fwrite  | `(fwrite f "abc")` | `3` | Write to a file resource.
+fflush  | `(fflush f)` | `true` | Persist buffered writes to disk for a file resource.
+fread   | `(fread f 16)` | `"abc"` | Read from a file resource.
+feof?   | `(feof? f)` | `true` | Return true if end of file has been reached for a file resource.
 
 ### Json functions
 

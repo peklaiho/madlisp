@@ -23,13 +23,13 @@ class IO implements ILib
             fn (string $filename) => file_exists($filename)
         ));
 
-        $env->set('fread', new CoreFunc('fread', 'Read contents of a file.', 1, 1,
+        $env->set('fget', new CoreFunc('fget', 'Read contents of a file.', 1, 1,
             function (string $filename) {
                 return @file_get_contents($filename);
             }
         ));
 
-        $env->set('fwrite', new CoreFunc('fwrite', 'Write string (second argument) to file (first argument). Give true as optional third argument to append instead of overwrite.', 2, 3,
+        $env->set('fput', new CoreFunc('fput', 'Write string (second argument) to file (first argument). Give true as optional third argument to append instead of overwrite.', 2, 3,
             function (string $filename, $data, $append = false) {
                 $flags = 0;
                 if ($append) {
@@ -40,6 +40,30 @@ class IO implements ILib
 
                 return $result !== false;
             }
+        ));
+
+        $env->set('fopen', new CoreFunc('fopen', 'Open a file for reading or writing. Give mode as second argument.', 2, 2,
+            fn ($file, $mode) => @fopen($file, $mode)
+        ));
+
+        $env->set('fclose', new CoreFunc('fclose', 'Close a file resource.', 1, 1,
+            fn ($handle) => @fclose($handle)
+        ));
+
+        $env->set('fread', new CoreFunc('fread', 'Read from a file resource. Give length in bytes as second argument.', 2, 2,
+            fn ($handle, $length) => @fread($handle, $length)
+        ));
+
+        $env->set('fwrite', new CoreFunc('fwrite', 'Write to a file resource.', 2, 2,
+            fn ($handle, $data) => @fwrite($handle, $data)
+        ));
+
+        $env->set('fflush', new CoreFunc('fflush', 'Persist buffered writes to disk for a file resource.', 1, 1,
+            fn ($handle) => @fflush($handle)
+        ));
+
+        $env->set('feof?', new CoreFunc('feof?', 'Return true if end of file has been reached for a file resource.', 1, 1,
+            fn ($handle) => @feof($handle)
         ));
     }
 }
