@@ -195,7 +195,7 @@ Name    | Example | Example result | Description
 
 ### Database functions
 
-This is just a simple wrapper for [PDO](https://www.php.net/manual/en/book.pdo.php).
+This is a simple wrapper for [PDO](https://www.php.net/manual/en/book.pdo.php).
 
 Name        | Example | Example result | Description
 ----------- | ------- | -------------- | -----------
@@ -206,6 +206,14 @@ db-last-id  | `(db-last-id d)` | `"1"` | Return the last id of auto-increment co
 db-trans    | `(db-trans d)` | `true` | Start a transaction.
 db-commit   | `(db-commit d)` | `true` | Commit a transaction.
 db-rollback | `(db-rollback d)` | `true` | Roll back a transaction.
+
+### Http functions
+
+This is a simple wrapper for [cURL](https://www.php.net/manual/en/book.curl.php).
+
+Name        | Example | Example result | Description
+----------- | ------- | -------------- | -----------
+http        | `(http "POST" "http://example.com/" (to-json {"key":"value"}) {"Content-Type":"application/json"})` | `{"status":200 "body":"" "headers":{}}` | Perform a HTTP request. First argument is the HTTP method, second is URL, third is request body and fourth is headers as a hash-map. The function returns a hash-map which contains keys `status`, `body` and `headers`.
 
 ### IO functions
 

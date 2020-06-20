@@ -45,6 +45,7 @@ class LispFactory
         (new Lib\Collections())->register($env);
         (new Lib\Compare())->register($env);
         (new Lib\Database())->register($env);
+        (new Lib\Http())->register($env);
         (new Lib\IO())->register($env);
         (new Lib\Json())->register($env);
         (new Lib\Math())->register($env);
