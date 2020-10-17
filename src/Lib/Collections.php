@@ -98,6 +98,12 @@ class Collections implements ILib
             }
         ));
 
+        $env->set('slice', new CoreFunc('slice', 'Return a slice of the given sequence. Second argument is offset and third is length.', 2, 3,
+            function (Seq $a, int $offset, ?int $length = null) {
+                return $a::new(array_slice($a->getData(), $offset, $length));
+            }
+        ));
+
         // Manipulate list
 
         $env->set('apply', new CoreFunc('apply', 'Apply the first argument (function) using second argument (sequence) as arguments.', 2, -1,

@@ -163,6 +163,7 @@ penult  | `(penult [1 2 3 4])` | `3` | Return the second-last element of a seque
 last    | `(last [1 2 3 4])` | `4` | Return the last element of a sequence.
 head    | `(head [1 2 3 4])` | `[1 2 3]` | Return new sequence which contains all elements except the last.
 tail    | `(tail [1 2 3 4])` | `[2 3 4]` | Return new sequence which contains all elements except the first.
+slice   | `(slice [1 2 3 4 5] 1 3)` | `[2 3 4]` | Return a slice of the sequence using offset and length. Uses [array_slice](https://www.php.net/manual/en/function.array-slice.php).
 apply   | `(apply + 1 2 [3 4])` | `10` | Call the first argument using a sequence as argument list. Intervening arguments are prepended to the list.
 chunk   | `(chunk [1 2 3 4 5] 2)` | `[[1 2] [3 4] [5]]` | Divide a sequence to multiple sequences with specified length using [array_chunk](https://www.php.net/manual/en/function.array-chunk.php).
 push    | `(push [1 2] 3 4)` | `[1 2 3 4]` | Create new sequence by inserting arguments at the end.
