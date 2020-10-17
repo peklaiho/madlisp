@@ -3,7 +3,7 @@ namespace MadLisp\Lib;
 
 use MadLisp\CoreFunc;
 use MadLisp\Env;
-use MadLisp\MList;
+use MadLisp\Vector;
 
 class Strings implements ILib
 {
@@ -38,7 +38,7 @@ class Strings implements ILib
         ));
 
         $env->set('split', new CoreFunc('split', 'Split the second argument by the first argument into a list.', 2, 2,
-            fn (string $a, string $b) => new MList(explode($a, $b))
+            fn (string $a, string $b) => new Vector(explode($a, $b))
         ));
 
         $env->set('join', new CoreFunc('join', 'Join the remaining arguments together by using the first argument as glue.', 1, -1,

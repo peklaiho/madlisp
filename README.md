@@ -1,6 +1,6 @@
 # MadLisp
 
-MadLisp is a [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) interpreter written in PHP. It is inspired by the [Make a Lisp](https://github.com/kanaka/mal) project, but does not follow that convention or syntax strictly.
+MadLisp is a [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) interpreter written in PHP. It is inspired by the [Make a Lisp](https://github.com/kanaka/mal) project, but does not follow that convention or syntax strictly. It provides a fun platform for learning [functional programming](https://en.wikipedia.org/wiki/Functional_programming).
 
 ## Goals
 
@@ -173,7 +173,7 @@ map     | `(map (fn (a) (* a 2)) [1 2 3])` | `[2 4 6]` | Create new sequence by 
 map2    | `(map2 + [1 2 3] [4 5 6])` | `[5 7 9]` | Create new sequence by calling a function for each item from both sequences.
 reduce  | `(reduce + [2 3 4] 1)` | `10` | Reduce a sequence to a single value by calling a function sequentially of all arguments. Optional third argument is used to give the initial value for first iteration. Uses [array_reduce](https://www.php.net/manual/en/function.array-reduce.php) internally.
 filter  | `(filter odd? [1 2 3 4 5])` | `[1 3 5]` | Create a new sequence by using the given function as a filter. Uses [array_filter](https://www.php.net/manual/en/function.array-filter.php) internally.
-filterh | `(filterh (fn (v k) (prefix? k "a")) {"aa":1 "ab":2 "bb": 3})` | `{"aa":1 "ab":2}` | Same as filter but for hash-maps. First argument passed to the callback is the value and second is the key.
+filterh | `(filterh (fn (v k) (prefix? k "a")) {"aa":1 "ab":2 "bb":3})` | `{"aa":1 "ab":2}` | Same as filter but for hash-maps. First argument passed to the callback is the value and second is the key.
 reverse | `(reverse [1 2 3])` | `[3 2 1]` | Reverse the order of a sequence. Uses [array_reverse](https://www.php.net/manual/en/function.array-reverse.php) internally.
 key?    | `(key? {"a" "b"} "a")` | `true` | Return true if the hash-map contains the given key.
 set     | `(set {"a" 1} "b" 2)` | `{"a":1 "b":2}` | Create new hash-map which contains the given key-value pair.
@@ -273,7 +273,7 @@ upcase  | `(upcase "abc")` | `"ABC"` | Make the string upper case using [strtoup
 lowcase | `(lowcase "Abc")` | `"abc"` | Make the string lower case using [strtolower](https://www.php.net/manual/en/function.strtolower.php).
 substr  | `(substr "hello world" 3 5)` | `"lo wo"` | Get a substring using [substr](https://www.php.net/manual/en/function.substr.php).
 replace | `(replace "hello world" "hello" "bye")` | `"bye world"` | Replace substrings using [str_replace](https://www.php.net/manual/en/function.str-replace.php).
-split   | `(split "-" "a-b-c")` | `("a" "b" "c")` | Split string using [explode](https://www.php.net/manual/en/function.explode.php).
+split   | `(split "-" "a-b-c")` | `["a" "b" "c"]` | Split string using [explode](https://www.php.net/manual/en/function.explode.php).
 join    | `(join "-" "a" "b" "c")` | `"a-b-c"` | Join string together using [implode](https://www.php.net/manual/en/function.implode.php).
 format  | `(format "%d %.2f" 56 4.5)` | `"56 4.50"` | Format string using [sprintf](https://www.php.net/manual/en/function.sprintf.php).
 prefix? | `(prefix? "hello world" "hello")` | `true` | Return true if the first argument starts with the second argument.
