@@ -275,6 +275,8 @@ replace | `(replace "hello world" "hello" "bye")` | `"bye world"` | Replace subs
 split   | `(split "-" "a-b-c")` | `("a" "b" "c")` | Split string using [explode](https://www.php.net/manual/en/function.explode.php).
 join    | `(join "-" "a" "b" "c")` | `"a-b-c"` | Join string together using [implode](https://www.php.net/manual/en/function.implode.php).
 format  | `(format "%d %.2f" 56 4.5)` | `"56 4.50"` | Format string using [sprintf](https://www.php.net/manual/en/function.sprintf.php).
+prefix? | `(prefix? "hello world" "hello")` | `true` | Return true if the first argument starts with the second argument.
+suffix? | `(suffix? "hello world" "world")` | `true` | Return true if the first argument ends with the second argument.
 
 Note that support for multibyte characters in strings is limited because the provided functions do not use the [mbstring](https://www.php.net/manual/en/book.mbstring.php) extension.
 

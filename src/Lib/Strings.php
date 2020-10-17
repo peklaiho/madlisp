@@ -48,5 +48,13 @@ class Strings implements ILib
         $env->set('format', new CoreFunc('format', 'Format the remaining arguments as string specified by the first argument.', 1, -1,
             fn (string $a, ...$b) => sprintf($a, ...$b)
         ));
+
+        $env->set('prefix?', new CoreFunc('prefix?', 'Return true if the first argument starts with the second argument.', 2, 2,
+            fn (string $str, string $start) => substr($str, 0, strlen($start)) === $start
+        ));
+
+        $env->set('suffix?', new CoreFunc('suffix?', 'Return true if the first argument ends with the second argument.', 2, 2,
+            fn (string $str, string $end) => substr($str, strlen($str) - strlen($end)) === $end
+        ));
     }
 }
