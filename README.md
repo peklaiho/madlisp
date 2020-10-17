@@ -179,6 +179,7 @@ keys    | `(keys {"a" 1 "b" 2})` | `("a" "b")` | Return a list of the keys for a
 values  | `(values {"a" 1 "b" 2})` | `(1 2)` | Return a list of the values for a hash-map.
 zip     | `(zip ["a" "b"] [1 2])` | `{"a":1 "b":2}` | Create a hash-map using the first sequence as keys and the second as values. Uses [array_combine](https://www.php.net/manual/en/function.array-combine.php) internally.
 sort    | `(sort [6 4 8 1])` | `[1 4 6 8]` | Sort the sequence using [sort](https://www.php.net/manual/en/function.sort.php).
+usort   | `(usort (fn (a b) (if (< a b) 0 1)) [3 1 5 4 2])` | `[1 2 3 4 5]` | Sort the sequence using custom comparison function using [usort](https://www.php.net/manual/en/function.usort.php).
 
 ### Comparison functions
 

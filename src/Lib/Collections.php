@@ -240,5 +240,13 @@ class Collections implements ILib
                 return $a::new($data);
             }
         ));
+
+        $env->set('usort', new CoreFunc('usort', 'Sort the sequence using custom comparison function.', 2, 2,
+            function (Func $f, Seq $a) {
+                $data = $a->getData();
+                usort($data, $f->getClosure());
+                return $a::new($data);
+            }
+        ));
     }
 }
