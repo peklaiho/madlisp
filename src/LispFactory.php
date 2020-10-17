@@ -41,6 +41,12 @@ class LispFactory
             }
         ));
 
+        $env->set('exit', new CoreFunc('exit', 'Terminate the script with given exit code.', 0, 1,
+            function ($status = 0) {
+                exit($status);
+            }
+        ));
+
         // Register core libraries
         (new Lib\Collections())->register($env);
         (new Lib\Compare())->register($env);
