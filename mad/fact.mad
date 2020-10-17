@@ -1,7 +1,7 @@
 ;; Functions to calculate factorial
 
 ;; Recursive version, not tail call optimized
-(def recFact (fn (n) (if (< n 2) 1 (* n (recFact (- n 1))))))
+(def recFact (fn (n) (if (< n 2) 1 (* n (recFact (dec n))))))
 
 ;; Apply version
-(def applyFact (fn (n) (if (< n 2) 1 (apply * (range 1 (+ n 1))))))
+(def applyFact (fn (n) (if (< n 2) 1 (apply * (range 1 (inc n))))))
