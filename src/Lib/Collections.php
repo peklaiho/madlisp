@@ -193,6 +193,12 @@ class Collections implements ILib
             }
         ));
 
+        $env->set('filterh', new CoreFunc('filterh', 'Same as filter but for hash maps. First argument passed to the callback is the value and second is the key.', 2, 2,
+            function (Func $f, Hash $a) {
+                return new Hash(array_filter($a->getData(), $f->getClosure(), ARRAY_FILTER_USE_BOTH));
+            }
+        ));
+
         $env->set('reverse', new CoreFunc('reverse', 'Create new sequence with reversed order.', 1, 1,
             fn (Seq $a) => $a::new(array_reverse($a->getData()))
         ));
