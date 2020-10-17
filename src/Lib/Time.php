@@ -3,6 +3,7 @@ namespace MadLisp\Lib;
 
 use MadLisp\CoreFunc;
 use MadLisp\Env;
+use MadLisp\Func;
 
 class Time implements ILib
 {
@@ -24,6 +25,15 @@ class Time implements ILib
             function (int $time) {
                 usleep($time * 1000);
                 return null;
+            }
+        ));
+
+        $env->set('timer', new CoreFunc('timer', 'Measure the execution time of a function and return it in seconds.', 1, -1,
+            function (Func $f, ...$args) {
+                $start = microtime(true);
+                $f->call($args);
+                $end = microtime(true);
+                return $end - $start;
             }
         ));
     }
