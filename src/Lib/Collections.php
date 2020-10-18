@@ -45,7 +45,15 @@ class Collections implements ILib
         // Read information
 
         $env->set('empty?', new CoreFunc('empty?', 'Return true if collection is empty.', 1, 1,
-            fn (Collection $a) => $a->count() == 0
+            function ($a) {
+                if ($a instanceof Collection) {
+                    return $a->count() === 0;
+                } elseif (is_string($a)) {
+                    return $a === '';
+                }
+
+                throw new MadLispException('argument to empty? is not collection or string');
+            }
         ));
 
         $env->set('get', new CoreFunc('get', 'Get the item from first argument (collection) by using the second argument as index or key.', 2, 2,

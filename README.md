@@ -271,6 +271,7 @@ sqrt  | `(sqrt 2)` | `1.41` | Calculate the square root.
 
 Name    | Example | Example result | Description
 ------- | ------- | -------------- | -----------
+empty?  | `(empty? "")` | `true` | Return true if argument is empty string.
 len     | `(len "hello world")` | `11` | Return the length of a string using [strlen](https://www.php.net/manual/en/function.strlen.php).
 trim    | `(trim " abc ")` | `"abc"` | Trim the string using [trim](https://www.php.net/manual/en/function.trim).
 upcase  | `(upcase "abc")` | `"ABC"` | Make the string upper case using [strtoupper](https://www.php.net/manual/en/function.strtoupper).
