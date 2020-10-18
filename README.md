@@ -234,6 +234,10 @@ fwrite  | `(fwrite f "abc")` | `3` | Write to a file resource.
 fflush  | `(fflush f)` | `true` | Persist buffered writes to disk for a file resource.
 fread   | `(fread f 16)` | `"abc"` | Read from a file resource.
 feof?   | `(feof? f)` | `true` | Return true if end of file has been reached for a file resource.
+readline | `(readline "What is your name? ")` | `What is your name? ` | Read line of user input using [readline](https://www.php.net/manual/en/function.readline.php).
+readlineAdd | `(readlineAdd "What is your name? ")` | `true` | Add line of user input to readline history using [readline_add_history](https://www.php.net/manual/en/function.readline-add-history.php).
+readlineLoad | `(readlineLoad "historyfile")` | `true` | Read readline history from file using [readline_read_history](https://www.php.net/manual/en/function.readline-read-history.php).
+readlineSave | `(readlineSave "historyfile")` | `true` | Write readline history into file using [readline_write_history](https://www.php.net/manual/en/function.readline-write-history.php).
 
 ### Json functions
 

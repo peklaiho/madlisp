@@ -65,5 +65,23 @@ class IO implements ILib
         $env->set('feof?', new CoreFunc('feof?', 'Return true if end of file has been reached for a file resource.', 1, 1,
             fn ($handle) => @feof($handle)
         ));
+
+        // Readline support
+
+        $env->set('readline', new CoreFunc('readline', 'Read line of user input.', 0, 1,
+            fn ($prompt = null) => readline($prompt)
+        ));
+
+        $env->set('readlineAdd', new CoreFunc('readlineAdd', 'Add new line of input to history.', 1, 1,
+            fn (string $line) => readline_add_history($line)
+        ));
+
+        $env->set('readlineLoad', new CoreFunc('readlineLoad', 'Load the history for readline from a file.', 1, 1,
+            fn (string $file) => readline_read_history($file)
+        ));
+
+        $env->set('readlineSave', new CoreFunc('readlineSave', 'Save the readline history into a file.', 1, 1,
+            fn (string $file) => readline_write_history($file)
+        ));
     }
 }
