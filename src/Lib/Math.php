@@ -99,5 +99,15 @@ class Math implements ILib
         $env->set('sqrt', new CoreFunc('sqrt', 'Return the square root of the arguemnt.', 1, 1,
             fn ($a) => sqrt($a)
         ));
+
+        // Random number generator
+
+        $env->set('coinflip', new CoreFunc('coinflip', 'Return true or false with equal probability.', 0, 0,
+            fn () => boolval(mt_rand(0, 1))
+        ));
+
+        $env->set('rand', new CoreFunc('rand', 'Return a random integer between given min and max values.', 2, 2,
+            fn ($min, $max) => mt_rand($min, $max)
+        ));
     }
 }

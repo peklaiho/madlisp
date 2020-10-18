@@ -24,6 +24,15 @@ class LispFactory
             }
         ));
 
+        $env->set('loop', new CoreFunc('loop', 'Call the given function repeatedly in a loop until it returns false.', 1, -1,
+            function (Func $f, ...$args) {
+                do {
+                    $result = $f->call($args);
+                } while ($result);
+                return $result;
+            }
+        ));
+
         $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
             fn (string $a) => $reader->read($tokenizer->tokenize($a))
         ));

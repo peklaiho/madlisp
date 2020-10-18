@@ -141,6 +141,7 @@ quote | `(quote (1 2 3))` | `(1 2 3)` | Return the argument without evaluation. 
 Name  | Example | Example result | Description
 ----- | ------- | -------------- | -----------
 doc   | `(doc +)` | `"Return the sum of all arguments."` | Show description of a built-in function.
+loop  | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
 read  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
 print | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
 error | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
@@ -266,6 +267,8 @@ floor | `(floor 2.5)` | `2` | Get the next lowest integer.
 ceil  | `(ceil 2.5)` | `3` | Get the next highest integer.
 pow   | `(pow 2 4)` | `16` | Raise the first argument to the power of the second argument.
 sqrt  | `(sqrt 2)` | `1.41` | Calculate the square root.
+coinflip | `(coinflip)` | `true` | Return true or false with equal probability.
+rand  | `(rand 5 10)` | `8` | Return a random integer between given min and max values.
 
 ### String functions
 
