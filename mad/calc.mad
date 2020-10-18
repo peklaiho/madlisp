@@ -1,0 +1,55 @@
+
+;;
+;; Simple command line calculator which demonstrates the following concepts:
+;; - command parser with arguments
+;; - readline support with history
+;; - main loop
+;;
+;; This is a barebones example for creating interactive command line scripts.
+;; This script should be executed directly, not inside the repl.
+;;
+
+;; Define commands
+(def cmdAdd (fn (args) (apply + args)))
+(def cmdDiv (fn (args) (apply / args)))
+(def cmdMul (fn (args) (apply * args)))
+(def cmdSub (fn (args) (apply - args)))
+(def cmdHelp (fn (args) (str "Available commands: " (apply join ", " (keys cmdMap)))))
+
+;; And we define a hash-map for command lookups with minimum number of arguments
+(def cmdMap {
+  "add": [cmdAdd 2]
+  "div": [cmdDiv 2]
+  "mul": [cmdMul 2]
+  "sub": [cmdSub 2]
+  "help": [cmdHelp 0]
+})
+
+;; Find the first command which starts with the given name, or null
+(def findCmd (fn (name)
+  (if (empty? name) null
+    (let (matches (filterh (fn (v k) (prefix? k name)) cmdMap))
+      (if (empty? matches) null
+        (get matches (first (keys matches))))))))
+
+;; Split input by spaces, find command that matches the first word
+;; and call it, giving the rest of the words as arguments.
+(def parseInput (fn (inp)
+  (let (words (split " " inp) cname (first words) args (tail words) cmd (findCmd cname))
+    (if (null? cmd) (print "Unknown command, try 'help'.")
+      (if (< (len args) (second cmd)) (print (str "Give at least 2 arguments to " cname "."))
+        ((first cmd) args))))))
+
+;; Define a file for readline and load it
+(def readlineFile (str homedir "calc_history"))
+(readlineLoad readlineFile)
+
+;; Main loop: Read input from user, add it to readline, and parse it
+(def mainLoop (fn () (let (inp (readline "> "))
+  (do (readlineAdd inp)
+    (readlineSave readlineFile)
+    (print (str (parseInput inp) "\n"))
+    true))))
+
+;; Run it
+(loop mainLoop)
