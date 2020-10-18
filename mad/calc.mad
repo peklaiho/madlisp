@@ -42,12 +42,12 @@
 
 ;; Define a file for readline and load it
 (def readlineFile (str HOME "calc_history"))
-(readlineLoad readlineFile)
+(readline-load readlineFile)
 
 ;; Main loop: Read input from user, add it to readline, and parse it
 (def mainLoop (fn () (let (inp (readline "> "))
-  (do (readlineAdd inp)
-    (readlineSave readlineFile)
+  (do (readline-add inp)
+    (readline-save readlineFile)
     (print (str (parseInput inp) EOL))
     true))))
 

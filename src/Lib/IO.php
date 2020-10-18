@@ -72,15 +72,15 @@ class IO implements ILib
             fn ($prompt = null) => readline($prompt)
         ));
 
-        $env->set('readlineAdd', new CoreFunc('readlineAdd', 'Add new line of input to history.', 1, 1,
+        $env->set('readline-add', new CoreFunc('readline-add', 'Add new line of input to history.', 1, 1,
             fn (string $line) => readline_add_history($line)
         ));
 
-        $env->set('readlineLoad', new CoreFunc('readlineLoad', 'Load the history for readline from a file.', 1, 1,
+        $env->set('readline-load', new CoreFunc('readline-load', 'Load the history for readline from a file.', 1, 1,
             fn (string $file) => readline_read_history($file)
         ));
 
-        $env->set('readlineSave', new CoreFunc('readlineSave', 'Save the readline history into a file.', 1, 1,
+        $env->set('readline-save', new CoreFunc('readline-save', 'Save the readline history into a file.', 1, 1,
             fn (string $file) => readline_write_history($file)
         ));
     }
