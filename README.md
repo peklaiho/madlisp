@@ -338,10 +338,10 @@ The following constants are defined by default:
 
 Name    | PHP constant
 ------- | ------------
-dirsep  | DIRECTORY_SEPARATOR
-homedir | $_SERVER['HOME']
-ln      | PHP_EOL
-pi      | M_PI
+DIRSEP  | DIRECTORY_SEPARATOR
+HOME    | $_SERVER['HOME']
+EOL     | PHP_EOL
+PI      | M_PI
 
 ## Extending
 

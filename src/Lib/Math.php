@@ -10,7 +10,7 @@ class Math implements ILib
     {
         // Constants
 
-        $env->set('pi', \M_PI);
+        $env->set('PI', \M_PI);
 
         // Basic arithmetic
 

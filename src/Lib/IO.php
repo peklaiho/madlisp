@@ -8,8 +8,8 @@ class IO implements ILib
 {
     public function register(Env $env): void
     {
-        $env->set('dirsep', \DIRECTORY_SEPARATOR);
-        $env->set('homedir', $_SERVER['HOME'] . \DIRECTORY_SEPARATOR);
+        $env->set('DIRSEP', \DIRECTORY_SEPARATOR);
+        $env->set('HOME', $_SERVER['HOME'] . \DIRECTORY_SEPARATOR);
 
         $env->set('wd', new CoreFunc('wd', 'Get the current working directory.', 0, 0,
             fn () => getcwd() . \DIRECTORY_SEPARATOR
