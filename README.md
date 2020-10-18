@@ -270,6 +270,16 @@ sqrt  | `(sqrt 2)` | `1.41` | Calculate the square root.
 coinflip | `(coinflip)` | `true` | Return true or false with equal probability.
 rand  | `(rand 5 10)` | `8` | Return a random integer between given min and max values.
 
+### Regular expression functions
+
+Name          | Example | Example result | Description
+------------- | ------- | -------------- | -----------
+re-match      | `(re-match "/^[a-z]{4}[0-9]{4}$/" "test1234")` | `true` | Match subject to regular expression using [preg_match](https://www.php.net/manual/en/function.preg-match.php).
+re-match      | `(re-match "/[a-z]{5}/" "one three five" true)` | `"three"` | Give true as third argument to return the matched text.
+re-match-all  | `(re-match-all "/[A-Z][a-z]{2}[0-9]/" "One1 Two2 Three3")` | `["One1" "Two2"]` | Find multiple matches to regular expression using [preg_match_all](https://www.php.net/manual/en/function.preg-match-all.php).
+re-replace    | `(re-replace "/year ([0-9]{4}) month ([0-9]{2})/" "$1-$2-01" "year 2020 month 10")` | `"2020-10-01"` | Perform search and replace with regular expression using [preg_replace](https://www.php.net/manual/en/function.preg-replace.php).
+re-split      | `(re-split "/\\s+/" "aa   bb   cc   ")` | `["aa" "bb" "cc"]` | Split the subject by regular expression using [preg_split](https://www.php.net/manual/en/function.preg-split.php). The flag `PREG_SPLIT_NO_EMPTY` is enabled.
+
 ### String functions
 
 Name    | Example | Example result | Description

@@ -64,6 +64,7 @@ class LispFactory
         (new Lib\IO())->register($env);
         (new Lib\Json())->register($env);
         (new Lib\Math())->register($env);
+        (new Lib\Regex())->register($env);
         (new Lib\Strings())->register($env);
         (new Lib\Time())->register($env);
         (new Lib\Types())->register($env);
