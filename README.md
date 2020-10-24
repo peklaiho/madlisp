@@ -361,12 +361,12 @@ odd? | Return true if the argument is odd number (1, 3, 5, ...).
 
 The following constants are defined by default:
 
-Name     | PHP constant
+Name     | Value
 -------- | ------------
-DIRSEP   | DIRECTORY_SEPARATOR
-HOME     | $_SERVER['HOME']
-EOL      | PHP_EOL
-PI       | M_PI
+DIRSEP   | PHP constant `DIRECTORY_SEPARATOR`
+HOME     | PHP constant `$_SERVER['HOME']`
+EOL      | PHP constant `PHP_EOL`
+PI       | PHP constant `M_PI`
 \_\_DIR\_\_  | Directory of a file being evaluated using the special form `load`. Otherwise null.
 \_\_FILE\_\_ | Filename of a file being evaluated using the special form `load`. Otherwise null.
 
