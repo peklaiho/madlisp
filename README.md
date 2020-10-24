@@ -367,8 +367,8 @@ DIRSEP   | DIRECTORY_SEPARATOR
 HOME     | $_SERVER['HOME']
 EOL      | PHP_EOL
 PI       | M_PI
-__DIR__  | Directory of a file being evaluated using the special form `load`. Otherwise null.
-__FILE__ | Filename of a file being evaluated using the special form `load`. Otherwise null.
+\_\_DIR\_\_  | Directory of a file being evaluated using the special form `load`. Otherwise null.
+\_\_FILE\_\_ | Filename of a file being evaluated using the special form `load`. Otherwise null.
 
 ## Extending
 
