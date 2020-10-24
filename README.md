@@ -116,6 +116,20 @@ The special single quote character can be used to quote an expression (skip eval
 
 Environments are hash-maps which store key-value pairs and use symbols as keys. Symbols are evaluated by looking up the corresponding value from the current environment. If the key is not defined in current environment the lookup proceeds to the parent environment and so forth. The initial environment is called `root` and contains all the built-in functions listed here. Then another environment called `user` is created for anything the user wants to define. The `let` and `fn` special forms create new local environments. Note that `def` always uses the current environment, so anything defined with `def` is not visible in the parent environment.
 
+You can get the name of an environment using the `meta` function:
+
+```
+> (meta (env) "name")
+"root/user"
+```
+
+You can also retrieve the parent environment:
+
+```
+> (meta (env) "parent")
+{}
+```
+
 ## Special forms
 
 Name  | Example | Example result | Description
@@ -142,6 +156,7 @@ Name  | Example | Example result | Description
 ----- | ------- | -------------- | -----------
 doc   | `(doc +)` | `"Return the sum of all arguments."` | Show description of a built-in function.
 loop  | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
+meta  | `(meta (env) "name")` | `"root/user"` | Read meta information of an entity.
 read  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
 print | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
 error | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.

@@ -32,6 +32,11 @@ class Env extends Hash
         throw new MadLispException("symbol $key not defined in env");
     }
 
+    public function getParent(): ?Env
+    {
+        return $this->parent;
+    }
+
     public function set(string $key, $value)
     {
         // Do not allow overwriting values in root env

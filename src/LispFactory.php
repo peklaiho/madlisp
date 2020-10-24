@@ -33,6 +33,22 @@ class LispFactory
             }
         ));
 
+        $env->set('meta', new CoreFunc('meta', 'Read meta information of an entity.', 2, 2,
+            function ($obj, $attribute) {
+                if ($obj instanceof Env) {
+                    if ($attribute == 'name') {
+                        return $obj->getFullName();
+                    } elseif ($attribute == 'parent') {
+                        return $obj->getParent();
+                    } else {
+                        throw new MadLispException('unknown attribute for meta');
+                    }
+                } else {
+                    throw new MadLispException('unknown entity for meta');
+                }
+            }
+        ));
+
         $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
             fn (string $a) => $reader->read($tokenizer->tokenize($a))
         ));
