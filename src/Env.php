@@ -37,13 +37,8 @@ class Env extends Hash
         return $this->parent;
     }
 
-    public function set(string $key, $value)
+    public function getRoot(): ?Env
     {
-        // Do not allow overwriting values in root env
-        if ($this->has($key) && $this->parent == null) {
-            throw new MadLispException("attempt to overwrite $key in root env");
-        }
-
-        return parent::set($key, $value);
+        return $this->parent ? $this->parent->getRoot() : $this;
     }
 }

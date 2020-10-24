@@ -13,6 +13,10 @@ class LispFactory
         // Root environment
         $env = new Env('root');
 
+        // Register special constants
+        $env->set('__FILE__', null);
+        $env->set('__DIR__', null);
+
         // Register core functions
         $env->set('doc', new CoreFunc('doc', 'Get documentation for a function.', 1, 1,
             function ($a) {

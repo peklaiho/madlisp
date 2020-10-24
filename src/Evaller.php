@@ -87,8 +87,16 @@ class Evaller
                         throw new MadLispException("first argument to def is not symbol");
                     }
 
+                    $name = $ast->get(1)->getName();
+
+                    // Do not allow reserved symbols to be defined
+                    $reservedSymbols = ['__FILE__', '__DIR__'];
+                    if (in_array($name, $reservedSymbols)) {
+                        throw new MadLispException("def reserved symbol $name");
+                    }
+
                     $value = $this->eval($ast->get(2), $env);
-                    return $env->set($ast->get(1)->getName(), $value);
+                    return $env->set($name, $value);
                 } elseif ($ast->get(0)->getName() == 'do') {
                     if ($ast->count() == 1) {
                         return null;
@@ -199,22 +207,42 @@ class Evaller
                         throw new MadLispException("load requires exactly 1 argument");
                     }
 
-                    $filename = $ast->get(1);
+                    // We have to evaluate the argument, it could be a function
+                    $filename = $this->eval($ast->get(1), $env);
 
                     if (!is_string($filename)) {
                         throw new MadLispException("first argument to load is not string");
-                    } elseif (!is_readable($filename)) {
+                    }
+
+                    // Replace ~ with user home directory
+                    // Expand relative path names into absolute
+                    $targetFile = realpath(str_replace('~', $_SERVER['HOME'], $filename));
+
+                    if (!$targetFile || !is_readable($targetFile)) {
                         throw new MadLispException("unable to read file $filename");
                     }
 
-                    $input = @file_get_contents($filename);
+                    $input = @file_get_contents($targetFile);
 
                     // Wrap input in a do to process multiple expressions
                     $input = "(do $input)";
 
                     $expr = $this->reader->read($this->tokenizer->tokenize($input));
 
+                    // Handle special constants
+                    $rootEnv = $env->getRoot();
+                    $prevFile = $rootEnv->get('__FILE__');
+                    $prevDir = $rootEnv->get('__DIR__');
+                    $rootEnv->set('__FILE__', $targetFile);
+                    $rootEnv->set('__DIR__', dirname($targetFile) . \DIRECTORY_SEPARATOR);
+
+                    // Evaluate the contents
                     $ast = $this->eval($expr, $env);
+
+                    // Restore the special constants to previous values
+                    $rootEnv->set('__FILE__', $prevFile);
+                    $rootEnv->set('__DIR__', $prevDir);
+
                     continue; // tco
                 } elseif ($ast->get(0)->getName() == 'or') {
                     if ($ast->count() == 1) {
