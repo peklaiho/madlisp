@@ -8,7 +8,7 @@ if (php_sapi_name() != 'cli') {
 function ml_repl($lisp)
 {
     // Read history
-    $historyFile = $_SERVER['HOME'] . '/.madlisp_history';
+    $historyFile = $_SERVER['HOME'] . DIRECTORY_SEPARATOR . '.madlisp_history';
     if (is_readable($historyFile)) {
         readline_read_history($historyFile);
     }
@@ -36,6 +36,12 @@ function ml_repl($lisp)
 // Create the Lisp interpreter
 $factory = new MadLisp\LispFactory();
 $lisp = $factory->make();
+
+// Load the user's init file if present
+$initfile = $_SERVER['HOME'] . DIRECTORY_SEPARATOR . '.madlisp_init';
+if (is_readable($initfile)) {
+    $lisp->readEval("(load \"$initfile\")");
+}
 
 if ($argc < 2) {
     // Read input from stdin

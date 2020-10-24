@@ -18,13 +18,19 @@ class Lisp
         $this->env = $env;
     }
 
-    public function rep(string $input, bool $printReadable): void
+    public function readEval(string $input)
     {
         $tokens = $this->tokenizer->tokenize($input);
 
         $expr = $this->reader->read($tokens);
 
-        $result = $this->eval->eval($expr, $this->env);
+        return $this->eval->eval($expr, $this->env);
+    }
+
+    // read, eval, print
+    public function rep(string $input, bool $printReadable): void
+    {
+        $result = $this->readEval($input);
 
         $this->printer->print($result, $printReadable);
     }

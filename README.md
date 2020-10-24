@@ -18,7 +18,7 @@ The core project does not have any dependencies to external [Composer](https://g
 
 ## Usage
 
-Use the **run.php** file to invoke the interpreter. You can start the Repl with the -r switch:
+Use the **run.php** file to invoke the interpreter from the command line. You can start the Repl with the -r switch:
 
 ```
 $ php run.php -r
@@ -43,6 +43,14 @@ With no arguments the script will read input from stdin:
 $ echo "(+ 1 2 3)" | php run.php
 6
 ```
+
+## Init file
+
+You can create an init file in your home directory with the name `.madlisp_init`. This file is automatically executed when the interpreter is started. It is useful for registering commonly used functions and performing other initialization.
+
+## Using from PHP
+
+You can use the [LispFactory](src/LispFactory.php) class to create an instance of the interpreter if you wish to embed the MadLisp language in your PHP application and call it directly from your code.
 
 ## Types
 
