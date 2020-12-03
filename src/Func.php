@@ -24,8 +24,5 @@ abstract class Func
         return $this->doc;
     }
 
-    public function call(array $args)
-    {
-        return ($this->closure)(...$args);
-    }
+    abstract public function call(array $args);
 }

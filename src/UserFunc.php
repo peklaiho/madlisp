@@ -33,4 +33,9 @@ class UserFunc extends Func
 
         return $newEnv;
     }
+
+    public function call(array $args)
+    {
+        return ($this->closure)(...$args);
+    }
 }

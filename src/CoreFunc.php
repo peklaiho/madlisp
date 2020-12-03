@@ -22,7 +22,7 @@ class CoreFunc extends Func
     {
         $this->validateArgs(count($args));
 
-        return parent::call($args);
+        return ($this->closure)(...$args);
     }
 
     private function validateArgs(int $count)
