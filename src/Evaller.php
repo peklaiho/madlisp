@@ -40,15 +40,17 @@ class Evaller
                 return $this->evalAst($ast, $env);
             }
 
+            $astData = $ast->getData();
+            $astLength = count($astData);
+
             // Empty list
-            $astLength = $ast->count();
             if ($astLength == 0) {
                 return $ast;
             }
 
             // Handle special forms
-            if ($ast->get(0) instanceof Symbol) {
-                $symbolName = $ast->get(0)->getName();
+            if ($astData[0] instanceof Symbol) {
+                $symbolName = $astData[0]->getName();
 
                 if ($symbolName == 'and') {
                     if ($astLength == 1) {
@@ -56,13 +58,13 @@ class Evaller
                     }
 
                     for ($i = 1; $i < $astLength - 1; $i++) {
-                        $value = $this->eval($ast->get($i), $env);
+                        $value = $this->eval($astData[$i], $env);
                         if ($value == false) {
                             return $value;
                         }
                     }
 
-                    $ast = $ast->get($astLength - 1);
+                    $ast = $astData[$astLength - 1];
                     continue; // tco
                 } elseif ($symbolName == 'case') {
                     if ($astLength < 2) {
@@ -70,16 +72,16 @@ class Evaller
                     }
 
                     for ($i = 1; $i < $astLength - 1; $i += 2) {
-                        $test = $this->eval($ast->get($i), $env);
+                        $test = $this->eval($astData[$i], $env);
                         if ($test == true) {
-                            $ast = $ast->get($i + 1);
+                            $ast = $astData[$i + 1];
                             continue 2; // tco
                         }
                     }
 
                     // Last value, no test
                     if ($astLength % 2 == 0) {
-                        $ast = $ast->get($astLength - 1);
+                        $ast = $astData[$astLength - 1];
                         continue; // tco
                     } else {
                         return null;
@@ -89,11 +91,11 @@ class Evaller
                         throw new MadLispException("def requires exactly 2 arguments");
                     }
 
-                    if (!($ast->get(1) instanceof Symbol)) {
+                    if (!($astData[1] instanceof Symbol)) {
                         throw new MadLispException("first argument to def is not symbol");
                     }
 
-                    $name = $ast->get(1)->getName();
+                    $name = $astData[1]->getName();
 
                     // Do not allow reserved symbols to be defined
                     $reservedSymbols = ['__FILE__', '__DIR__'];
@@ -101,7 +103,7 @@ class Evaller
                         throw new MadLispException("def reserved symbol $name");
                     }
 
-                    $value = $this->eval($ast->get(2), $env);
+                    $value = $this->eval($astData[2], $env);
                     return $env->set($name, $value);
                 } elseif ($symbolName == 'do') {
                     if ($astLength == 1) {
@@ -109,18 +111,18 @@ class Evaller
                     }
 
                     for ($i = 1; $i < $astLength - 1; $i++) {
-                        $this->eval($ast->get($i), $env);
+                        $this->eval($astData[$i], $env);
                     }
 
-                    $ast = $ast->get($astLength - 1);
+                    $ast = $astData[$astLength - 1];
                     continue; // tco
                 } elseif ($symbolName == 'env') {
                     if ($astLength >= 2) {
-                        if (!($ast->get(1) instanceof Symbol)) {
+                        if (!($astData[1] instanceof Symbol)) {
                             throw new MadLispException("first argument to env is not symbol");
                         }
 
-                        return $env->get($ast->get(1)->getName());
+                        return $env->get($astData[1]->getName());
                     } else {
                         return $env;
                     }
@@ -129,18 +131,18 @@ class Evaller
                         return null;
                     }
 
-                    $ast = $this->eval($ast->get(1), $env);
+                    $ast = $this->eval($astData[1], $env);
                     continue; // tco
                 } elseif ($symbolName == 'fn') {
                     if ($astLength != 3) {
                         throw new MadLispException("fn requires exactly 2 arguments");
                     }
 
-                    if (!($ast->get(1) instanceof MList)) {
+                    if (!($astData[1] instanceof MList)) {
                         throw new MadLispException("first argument to fn is not list");
                     }
 
-                    $bindings = $ast->get(1)->getData();
+                    $bindings = $astData[1]->getData();
                     foreach ($bindings as $bind) {
                         if (!($bind instanceof Symbol)) {
                             throw new MadLispException("binding key for fn is not symbol");
@@ -154,22 +156,22 @@ class Evaller
                             $newEnv->set($bindings[$i]->getName(), $args[$i] ?? null);
                         }
 
-                        return $this->eval($ast->get(2), $newEnv);
+                        return $this->eval($astData[2], $newEnv);
                     };
 
-                    return new UserFunc($closure, $ast->get(2), $env, $bindings);
+                    return new UserFunc($closure, $astData[2], $env, $bindings);
                 } elseif ($symbolName == 'if') {
                     if ($astLength < 3 || $astLength > 4) {
                         throw new MadLispException("if requires 2 or 3 arguments");
                     }
 
-                    $result = $this->eval($ast->get(1), $env);
+                    $result = $this->eval($astData[1], $env);
 
                     if ($result == true) {
-                        $ast = $ast->get(2);
+                        $ast = $astData[2];
                         continue;
                     } elseif ($astLength == 4) {
-                        $ast = $ast->get(3);
+                        $ast = $astData[3];
                         continue;
                     } else {
                         return null;
@@ -179,11 +181,11 @@ class Evaller
                         throw new MadLispException("let requires exactly 2 arguments");
                     }
 
-                    if (!($ast->get(1) instanceof MList)) {
+                    if (!($astData[1] instanceof MList)) {
                         throw new MadLispException("first argument to let is not list");
                     }
 
-                    $bindings = $ast->get(1)->getData();
+                    $bindings = $astData[1]->getData();
 
                     if (count($bindings) % 2 == 1) {
                         throw new MadLispException("uneven number of bindings for let");
@@ -202,7 +204,7 @@ class Evaller
                         $newEnv->set($key->getName(), $val);
                     }
 
-                    $ast = $ast->get(2);
+                    $ast = $astData[2];
                     $env = $newEnv;
                     continue; // tco
                 } elseif ($symbolName == 'load') {
@@ -214,7 +216,7 @@ class Evaller
                     }
 
                     // We have to evaluate the argument, it could be a function
-                    $filename = $this->eval($ast->get(1), $env);
+                    $filename = $this->eval($astData[1], $env);
 
                     if (!is_string($filename)) {
                         throw new MadLispException("first argument to load is not string");
@@ -256,29 +258,30 @@ class Evaller
                     }
 
                     for ($i = 1; $i < $astLength - 1; $i++) {
-                        $value = $this->eval($ast->get($i), $env);
+                        $value = $this->eval($astData[$i], $env);
                         if ($value == true) {
                             return $value;
                         }
                     }
 
-                    $ast = $ast->get($astLength - 1);
+                    $ast = $astData[$astLength - 1];
                     continue; // tco
                 } elseif ($symbolName == 'quote') {
                     if ($astLength != 2) {
                         throw new MadLispException("quote requires exactly 1 argument");
                     }
 
-                    return $ast->get(1);
+                    return $astData[1];
                 }
             }
 
             // Get new evaluated list
             $ast = $this->evalAst($ast, $env);
+            $astData = $ast->getData();
 
             // First item is function, rest are arguments
-            $func = $ast->get(0);
-            $args = array_slice($ast->getData(), 1);
+            $func = $astData[0];
+            $args = array_slice($astData, 1);
 
             if ($func instanceof CoreFunc) {
                 return $func->call($args);
