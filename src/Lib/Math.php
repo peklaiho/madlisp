@@ -25,32 +25,52 @@ class Math implements ILib
                 if (count($args) == 1) {
                     return -$args[0];
                 } else {
-                    return array_reduce(array_slice($args, 1), fn ($a, $b) => $a - $b, $args[0]);
+                    $a = $args[0];
+                    for ($i = 1; $i < count($args); $i++) {
+                        $a -= $args[$i];
+                    }
+                    return $a;
                 }
             }
         ));
 
         $env->set('*', new CoreFunc('*', 'Multiply the arguments.', 2, -1,
             function (...$args) {
-                return array_reduce(array_slice($args, 1), fn ($a, $b) => $a * $b, $args[0]);
+                $a = $args[0];
+                for ($i = 1; $i < count($args); $i++) {
+                    $a *= $args[$i];
+                }
+                return $a;
             }
         ));
 
         $env->set('/', new CoreFunc('/', 'Divide the arguments.', 2, -1,
             function (...$args) {
-                return array_reduce(array_slice($args, 1), fn ($a, $b) => $a / $b, $args[0]);
+                $a = $args[0];
+                for ($i = 1; $i < count($args); $i++) {
+                    $a /= $args[$i];
+                }
+                return $a;
             }
         ));
 
         $env->set('//', new CoreFunc('//', 'Divide the arguments using integer division.', 2, -1,
             function (...$args) {
-                return array_reduce(array_slice($args, 1), fn ($a, $b) => intdiv($a, $b), $args[0]);
+                $a = $args[0];
+                for ($i = 1; $i < count($args); $i++) {
+                    $a = intdiv($a, $args[$i]);
+                }
+                return $a;
             }
         ));
 
         $env->set('%', new CoreFunc('%', 'Calculate the modulo of arguments.', 2, -1,
             function (...$args) {
-                return array_reduce(array_slice($args, 1), fn ($a, $b) => $a % $b, $args[0]);
+                $a = $args[0];
+                for ($i = 1; $i < count($args); $i++) {
+                    $a %= $args[$i];
+                }
+                return $a;
             }
         ));
 
