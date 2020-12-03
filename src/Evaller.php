@@ -44,7 +44,9 @@ class Evaller
 
             // Handle special forms
             if ($ast->get(0) instanceof Symbol) {
-                if ($ast->get(0)->getName() == 'and') {
+                $symbolName = $ast->get(0)->getName();
+
+                if ($symbolName == 'and') {
                     if ($ast->count() == 1) {
                         return true;
                     }
@@ -58,7 +60,7 @@ class Evaller
 
                     $ast = $ast->get($ast->count() - 1);
                     continue; // tco
-                } elseif ($ast->get(0)->getName() == 'case') {
+                } elseif ($symbolName == 'case') {
                     if ($ast->count() < 2) {
                         throw new MadLispException("case requires at least 1 argument");
                     }
@@ -78,7 +80,7 @@ class Evaller
                     } else {
                         return null;
                     }
-                } elseif ($ast->get(0)->getName() == 'def') {
+                } elseif ($symbolName == 'def') {
                     if ($ast->count() != 3) {
                         throw new MadLispException("def requires exactly 2 arguments");
                     }
@@ -97,7 +99,7 @@ class Evaller
 
                     $value = $this->eval($ast->get(2), $env);
                     return $env->set($name, $value);
-                } elseif ($ast->get(0)->getName() == 'do') {
+                } elseif ($symbolName == 'do') {
                     if ($ast->count() == 1) {
                         return null;
                     }
@@ -108,7 +110,7 @@ class Evaller
 
                     $ast = $ast->get($ast->count() - 1);
                     continue; // tco
-                } elseif ($ast->get(0)->getName() == 'env') {
+                } elseif ($symbolName == 'env') {
                     if ($ast->count() >= 2) {
                         if (!($ast->get(1) instanceof Symbol)) {
                             throw new MadLispException("first argument to env is not symbol");
@@ -118,14 +120,14 @@ class Evaller
                     } else {
                         return $env;
                     }
-                } elseif ($ast->get(0)->getName() == 'eval') {
+                } elseif ($symbolName == 'eval') {
                     if ($ast->count() == 1) {
                         return null;
                     }
 
                     $ast = $this->eval($ast->get(1), $env);
                     continue; // tco
-                } elseif ($ast->get(0)->getName() == 'fn') {
+                } elseif ($symbolName == 'fn') {
                     if ($ast->count() != 3) {
                         throw new MadLispException("fn requires exactly 2 arguments");
                     }
@@ -152,7 +154,7 @@ class Evaller
                     };
 
                     return new UserFunc($closure, $ast->get(2), $env, $bindings);
-                } elseif ($ast->get(0)->getName() == 'if') {
+                } elseif ($symbolName == 'if') {
                     if ($ast->count() < 3 || $ast->count() > 4) {
                         throw new MadLispException("if requires 2 or 3 arguments");
                     }
@@ -168,7 +170,7 @@ class Evaller
                     } else {
                         return null;
                     }
-                } elseif ($ast->get(0)->getName() == 'let') {
+                } elseif ($symbolName == 'let') {
                     if ($ast->count() != 3) {
                         throw new MadLispException("let requires exactly 2 arguments");
                     }
@@ -199,7 +201,7 @@ class Evaller
                     $ast = $ast->get(2);
                     $env = $newEnv;
                     continue; // tco
-                } elseif ($ast->get(0)->getName() == 'load') {
+                } elseif ($symbolName == 'load') {
                     // Load is here because we want to load into
                     // current $env which is hard otherwise.
 
@@ -244,7 +246,7 @@ class Evaller
                     $rootEnv->set('__DIR__', $prevDir);
 
                     continue; // tco
-                } elseif ($ast->get(0)->getName() == 'or') {
+                } elseif ($symbolName == 'or') {
                     if ($ast->count() == 1) {
                         return false;
                     }
@@ -258,7 +260,7 @@ class Evaller
 
                     $ast = $ast->get($ast->count() - 1);
                     continue; // tco
-                } elseif ($ast->get(0)->getName() == 'quote') {
+                } elseif ($symbolName == 'quote') {
                     if ($ast->count() != 2) {
                         throw new MadLispException("quote requires exactly 1 argument");
                     }
