@@ -23,7 +23,7 @@ class Env extends Hash
 
     public function get(string $key)
     {
-        if ($this->has($key)) {
+        if (array_key_exists($key, $this->data)) {
             return $this->data[$key];
         } elseif ($this->parent) {
             return $this->parent->get($key);
