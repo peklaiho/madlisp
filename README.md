@@ -143,12 +143,14 @@ Use the `quasiquote` special form when you need to turn on evaluation temporaril
 You can use the single-quote (`'`), backtick and tilde (`~`) characters as shortcuts for `quote`, `quasiquote` and `unquote` respectively:
 
 ```
-> '(1 2 3)
-(1 2 3)
+> '(a b c)
+(a b c)
 
-> `(5 ~(+ 2 4) 7)
-(5 6 7)
+> `(a ~(+ 1 2) c)
+(a 3 c)
 ```
+
+All special forms related to quoting require exactly one argument.
 
 ## Environments
 
