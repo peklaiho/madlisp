@@ -149,7 +149,7 @@ def   | `(def addOne (fn (a) (+ a 1)))` | `<function>` | Define a value in the c
 do    | `(do (print 1) 2)` | `12` | Evaluate multiple expressions and return the value of the last.
 env   | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
 eval  | `(eval (quote (+ 1 2)))` | `3` | Evaluate the argument.
-fn    | `(fn (a b) (+ a b))` | `<function>` | Create a function.
+fn    | `(fn (a b) (+ a b))` | `<function>` | Create a function. Arguments can also be given as a vector instead of a list.
 if    | `(if (< 1 2) "yes" "no")` | `"yes"` | If the first argument evaluates to true, evaluate and return the second argument, otherwise the third argument. If the third argument is omitted return `null` in its place.
 let   | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
 load  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.

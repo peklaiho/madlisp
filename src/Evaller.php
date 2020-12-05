@@ -138,8 +138,8 @@ class Evaller
                         throw new MadLispException("fn requires exactly 2 arguments");
                     }
 
-                    if (!($astData[1] instanceof MList)) {
-                        throw new MadLispException("first argument to fn is not list");
+                    if (!($astData[1] instanceof Seq)) {
+                        throw new MadLispException("first argument to fn is not seq");
                     }
 
                     $bindings = $astData[1]->getData();
