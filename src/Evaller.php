@@ -277,6 +277,19 @@ class Evaller
                     }
 
                     return $astData[1];
+                } elseif ($symbolName == 'quasiquote') {
+                    if ($astLength != 2) {
+                        throw new MadLispException("quasiquote requires exactly 1 argument");
+                    }
+
+                    $ast = $this->quasiquote($astData[1]);
+                    continue; // tco
+                } elseif ($symbolName == 'quasiquote-expand') {
+                    if ($astLength != 2) {
+                        throw new MadLispException("quasiquote-expand requires exactly 1 argument");
+                    }
+
+                    return $this->quasiquote($astData[1]);
                 }
             }
 
@@ -329,5 +342,52 @@ class Evaller
         }
 
         return $ast;
+    }
+
+    private function quasiquote($ast)
+    {
+        if ($ast instanceof MList) {
+            $data = $ast->getData();
+
+            // Check for unquote
+            if (count($data) > 0 && $data[0] instanceof Symbol && $data[0]->getName() == 'unquote') {
+                if (count($data) == 2) {
+                    return $data[1];
+                } else {
+                    throw new MadLispException("unquote requires exactly 1 argument");
+                }
+            }
+
+            $result = new MList();
+
+            for ($i = count($data) - 1; $i >= 0; $i--) {
+                $elt = $data[$i];
+
+                if ($elt instanceof MList && count($elt->getData()) > 0 && $elt->get(0) instanceof Symbol && $elt->get(0)->getName() == 'splice-unquote') {
+                    if (count($elt->getData()) == 2) {
+                        $result = new MList([
+                            new Symbol('concat'),
+                            $elt->get(1),
+                            $result
+                        ]);
+                    } else {
+                        throw new MadLispException("splice-unquote requires exactly 1 argument");
+                    }
+                } else {
+                    $result = new MList([
+                        new Symbol('pull'),
+                        $this->quasiquote($elt),
+                        $result
+                    ]);
+                }
+            }
+
+            return $result;
+        } elseif ($ast instanceof Symbol || $ast instanceof Collection) {
+            // Quote other forms which are affected by evaluation
+            return new MList([new Symbol('quote'), $ast]);
+        } else {
+            return $ast;
+        }
     }
 }
