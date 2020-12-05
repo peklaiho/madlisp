@@ -199,6 +199,7 @@ tail    | `(tail [1 2 3 4])` | `[2 3 4]` | Return new sequence which contains al
 slice   | `(slice [1 2 3 4 5] 1 3)` | `[2 3 4]` | Return a slice of the sequence using offset and length. Uses [array_slice](https://www.php.net/manual/en/function.array-slice.php).
 apply   | `(apply + 1 2 [3 4])` | `10` | Call the first argument using a sequence as argument list. Intervening arguments are prepended to the list.
 chunk   | `(chunk [1 2 3 4 5] 2)` | `[[1 2] [3 4] [5]]` | Divide a sequence to multiple sequences with specified length using [array_chunk](https://www.php.net/manual/en/function.array-chunk.php).
+concat  | `(concat [1 2] '(3 4))` | `[1 2 3 4]` | Concatenate multiple sequences together. The type (list or vector) of the first argument determines the type of the output.
 push    | `(push [1 2] 3 4)` | `[1 2 3 4]` | Create new sequence by inserting arguments at the end.
 pull    | `(pull 1 2 [3 4])` | `[1 2 3 4]` | Create new sequence by inserting arguments at the beginning.
 map     | `(map (fn (a) (* a 2)) [1 2 3])` | `[2 4 6]` | Create new sequence by calling a function for each item. Uses [array_map](https://www.php.net/manual/en/function.array-map.php) internally.

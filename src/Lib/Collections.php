@@ -72,7 +72,7 @@ class Collections implements ILib
             }
         ));
 
-        // Get partial list
+        // Get partial seq
 
         $env->set('first', new CoreFunc('first', 'Return the first element of a sequence or null.', 1, 1,
             fn (Seq $a) => $a->getData()[0] ?? null
@@ -112,7 +112,7 @@ class Collections implements ILib
             }
         ));
 
-        // Manipulate list
+        // Manipulate seq
 
         $env->set('apply', new CoreFunc('apply', 'Apply the first argument (function) using second argument (sequence) as arguments.', 2, -1,
             function (...$args) {
@@ -141,6 +141,13 @@ class Collections implements ILib
             function (Seq $a, int $len) {
                 $chunks = array_chunk($a->getData(), $len);
                 return $a::new(array_map(fn ($b) => $a::new($b), $chunks));
+            }
+        ));
+
+        $env->set('concat', new CoreFunc('concat', 'Concatenate multiple sequences together.', 1, -1,
+            function (Seq ...$args) {
+                $data = array_map(fn ($a) => $a->getData(), $args);
+                return $args[0]::new(array_merge(...$data));
             }
         ));
 
