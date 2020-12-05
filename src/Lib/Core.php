@@ -20,30 +20,36 @@ class Core implements ILib
     protected Reader $reader;
     protected Printer $printer;
     protected Evaller $evaller;
+    protected bool $safemode;
 
-    public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer, Evaller $evaller)
+    public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer, Evaller $evaller, bool $safemode)
     {
         $this->tokenizer = $tokenizer;
         $this->reader = $reader;
         $this->printer = $printer;
         $this->evaller = $evaller;
+        $this->safemode = $safemode;
     }
 
     public function register(Env $env): void
     {
         // Register special constants
-        $env->set('__FILE__', null);
-        $env->set('__DIR__', null);
+        if (!$this->safemode) {
+            $env->set('__FILE__', null);
+            $env->set('__DIR__', null);
+        }
 
-        $env->set('debug', new CoreFunc('debug', 'Toggle debug mode.', 0, 0,
-            function () {
-                $val = !$this->evaller->getDebug();
-                $this->evaller->setDebug($val);
-                return $val;
-            }
-        ));
+        if (!$this->safemode) {
+            $env->set('debug', new CoreFunc('debug', 'Toggle debug mode.', 0, 0,
+                function () {
+                    $val = !$this->evaller->getDebug();
+                    $this->evaller->setDebug($val);
+                    return $val;
+                }
+            ));
+        }
 
-        $env->set('doc', new CoreFunc('doc', 'Get or set documentation for a function.', 1, 2,
+        $env->set('doc', new CoreFunc('doc', 'Get or set documentation string for a function.', 1, 2,
             function (Func $a, ?string $str = null) {
                 if (func_num_args() == 1) {
                     return $a->getDoc();
@@ -63,53 +69,63 @@ class Core implements ILib
             }
         ));
 
-        $env->set('meta', new CoreFunc('meta', 'Read meta information of an entity.', 2, 2,
-            function ($obj, $attribute) {
-                if ($obj instanceof Env) {
-                    if ($attribute == 'name') {
-                        return $obj->getFullName();
-                    } elseif ($attribute == 'parent') {
-                        return $obj->getParent();
+        if (!$this->safemode) {
+            $env->set('meta', new CoreFunc('meta', 'Read meta information of an entity.', 2, 2,
+                function ($obj, $attribute) {
+                    if ($obj instanceof Env) {
+                        if ($attribute == 'name') {
+                            return $obj->getFullName();
+                        } elseif ($attribute == 'parent') {
+                            return $obj->getParent();
+                        } else {
+                            throw new MadLispException('unknown attribute for meta');
+                        }
+                    } elseif ($obj instanceof UserFunc) {
+                        if ($attribute == 'args') {
+                            return $obj->getBindings();
+                        } elseif ($attribute == 'body') {
+                            return $obj->getAst();
+                        } elseif ($attribute == 'code') {
+                            return new MList([new Symbol('fn'), $obj->getBindings(), $obj->getAst()]);
+                        } else {
+                            throw new MadLispException('unknown attribute for meta');
+                        }
                     } else {
-                        throw new MadLispException('unknown attribute for meta');
+                        throw new MadLispException('unknown entity for meta');
                     }
-                } elseif ($obj instanceof UserFunc) {
-                    if ($attribute == 'args') {
-                        return $obj->getBindings();
-                    } elseif ($attribute == 'body') {
-                        return $obj->getAst();
-                    } elseif ($attribute == 'code') {
-                        return new MList([new Symbol('fn'), $obj->getBindings(), $obj->getAst()]);
-                    } else {
-                        throw new MadLispException('unknown attribute for meta');
-                    }
-                } else {
-                    throw new MadLispException('unknown entity for meta');
                 }
-            }
-        ));
+            ));
+        }
 
-        $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
-            fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
-        ));
+        if (!$this->safemode) {
+            $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
+                fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
+            ));
+        }
 
-        $env->set('print', new CoreFunc('print', 'Print argument. Give second argument as true to show strings in readable format.', 1, 2,
-            function ($a, bool $readable = false) {
-                $this->printer->print($a, $readable);
-                return null;
-            }
-        ));
+        if (!$this->safemode) {
+            $env->set('print', new CoreFunc('print', 'Print argument. Give second argument as true to show strings in readable format.', 1, 2,
+                function ($a, bool $readable = false) {
+                    $this->printer->print($a, $readable);
+                    return null;
+                }
+            ));
+        }
 
+        // This is allowed in safe-mode, because the evaluation should be wrapped in a try-catch in embedded use.
         $env->set('error', new CoreFunc('error', 'Throw an exception using argument (string) as message.', 1, 1,
             function (string $error) {
+                // We should probably use another exception type to distinguish user-thrown errors from built-in errors.
                 throw new MadLispException($error);
             }
         ));
 
-        $env->set('exit', new CoreFunc('exit', 'Terminate the script with given exit code.', 0, 1,
-            function (int $status = 0) {
-                exit($status);
-            }
-        ));
+        if (!$this->safemode) {
+            $env->set('exit', new CoreFunc('exit', 'Terminate the script with given exit code.', 0, 1,
+                function (int $status = 0) {
+                    exit($status);
+                }
+            ));
+        }
     }
 }

@@ -6,14 +6,16 @@ class Evaller
     protected Tokenizer $tokenizer;
     protected Reader $reader;
     protected Printer $printer;
+    protected bool $safemode;
 
     protected bool $debug = false;
 
-    public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer)
+    public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer, bool $safemode)
     {
         $this->tokenizer = $tokenizer;
         $this->reader = $reader;
         $this->printer = $printer;
+        $this->safemode = $safemode;
     }
 
     public function eval($ast, Env $env)
@@ -116,7 +118,7 @@ class Evaller
 
                     $ast = $astData[$astLength - 1];
                     continue; // tco
-                } elseif ($symbolName == 'env') {
+                } elseif (!$this->safemode && $symbolName == 'env') {
                     if ($astLength >= 2) {
                         if (!($astData[1] instanceof Symbol)) {
                             throw new MadLispException("first argument to env is not symbol");
@@ -126,7 +128,7 @@ class Evaller
                     } else {
                         return $env;
                     }
-                } elseif ($symbolName == 'eval') {
+                } elseif (!$this->safemode && $symbolName == 'eval') {
                     if ($astLength == 1) {
                         return null;
                     }
@@ -207,9 +209,12 @@ class Evaller
                     $ast = $astData[2];
                     $env = $newEnv;
                     continue; // tco
-                } elseif ($symbolName == 'load') {
+                } elseif (!$this->safemode && $symbolName == 'load') {
                     // Load is here because we want to load into
                     // current $env which is hard otherwise.
+
+                    // This is disabled now for safe-mode, but some
+                    // use (maybe restricted) might need to be allowed.
 
                     if ($astLength != 2) {
                         throw new MadLispException("load requires exactly 1 argument");
