@@ -149,7 +149,7 @@ class Evaller
                         }
                     }
 
-                    $closure = function (...$args) use ($bindings, $ast, $env) {
+                    $closure = function (...$args) use ($bindings, $ast, $env, $astData) {
                         $newEnv = new Env('closure', $env);
 
                         for ($i = 0; $i < count($bindings); $i++) {
