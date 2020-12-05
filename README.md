@@ -52,6 +52,10 @@ You can create an init file in your home directory with the name `.madlisp_init`
 
 You can use the [LispFactory](src/LispFactory.php) class to create an instance of the interpreter if you wish to embed the MadLisp language in your PHP application and call it directly from your code.
 
+### Safe-mode
+
+The language features a safe-mode that disables functions which allow external I/O. This allows a "sandbox" to be created where the evaluated scripts do not have access to the file system or similar resources. It is intended to be used when MadLisp is used as an embedded scripting language inside another application.
+
 ## Types
 
 ### Numbers
@@ -140,39 +144,39 @@ You can also retrieve the parent environment:
 
 ## Special forms
 
-Name  | Example | Example result | Description
------ | ------- | -------------- | -----------
-and   | `(and 1 0 2)` | `0` | Return the first value that evaluates to false, or the last value.
-case  | `(case (= 1 0) 0 (= 1 1) 1)` | `1` | Treat odd arguments as tests and even arguments as values. Evaluate and return the value after the first test that evaluates to true.
-      | `(case (= 1 0) 0 "no match")` | `"no match"` | You can also give optional last argument to case which is returned if none of the tests evaluated to true.
-def   | `(def addOne (fn (a) (+ a 1)))` | `<function>` | Define a value in the current environment.
-do    | `(do (print 1) 2)` | `12` | Evaluate multiple expressions and return the value of the last.
-env   | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
-eval  | `(eval (quote (+ 1 2)))` | `3` | Evaluate the argument.
-fn    | `(fn (a b) (+ a b))` | `<function>` | Create a function. Arguments can also be given as a vector instead of a list.
-if    | `(if (< 1 2) "yes" "no")` | `"yes"` | If the first argument evaluates to true, evaluate and return the second argument, otherwise the third argument. If the third argument is omitted return `null` in its place.
-let   | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
-load  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
-or    | `(or false 0 1)` | `1` | Return the first value that evaluates to true, or the last value.
-quote | `(quote (1 2 3))` | `(1 2 3)` | Return the argument without evaluation. This is same as the `'` shortcut described above.
+Name  | Safe-mode | Example | Example result | Description
+----- | --------- | ------- | -------------- | -----------
+and   | yes | `(and 1 0 2)` | `0` | Return the first value that evaluates to false, or the last value.
+case  | yes | `(case (= 1 0) 0 (= 1 1) 1)` | `1` | Treat odd arguments as tests and even arguments as values. Evaluate and return the value after the first test that evaluates to true.
+      | yes | `(case (= 1 0) 0 "no match")` | `"no match"` | You can also give optional last argument to case which is returned if none of the tests evaluated to true.
+def   | yes | `(def addOne (fn (a) (+ a 1)))` | `<function>` | Define a value in the current environment.
+do    | yes | `(do (print 1) 2)` | `12` | Evaluate multiple expressions and return the value of the last.
+env   | no  | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
+eval  | no  | `(eval (quote (+ 1 2)))` | `3` | Evaluate the argument.
+fn    | yes | `(fn (a b) (+ a b))` | `<function>` | Create a function. Arguments can also be given as a vector instead of a list.
+if    | yes | `(if (< 1 2) "yes" "no")` | `"yes"` | If the first argument evaluates to true, evaluate and return the second argument, otherwise the third argument. If the third argument is omitted return `null` in its place.
+let   | yes | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
+load  | no  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
+or    | yes | `(or false 0 1)` | `1` | Return the first value that evaluates to true, or the last value.
+quote | yes | `(quote (1 2 3))` | `(1 2 3)` | Return the argument without evaluation. This is same as the `'` shortcut described above.
 
 ## Functions
 
 ### Core functions
 
-Name  | Example | Example result | Description
------ | ------- | -------------- | -----------
-debug | `(debug)` | `true` |  Toggle debug output.
-doc   | `(doc +)` | `"Return the sum of all arguments."` | Show the documentation string for a function.
-doc   | `(doc myfn "Documentation string.")` | `"Documentation string."` | Set the documentation string for a function.
-error | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
-exit  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
-loop  | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
-meta  | `(meta (env) "name")` | `"root/user"` | Read meta information of an entity.
-print | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
-read  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
-sleep | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
-timer | `(timer (fn (d) (sleep d)) 200)` | `0.20010209` | Measure the execution time of a function and return it in seconds.
+Name  | Safe-mode | Example | Example result | Description
+----- | --------- | ------- | -------------- | -----------
+debug | no  | `(debug)` | `true` |  Toggle debug output.
+doc   | yes | `(doc +)` | `"Return the sum of all arguments."` | Show the documentation string for a function.
+      | yes | `(doc myfn "Documentation string.")` | `"Documentation string."` | Set the documentation string for a function.
+error | yes | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
+exit  | no  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
+loop  | yes | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
+meta  | no  | `(meta (env) "name")` | `"root/user"` | Read meta information of an entity.
+print | no  | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
+read  | no  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
+sleep | no  | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
+timer | no  | `(timer (fn (d) (sleep d)) 200)` | `0.20010209` | Measure the execution time of a function and return it in seconds.
 
 ### Collection functions
 
@@ -227,7 +231,7 @@ Name    | Example | Example result | Description
 
 ### Database functions
 
-This is a simple wrapper for [PDO](https://www.php.net/manual/en/book.pdo.php).
+This is a simple wrapper for [PDO](https://www.php.net/manual/en/book.pdo.php). This library is disabled in safe-mode.
 
 Name        | Example | Example result | Description
 ----------- | ------- | -------------- | -----------
@@ -241,13 +245,15 @@ db-rollback | `(db-rollback d)` | `true` | Roll back a transaction.
 
 ### Http functions
 
-This is a simple wrapper for [cURL](https://www.php.net/manual/en/book.curl.php).
+This is a simple wrapper for [cURL](https://www.php.net/manual/en/book.curl.php). This library is disabled in safe-mode.
 
 Name        | Example | Example result | Description
 ----------- | ------- | -------------- | -----------
 http        | `(http "POST" "http://example.com/" (to-json {"key":"value"}) {"Content-Type":"application/json"})` | `{"status":200 "body":"" "headers":{}}` | Perform a HTTP request. First argument is the HTTP method, second is URL, third is request body and fourth is headers as a hash-map. The function returns a hash-map which contains keys `status`, `body` and `headers`.
 
 ### IO functions
+
+This library is disabled in safe-mode.
 
 Name    | Example | Example result | Description
 ------- | ------- | -------------- | -----------
