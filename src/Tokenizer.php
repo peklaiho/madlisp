@@ -84,14 +84,14 @@ class Tokenizer
         $addCurrent();
 
         // Check for errors
-        if ($parens[0] != 0) {
+        if ($isString) {
+            throw new MadLispException("unterminated string");
+        } elseif ($parens[0] != 0) {
             throw new MadLispException("missing closing )");
         } elseif ($parens[1] != 0) {
             throw new MadLispException("missing closing ]");
         } elseif ($parens[2] != 0) {
             throw new MadLispException("missing closing }");
-        } elseif ($isString) {
-            throw new MadLispException("unterminated string");
         }
 
         return $tokens;
