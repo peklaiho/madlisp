@@ -294,6 +294,11 @@ class Evaller
         }
     }
 
+    public function getDebug(): bool
+    {
+        return $this->debug;
+    }
+
     public function setDebug(bool $val): void
     {
         $this->debug = $val;

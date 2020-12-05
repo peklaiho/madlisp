@@ -18,6 +18,14 @@ class LispFactory
         $env->set('__DIR__', null);
 
         // Register core functions
+        $env->set('debug', new CoreFunc('debug', 'Toggle debug mode.', 0, 0,
+            function () use ($eval) {
+                $val = !$eval->getDebug();
+                $eval->setDebug($val);
+                return $val;
+            }
+        ));
+
         $env->set('doc', new CoreFunc('doc', 'Get documentation for a function.', 1, 1,
             function ($a) {
                 if ($a instanceof Func) {
