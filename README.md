@@ -379,6 +379,34 @@ PI       | PHP constant `M_PI`
 \_\_DIR\_\_  | Directory of a file being evaluated using the special form `load`. Otherwise null.
 \_\_FILE\_\_ | Filename of a file being evaluated using the special form `load`. Otherwise null.
 
+## Reflection
+
+You can use the `meta` function to retrieve the arguments, body or full code of user-defined functions:
+
+```
+> (def add (fn (a b) (+ a b)))
+<function>
+> (meta add "args")
+(a b)
+> (meta add "body")
+(+ a b)
+> (meta add "code")
+(fn (a b) (+ a b))
+```
+
+This allows for some fun tricks. For example, we can retrieve the body of a function and evaluate it as part of another function:
+
+```
+> (def addOne (fn (n) (+ n 1)))
+<function>
+> (def addTwo (fn (n) (+ n 2)))
+<function>
+> (def addBoth (fn (n) (+ (eval (meta addOne "body")) (eval (meta addTwo "body")))))
+<function>
+> (addBoth 1)
+5
+```
+
 ## Extending
 
 The project is easy to extend because it is trivial to add new functions whether the implementation is defined on the PHP or Lisp side.
