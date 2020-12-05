@@ -7,9 +7,9 @@ class UserFunc extends Func
 {
     protected $ast;
     protected Env $tempEnv;
-    protected array $bindings;
+    protected Seq $bindings;
 
-    public function __construct(Closure $closure, $ast, Env $tempEnv, array $bindings)
+    public function __construct(Closure $closure, $ast, Env $tempEnv, Seq $bindings)
     {
         parent::__construct($closure, null);
 
@@ -23,12 +23,18 @@ class UserFunc extends Func
         return $this->ast;
     }
 
+    public function getBindings(): Seq
+    {
+        return $this->bindings;
+    }
+
     public function getEnv(array $args)
     {
         $newEnv = new Env('apply', $this->tempEnv);
 
-        for ($i = 0; $i < count($this->bindings); $i++) {
-            $newEnv->set($this->bindings[$i]->getName(), $args[$i] ?? null);
+        $bindings = $this->bindings->getData();
+        for ($i = 0; $i < count($bindings); $i++) {
+            $newEnv->set($bindings[$i]->getName(), $args[$i] ?? null);
         }
 
         return $newEnv;

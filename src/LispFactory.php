@@ -47,6 +47,16 @@ class LispFactory
                     } else {
                         throw new MadLispException('unknown attribute for meta');
                     }
+                } elseif ($obj instanceof UserFunc) {
+                    if ($attribute == 'args') {
+                        return $obj->getBindings();
+                    } elseif ($attribute == 'body') {
+                        return $obj->getAst();
+                    } elseif ($attribute == 'code') {
+                        return new MList([new Symbol('fn'), $obj->getBindings(), $obj->getAst()]);
+                    } else {
+                        throw new MadLispException('unknown attribute for meta');
+                    }
                 } else {
                     throw new MadLispException('unknown entity for meta');
                 }
@@ -71,7 +81,7 @@ class LispFactory
         ));
 
         $env->set('exit', new CoreFunc('exit', 'Terminate the script with given exit code.', 0, 1,
-            function ($status = 0) {
+            function (int $status = 0) {
                 exit($status);
             }
         ));

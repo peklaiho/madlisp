@@ -159,7 +159,7 @@ class Evaller
                         return $this->eval($astData[2], $newEnv);
                     };
 
-                    return new UserFunc($closure, $astData[2], $env, $bindings);
+                    return new UserFunc($closure, $astData[2], $env, $astData[1]);
                 } elseif ($symbolName == 'if') {
                     if ($astLength < 3 || $astLength > 4) {
                         throw new MadLispException("if requires 2 or 3 arguments");
