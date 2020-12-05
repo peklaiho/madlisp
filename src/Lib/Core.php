@@ -43,13 +43,14 @@ class Core implements ILib
             }
         ));
 
-        $env->set('doc', new CoreFunc('doc', 'Get documentation for a function.', 1, 1,
-            function ($a) {
-                if ($a instanceof Func) {
+        $env->set('doc', new CoreFunc('doc', 'Get or set documentation for a function.', 1, 2,
+            function (Func $a, ?string $str = null) {
+                if (func_num_args() == 1) {
                     return $a->getDoc();
+                } else {
+                    $a->setDoc($str);
+                    return $str;
                 }
-
-                throw new MadLispException('first argument to doc is not function');
             }
         ));
 

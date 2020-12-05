@@ -163,7 +163,8 @@ quote | `(quote (1 2 3))` | `(1 2 3)` | Return the argument without evaluation. 
 Name  | Example | Example result | Description
 ----- | ------- | -------------- | -----------
 debug | `(debug)` | `true` |  Toggle debug output.
-doc   | `(doc +)` | `"Return the sum of all arguments."` | Show description of a built-in function.
+doc   | `(doc +)` | `"Return the sum of all arguments."` | Show the documentation string for a function.
+doc   | `(doc myfn "Documentation string.")` | `"Documentation string."` | Set the documentation string for a function.
 loop  | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
 meta  | `(meta (env) "name")` | `"root/user"` | Read meta information of an entity.
 read  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.

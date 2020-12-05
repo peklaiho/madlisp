@@ -5,3 +5,7 @@
 
 ;; Apply version
 (def applyFact (fn (n) (if (< n 2) 1 (apply * (range 1 (inc n))))))
+
+;; Add documentation
+(doc recFact "Calculate the factor of n recursively.")
+(doc applyFact "Calculate the factor of n iteratively using apply.")

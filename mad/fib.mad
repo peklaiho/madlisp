@@ -10,3 +10,7 @@
 (def fibListRec (fn (n l) (if (< (len l) n) (fibListRec n (push l (sumOfLast l))) l)))
 (def fibList (fn (n) (fibListRec n [0 1])))
 (def fastFib (fn (n) (sumOfLast (fibList n))))
+
+;; Add documentation
+(doc slowFib "Return the nth number from the Fibonacci sequence recursively.")
+(doc fastFib "Return the nth number from the Fibonacci sequence iteratively.")

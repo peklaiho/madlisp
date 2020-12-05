@@ -24,5 +24,10 @@ abstract class Func
         return $this->doc;
     }
 
+    public function setDoc(?string $val): void
+    {
+        $this->doc = $val;
+    }
+
     abstract public function call(array $args);
 }
