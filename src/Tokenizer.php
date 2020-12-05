@@ -69,7 +69,7 @@ class Tokenizer
                     $addCurrent();
                     $tokens[] = $c;
                     $parens[$parenIndexes[$c]]--;
-                } elseif ($c == "'") {
+                } elseif ($c == "'" || $c == "`" || $c == "~") {
                     // Other special characters
                     $addCurrent();
                     $tokens[] = $c;

@@ -16,12 +16,11 @@ class Reader
     private function readForm(array $tokens, int &$index)
     {
         if ($tokens[$index] == "'") {
-            $index++;
-            $contents = [new Symbol('quote')];
-            if ($index < count($tokens) && !in_array($tokens[$index], [')', ']', '}'])) {
-                $contents[] = $this->readForm($tokens, $index);
-            }
-            return new MList($contents);
+            return $this->readSpecialForm($tokens, $index, 'quote');
+        } elseif ($tokens[$index] == "`") {
+            return $this->readSpecialForm($tokens, $index, 'quasiquote');
+        } elseif ($tokens[$index] == "~") {
+            return $this->readSpecialForm($tokens, $index, 'unquote');
         } elseif ($tokens[$index] == '(') {
             return $this->readList($tokens, $index);
         } elseif ($tokens[$index] == '[') {
@@ -31,6 +30,16 @@ class Reader
         } else {
             return $this->readAtom($tokens, $index);
         }
+    }
+
+    private function readSpecialForm(array $tokens, int &$index, string $symbol)
+    {
+        $index++;
+        $contents = [new Symbol($symbol)];
+        if ($index < count($tokens) && !in_array($tokens[$index], [')', ']', '}'])) {
+            $contents[] = $this->readForm($tokens, $index);
+        }
+        return new MList($contents);
     }
 
     private function readList(array $tokens, int &$index): MList
