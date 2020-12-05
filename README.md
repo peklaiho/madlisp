@@ -165,12 +165,14 @@ Name  | Example | Example result | Description
 debug | `(debug)` | `true` |  Toggle debug output.
 doc   | `(doc +)` | `"Return the sum of all arguments."` | Show the documentation string for a function.
 doc   | `(doc myfn "Documentation string.")` | `"Documentation string."` | Set the documentation string for a function.
-loop  | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
-meta  | `(meta (env) "name")` | `"root/user"` | Read meta information of an entity.
-read  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
-print | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
 error | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
 exit  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
+loop  | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
+meta  | `(meta (env) "name")` | `"root/user"` | Read meta information of an entity.
+print | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
+read  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
+sleep | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
+timer | `(timer (fn (d) (sleep d)) 200)` | `0.20010209` | Measure the execution time of a function and return it in seconds.
 
 ### Collection functions
 
@@ -331,8 +333,6 @@ Name    | Example | Example result | Description
 time | `(time)` | `1592011969` | Return the current unix timestamp using [time](https://www.php.net/manual/en/function.time).
 date | `(date "Y-m-d H:i:s")` | `"2020-06-13 08:33:29"` | Format the current time and date using [date](https://www.php.net/manual/en/function.date.php).
 strtotime | `(strtotime "2020-06-13 08:34:47")` | `1592012087` | Parse datetime string into unix timestamp using [strtotime](https://www.php.net/manual/en/function.strtotime.php).
-sleep | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
-timer | `(timer (fn (d) (sleep d)) 200)` | `0.20010209` | Measure the execution time of a function and return it in seconds.
 
 ### Type functions
 

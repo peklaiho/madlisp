@@ -60,6 +60,22 @@ class Core implements ILib
             }
         ));
 
+        // This is allowed in safe-mode, because the evaluation should be wrapped in a try-catch in embedded use.
+        $env->set('error', new CoreFunc('error', 'Throw an exception using argument (string) as message.', 1, 1,
+            function (string $error) {
+                // We should probably use another exception type to distinguish user-thrown errors from built-in errors.
+                throw new MadLispException($error);
+            }
+        ));
+
+        if (!$this->safemode) {
+            $env->set('exit', new CoreFunc('exit', 'Terminate the script with given exit code.', 0, 1,
+                function (int $status = 0) {
+                    exit($status);
+                }
+            ));
+        }
+
         $env->set('loop', new CoreFunc('loop', 'Call the given function repeatedly in a loop until it returns false.', 1, -1,
             function (Func $f, ...$args) {
                 do {
@@ -98,12 +114,6 @@ class Core implements ILib
         }
 
         if (!$this->safemode) {
-            $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
-                fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
-            ));
-        }
-
-        if (!$this->safemode) {
             $env->set('print', new CoreFunc('print', 'Print argument. Give second argument as true to show strings in readable format.', 1, 2,
                 function ($a, bool $readable = false) {
                     $this->printer->print($a, $readable);
@@ -112,18 +122,28 @@ class Core implements ILib
             ));
         }
 
-        // This is allowed in safe-mode, because the evaluation should be wrapped in a try-catch in embedded use.
-        $env->set('error', new CoreFunc('error', 'Throw an exception using argument (string) as message.', 1, 1,
-            function (string $error) {
-                // We should probably use another exception type to distinguish user-thrown errors from built-in errors.
-                throw new MadLispException($error);
-            }
-        ));
+        if (!$this->safemode) {
+            $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
+                fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
+            ));
+        }
 
         if (!$this->safemode) {
-            $env->set('exit', new CoreFunc('exit', 'Terminate the script with given exit code.', 0, 1,
-                function (int $status = 0) {
-                    exit($status);
+            $env->set('sleep', new CoreFunc('sleep', 'Sleep (wait) for the specified time in milliseconds.', 1, 1,
+                function (int $time) {
+                    usleep($time * 1000);
+                    return null;
+                }
+            ));
+        }
+
+        if (!$this->safemode) {
+            $env->set('timer', new CoreFunc('timer', 'Measure the execution time of a function and return it in seconds.', 1, -1,
+                function (Func $f, ...$args) {
+                    $start = microtime(true);
+                    $f->call($args);
+                    $end = microtime(true);
+                    return $end - $start;
                 }
             ));
         }
