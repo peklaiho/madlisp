@@ -382,7 +382,7 @@ class Evaller
         for ($i = count($data) - 1; $i >= 0; $i--) {
             $elt = $data[$i];
 
-            if ($elt instanceof MList && count($elt->getData()) > 0 && $elt->get(0) instanceof Symbol && $elt->get(0)->getName() == 'splice-unquote') {
+            if ($elt instanceof MList && count($elt->getData()) > 0 && $elt->get(0) instanceof Symbol && $elt->get(0)->getName() == 'unquote-splice') {
                 if (count($elt->getData()) == 2) {
                     $result = new MList([
                         new Symbol('concat'),
@@ -390,7 +390,7 @@ class Evaller
                         $result
                     ]);
                 } else {
-                    throw new MadLispException("splice-unquote requires exactly 1 argument");
+                    throw new MadLispException("unquote-splice requires exactly 1 argument");
                 }
             } else {
                 $result = new MList([
