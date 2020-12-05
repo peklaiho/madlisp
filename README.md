@@ -122,11 +122,9 @@ Use the `quote` special form to skip evaluation:
 ```
 > (quote (1 2 3))
 (1 2 3)
-> '(1 2 3)
-(1 2 3)
 ```
 
-Use the `quasiquote` special form when you need to turn evaluation back on inside the quoted element. The special forms `unquote` and `unquote-splice` are available for that purpose:
+Use the `quasiquote` special form when you need to turn on evaluation temporarily inside the quoted element. The special forms `unquote` and `unquote-splice` are available for that purpose:
 
 ```
 > (def lst (quote (2 3)))
@@ -140,15 +138,16 @@ Use the `quasiquote` special form when you need to turn evaluation back on insid
 (1 2 3 4)
 ```
 
-### Shortcuts
+### Quote shortcuts
 
 You can use the single-quote (`'`), backtick and tilde (`~`) characters as shortcuts for `quote`, `quasiquote` and `unquote` respectively:
 
 ```
-> (def lst '(2 3))
-(2 3)
-> `(1 ~lst 4)
-(1 (2 3) 4)
+> '(1 2 3)
+(1 2 3)
+
+> `(5 ~(+ 2 4) 7)
+(5 6 7)
 ```
 
 ## Environments
