@@ -117,11 +117,38 @@ Symbols are words which do not match any other type and are separated by whitesp
 
 ## Quoting
 
-The special single quote character can be used to quote an expression (skip evaluation).
+Use the `quote` special form to skip evaluation:
 
 ```
+> (quote (1 2 3))
+(1 2 3)
 > '(1 2 3)
 (1 2 3)
+```
+
+Use the `quasiquote` special form when you need to turn evaluation back on inside the quoted element. The special forms `unquote` and `unquote-splice` are available for that purpose:
+
+```
+> (def lst (quote (2 3)))
+(2 3)
+
+> (quasiquote (1 lst 4))
+(1 lst 4)
+> (quasiquote (1 (unquote lst) 4))
+(1 (2 3) 4)
+> (quasiquote (1 (unquote-splice lst) 4))
+(1 2 3 4)
+```
+
+### Shortcuts
+
+You can use the single-quote (`'`), backtick and tilde (`~`) characters as shortcuts for `quote`, `quasiquote` and `unquote` respectively:
+
+```
+> (def lst '(2 3))
+(2 3)
+> `(1 ~lst 4)
+(1 (2 3) 4)
 ```
 
 ## Environments
@@ -158,7 +185,8 @@ if    | yes | `(if (< 1 2) "yes" "no")` | `"yes"` | If the first argument evalua
 let   | yes | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
 load  | no  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
 or    | yes | `(or false 0 1)` | `1` | Return the first value that evaluates to true, or the last value.
-quote | yes | `(quote (1 2 3))` | `(1 2 3)` | Return the argument without evaluation. This is same as the `'` shortcut described above.
+quote | yes | | | See the section Quoting.
+quasiquote | yes | | | See the section Quoting.
 
 ## Functions
 
