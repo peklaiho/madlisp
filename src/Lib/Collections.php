@@ -42,6 +42,16 @@ class Collections implements ILib
             }
         ));
 
+        // Conversion
+
+        $env->set('ltov', new CoreFunc('ltov', 'Convert list to vector.', 1, 1,
+            fn (Seq $a) => new Vector($a->getData())
+        ));
+
+        $env->set('vtol', new CoreFunc('vtol', 'Convert vector to list.', 1, 1,
+            fn (Seq $a) => new MList($a->getData())
+        ));
+
         // Read information
 
         $env->set('empty?', new CoreFunc('empty?', 'Return true if collection is empty.', 1, 1,

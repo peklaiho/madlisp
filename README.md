@@ -187,6 +187,8 @@ list    | `(list 1 2 3)` | `(1 2 3)` | Create a new list.
 vector  | `(vector 1 2 3)` | `[1 2 3]` | Create a new vector.
 range   | `(range 2 5)` | `[2 3 4]` | Create a vector with integer values from first to argument (inclusive) to second argument (exclusive).
 range   | `(range 5)` | `[0 1 2 3 4]` | Range can also be used with one argument in which case it is used as length for a vector of integers starting from 0.
+ltov    | `(ltov '(1 2 3))` | `[1 2 3]` | Convert list to vector.
+vtol    | `(vtol [1 2 3])` | `(1 2 3)` | Convert vector to list.
 empty?  | `(empty? [])` | `true` | Return true if collection is empty, otherwise false.
 get     | `(get [1 2 3] 0)` | `1` | Return the nth element from a sequence, or the corresponding value for the given key from a hash-map.
 len     | `(len [1 2 3])` | `3` | Return the number of elements in a collection.
