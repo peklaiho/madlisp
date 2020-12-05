@@ -358,36 +358,49 @@ class Evaller
                 }
             }
 
-            $result = new MList();
-
-            for ($i = count($data) - 1; $i >= 0; $i--) {
-                $elt = $data[$i];
-
-                if ($elt instanceof MList && count($elt->getData()) > 0 && $elt->get(0) instanceof Symbol && $elt->get(0)->getName() == 'splice-unquote') {
-                    if (count($elt->getData()) == 2) {
-                        $result = new MList([
-                            new Symbol('concat'),
-                            $elt->get(1),
-                            $result
-                        ]);
-                    } else {
-                        throw new MadLispException("splice-unquote requires exactly 1 argument");
-                    }
-                } else {
-                    $result = new MList([
-                        new Symbol('pull'),
-                        $this->quasiquote($elt),
-                        $result
-                    ]);
-                }
-            }
-
-            return $result;
-        } elseif ($ast instanceof Symbol || $ast instanceof Collection) {
+            return $this->quasiquoteLoop($data);
+        } elseif ($ast instanceof Vector) {
+            return new MList([
+                new Symbol('ltov'),
+                $this->quasiquoteLoop($ast->getData())
+            ]);
+        } elseif ($ast instanceof Symbol || $ast instanceof Hash) {
             // Quote other forms which are affected by evaluation
-            return new MList([new Symbol('quote'), $ast]);
+            return new MList([
+                new Symbol('quote'),
+                $ast
+            ]);
         } else {
             return $ast;
         }
+    }
+
+    private function quasiquoteLoop(array $data): MList
+    {
+        $result = new MList();
+
+        for ($i = count($data) - 1; $i >= 0; $i--) {
+            $elt = $data[$i];
+
+            if ($elt instanceof MList && count($elt->getData()) > 0 && $elt->get(0) instanceof Symbol && $elt->get(0)->getName() == 'splice-unquote') {
+                if (count($elt->getData()) == 2) {
+                    $result = new MList([
+                        new Symbol('concat'),
+                        $elt->get(1),
+                        $result
+                    ]);
+                } else {
+                    throw new MadLispException("splice-unquote requires exactly 1 argument");
+                }
+            } else {
+                $result = new MList([
+                    new Symbol('pull'),
+                    $this->quasiquote($elt),
+                    $result
+                ]);
+            }
+        }
+
+        return $result;
     }
 }
