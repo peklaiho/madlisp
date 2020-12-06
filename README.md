@@ -115,6 +115,24 @@ Internally hash maps are just regular associative PHP arrays wrapped in a class.
 
 Symbols are words which do not match any other type and are separated by whitespace. They can contain special characters. Examples of symbols are `a`, `name` or `+`.
 
+## Environments
+
+Environments are hash-maps which store key-value pairs and use symbols as keys. Symbols are evaluated by looking up the corresponding value from the current environment. If the key is not defined in current environment the lookup proceeds to the parent environment and so forth. The initial environment is called `root` and contains all the built-in functions listed here. Then another environment called `user` is created for anything the user wants to define. The `let` and `fn` special forms create new local environments. Note that `def` always uses the current environment, so anything defined with `def` is not visible in the parent environment.
+
+You can get the name of an environment using the `meta` function:
+
+```
+> (meta (env) "name")
+"root/user"
+```
+
+You can also retrieve the parent environment:
+
+```
+> (meta (env) "parent")
+{}
+```
+
 ## Quoting
 
 Use the `quote` special form to skip evaluation:
@@ -152,23 +170,33 @@ You can use the single-quote (`'`), backtick and tilde (`~`) characters as short
 
 All special forms related to quoting require exactly one argument.
 
-## Environments
+## Macros
 
-Environments are hash-maps which store key-value pairs and use symbols as keys. Symbols are evaluated by looking up the corresponding value from the current environment. If the key is not defined in current environment the lookup proceeds to the parent environment and so forth. The initial environment is called `root` and contains all the built-in functions listed here. Then another environment called `user` is created for anything the user wants to define. The `let` and `fn` special forms create new local environments. Note that `def` always uses the current environment, so anything defined with `def` is not visible in the parent environment.
+The language has support for Lisp-style macros. Macros are like preprocessor directives and allow the manipulation of the language syntax before evaluation.
 
-You can get the name of an environment using the `meta` function:
+There are two built-in macros: `defn` which is a shortcut for the form `(def ... (fn ...))` and `defmacro` which is a shortcut for the form `(def ... (macro ...))`.
 
-```
-> (meta (env) "name")
-"root/user"
-```
-
-You can also retrieve the parent environment:
+We can use the special form `macroexpand` to test macro expansion without actually evaluating the resulting code. To illustrate how macros work, lets use `defn` as an example, and then view the expanded form using `macroexpand`:
 
 ```
-> (meta (env) "parent")
-{}
+> (def defn (macro (name args body) (quasiquote (def (unquote name) (fn (unquote args) (unquote body))))))
+<macro>
+> (macroexpand (defn add (a b) (+ a b)))
+(def add (fn (a b) (+ a b)))
 ```
+
+For another example, lets combine `if` and `not` into a macro named `unless`, this time using a shorter syntax:
+
+```
+> (defmacro unless (pred a b) `(if (not ~pred) ~a ~b))
+<macro>
+> (macroexpand (unless false "is false" "not false"))
+(if (not false) "is false" "not false")
+> (unless false "is false" "not false")
+"is false"
+```
+
+The `quasiquote` form described above is essential for declaring macros.
 
 ## Special forms
 

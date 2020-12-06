@@ -34,4 +34,9 @@ class Lisp
 
         $this->printer->print($result, $printReadable);
     }
+
+    public function setEnv(Env $env): void
+    {
+        $this->env = $env;
+    }
 }

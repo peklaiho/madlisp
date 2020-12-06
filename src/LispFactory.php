@@ -33,9 +33,15 @@ class LispFactory
             (new Lib\IO())->register($env);
         }
 
-        // User environment
-        $env = new Env('user', $env);
+        $lisp = new Lisp($tokenizer, $reader, $eval, $printer, $env);
 
-        return new Lisp($tokenizer, $reader, $eval, $printer, $env);
+        // Add some built-in macros
+        $lisp->readEval('(def defn (macro (name args body) (quasiquote (def (unquote name) (fn (unquote args) (unquote body))))))');
+        $lisp->readEval('(def defmacro (macro (name args body) (quasiquote (def (unquote name) (macro (unquote args) (unquote body))))))');
+
+        // Separate environment for user-defined stuff
+        $lisp->setEnv(new Env('user', $env));
+
+        return $lisp;
     }
 }
