@@ -174,11 +174,13 @@ class Collections implements ILib
             }
         ));
 
-        $env->set('pull', new CoreFunc('pull', 'Insert the other arguments at the beginning of the sequence (last argument).', 2, -1,
+        $env->set('cons', new CoreFunc('cons', 'Insert the other arguments at the beginning of the sequence (last argument).', 2, -1,
             function (...$args) {
+                // This is used by quasiquote.
+
                 $seq = $args[count($args) - 1];
                 if (!($seq instanceof Seq)) {
-                    throw new MadLispException('last argument to pull is not sequence');
+                    throw new MadLispException('last argument to cons is not sequence');
                 }
 
                 $data = [];

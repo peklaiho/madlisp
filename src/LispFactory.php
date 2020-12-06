@@ -26,7 +26,7 @@ class LispFactory
         (new Lib\Time())->register($env);
         (new Lib\Types())->register($env);
 
-        // Register unsafe libraries if not in safemode
+        // Register unsafe libraries if not in safe-mode
         if (!$safemode) {
             (new Lib\Database())->register($env);
             (new Lib\Http())->register($env);

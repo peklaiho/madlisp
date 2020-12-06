@@ -433,7 +433,7 @@ class Evaller
                 }
             } else {
                 $result = new MList([
-                    new Symbol('pull'),
+                    new Symbol('cons'),
                     $this->quasiquote($elt),
                     $result
                 ]);

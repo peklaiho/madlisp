@@ -78,14 +78,14 @@ Special keywords are `true`, `false` and `null` which correspond to same PHP val
 
 Lists are limited by parenthesis. When they are evaluated, the first item of a list is called as a function with the remaining items as arguments. They can be defined using the built-in `list` function:
 
-```
+```text
 > (list 1 2 3)
 (1 2 3)
 ```
 
 Vectors are defined using square brackets or the built-in `vector` function:
 
-```
+```text
 > [1 2 3]
 [1 2 3]
 
@@ -101,7 +101,7 @@ Hash maps are collections of key-value pairs. Keys are normal strings, not "keyw
 
 Hash maps are defined using curly brackets or using the built-in `hash` function. Odd arguments are treated as keys and even arguments are treated as values. The key-value pair can optionally include colon as a separator to make it more readable, but it is ignored internally.
 
-```
+```text
 > (hash "a" 1 "b" 2)
 {"a":1 "b":2}
 
@@ -121,14 +121,14 @@ Environments are hash-maps which store key-value pairs and use symbols as keys. 
 
 You can get the name of an environment using the `meta` function:
 
-```
+```text
 > (meta (env) "name")
 "root/user"
 ```
 
 You can also retrieve the parent environment:
 
-```
+```text
 > (meta (env) "parent")
 {}
 ```
@@ -137,14 +137,14 @@ You can also retrieve the parent environment:
 
 Use the `quote` special form to skip evaluation:
 
-```
+```text
 > (quote (1 2 3))
 (1 2 3)
 ```
 
 Use the `quasiquote` special form when you need to turn on evaluation temporarily inside the quoted element. The special forms `unquote` and `unquote-splice` are available for that purpose:
 
-```
+```text
 > (def lst (quote (2 3)))
 (2 3)
 
@@ -156,11 +156,25 @@ Use the `quasiquote` special form when you need to turn on evaluation temporaril
 (1 2 3 4)
 ```
 
+Internally `quasiquote` expands to `cons` and `concat` functions. We can use the `quasiquote-expand` special form to test this expansion without evaluation:
+
+```text
+> (def lst (quote (2 3)))
+(2 3)
+
+> (quasiquote-expand (1 lst 4))
+(cons 1 (cons (quote lst) (cons 4 ())))
+> (quasiquote-expand (1 (unquote lst) 4))
+(cons 1 (cons lst (cons 4 ())))
+> (quasiquote-expand (1 (unquote-splice lst) 4))
+(cons 1 (concat lst (cons 4 ())))
+```
+
 ### Quote shortcuts
 
 You can use the single-quote (`'`), backtick and tilde (`~`) characters as shortcuts for `quote`, `quasiquote` and `unquote` respectively:
 
-```
+```text
 > '(a b c)
 (a b c)
 
@@ -176,9 +190,9 @@ The language has support for Lisp-style macros. Macros are like preprocessor dir
 
 There are two built-in macros: `defn` which is a shortcut for the form `(def ... (fn ...))` and `defmacro` which is a shortcut for the form `(def ... (macro ...))`.
 
-We can use the special form `macroexpand` to test macro expansion without actually evaluating the resulting code. To illustrate how macros work, lets use `defn` as an example, and then view the expanded form using `macroexpand`:
+We can use the special form `macroexpand` to test macro expansion without evaluating the resulting code. To illustrate how macros work, lets use `defn` as an example, and then view the expanded form using `macroexpand`:
 
-```
+```text
 > (def defn (macro (name args body) (quasiquote (def (unquote name) (fn (unquote args) (unquote body))))))
 <macro>
 > (macroexpand (defn add (a b) (+ a b)))
@@ -187,7 +201,7 @@ We can use the special form `macroexpand` to test macro expansion without actual
 
 For another example, lets combine `if` and `not` into a macro named `unless`, this time using a shorter syntax:
 
-```
+```text
 > (defmacro unless (pred a b) `(if (not ~pred) ~a ~b))
 <macro>
 > (macroexpand (unless false "is false" "not false"))
@@ -196,7 +210,35 @@ For another example, lets combine `if` and `not` into a macro named `unless`, th
 "is false"
 ```
 
-The `quasiquote` form described above is essential for declaring macros.
+The `quasiquote` form described above is essential for declaring macros. Internally macros are just functions with a special flag.
+
+## Reflection
+
+You can use the `meta` function to retrieve the arguments, body or full code of user-defined functions:
+
+```text
+> (defn add (a b) (+ a b))
+<function>
+> (meta add "args")
+(a b)
+> (meta add "body")
+(+ a b)
+> (meta add "code")
+(fn (a b) (+ a b))
+```
+
+This allows for some fun tricks. For example, we can retrieve the body of a function and evaluate it as part of another function:
+
+```text
+> (defn addOne (n) (+ n 1))
+<function>
+> (defn addTwo (n) (+ n 2))
+<function>
+> (defn addBoth (n) (+ (eval (meta addOne "body")) (eval (meta addTwo "body"))))
+<function>
+> (addBoth 1)
+5
+```
 
 ## Special forms
 
@@ -213,9 +255,12 @@ fn    | yes | `(fn (a b) (+ a b))` | `<function>` | Create a function. Arguments
 if    | yes | `(if (< 1 2) "yes" "no")` | `"yes"` | If the first argument evaluates to true, evaluate and return the second argument, otherwise the third argument. If the third argument is omitted return `null` in its place.
 let   | yes | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
 load  | no  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
+macro | yes | | | See the section Macros.
+macroexpand | yes | | | See the section Macros.
 or    | yes | `(or false 0 1)` | `1` | Return the first value that evaluates to true, or the last value.
 quote | yes | | | See the section Quoting.
 quasiquote | yes | | | See the section Quoting.
+quasiquote-expand | yes | | | See the section Quoting.
 
 ## Functions
 
@@ -260,7 +305,7 @@ apply   | `(apply + 1 2 [3 4])` | `10` | Call the first argument using a sequenc
 chunk   | `(chunk [1 2 3 4 5] 2)` | `[[1 2] [3 4] [5]]` | Divide a sequence to multiple sequences with specified length using [array_chunk](https://www.php.net/manual/en/function.array-chunk.php).
 concat  | `(concat [1 2] '(3 4))` | `(1 2 3 4)` | Concatenate multiple sequences together and return them as a list.
 push    | `(push [1 2] 3 4)` | `[1 2 3 4]` | Create new sequence by inserting arguments at the end.
-pull    | `(pull 1 2 [3 4])` | `[1 2 3 4]` | Create new sequence by inserting arguments at the beginning.
+cons    | `(cons 1 2 [3 4])` | `[1 2 3 4]` | Create new sequence by inserting arguments at the beginning.
 map     | `(map (fn (a) (* a 2)) [1 2 3])` | `[2 4 6]` | Create new sequence by calling a function for each item. Uses [array_map](https://www.php.net/manual/en/function.array-map.php) internally.
 map2    | `(map2 + [1 2 3] [4 5 6])` | `[5 7 9]` | Create new sequence by calling a function for each item from both sequences.
 reduce  | `(reduce + [2 3 4] 1)` | `10` | Reduce a sequence to a single value by calling a function sequentially of all arguments. Optional third argument is used to give the initial value for first iteration. Uses [array_reduce](https://www.php.net/manual/en/function.array-reduce.php) internally.
@@ -414,6 +459,7 @@ symbol | Convert the argument to symbol.
 not | Turns true to false and vice versa.
 type | Return the type of the argument as a string.
 fn? | Return true if the argument is a function.
+macro? | Return true if the argument is a macro.
 list? | Return true if the argument is a list.
 vector? | Return true if the argument is a vector.
 seq? | Return true if the argument is a sequence (list or vector).
@@ -445,34 +491,6 @@ EOL      | PHP constant `PHP_EOL`
 PI       | PHP constant `M_PI`
 \_\_DIR\_\_  | Directory of a file being evaluated using the special form `load`. Otherwise null.
 \_\_FILE\_\_ | Filename of a file being evaluated using the special form `load`. Otherwise null.
-
-## Reflection
-
-You can use the `meta` function to retrieve the arguments, body or full code of user-defined functions:
-
-```
-> (def add (fn (a b) (+ a b)))
-<function>
-> (meta add "args")
-(a b)
-> (meta add "body")
-(+ a b)
-> (meta add "code")
-(fn (a b) (+ a b))
-```
-
-This allows for some fun tricks. For example, we can retrieve the body of a function and evaluate it as part of another function:
-
-```
-> (def addOne (fn (n) (+ n 1)))
-<function>
-> (def addTwo (fn (n) (+ n 2)))
-<function>
-> (def addBoth (fn (n) (+ (eval (meta addOne "body")) (eval (meta addTwo "body")))))
-<function>
-> (addBoth 1)
-5
-```
 
 ## Extending
 
