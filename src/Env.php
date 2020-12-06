@@ -21,15 +21,19 @@ class Env extends Hash
         return $this->name;
     }
 
-    public function get(string $key)
+    public function get(string $key, bool $throw = true)
     {
         if (array_key_exists($key, $this->data)) {
             return $this->data[$key];
         } elseif ($this->parent) {
-            return $this->parent->get($key);
+            return $this->parent->get($key, $throw);
         }
 
-        throw new MadLispException("symbol $key not defined in env");
+        if ($throw) {
+            throw new MadLispException("symbol $key not defined in env");
+        } else {
+            return null;
+        }
     }
 
     public function getParent(): ?Env

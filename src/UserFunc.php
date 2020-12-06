@@ -9,9 +9,9 @@ class UserFunc extends Func
     protected Env $tempEnv;
     protected Seq $bindings;
 
-    public function __construct(Closure $closure, $ast, Env $tempEnv, Seq $bindings)
+    public function __construct(Closure $closure, $ast, Env $tempEnv, Seq $bindings, bool $macro = false)
     {
-        parent::__construct($closure, null);
+        parent::__construct($closure, null, $macro);
 
         $this->ast = $ast;
         $this->tempEnv = $tempEnv;

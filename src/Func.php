@@ -7,11 +7,13 @@ abstract class Func
 {
     protected Closure $closure;
     protected ?string $doc;
+    protected bool $macro;
 
-    public function __construct(Closure $closure, ?string $doc = null)
+    public function __construct(Closure $closure, ?string $doc = null, bool $macro = false)
     {
         $this->closure = $closure;
         $this->doc = $doc;
+        $this->macro = $macro;
     }
 
     public function getClosure(): Closure
@@ -22,6 +24,11 @@ abstract class Func
     public function getDoc(): ?string
     {
         return $this->doc;
+    }
+
+    public function isMacro(): bool
+    {
+        return $this->macro;
     }
 
     public function setDoc(?string $val): void

@@ -102,7 +102,8 @@ class Core implements ILib
                         } elseif ($attribute == 'body') {
                             return $obj->getAst();
                         } elseif ($attribute == 'code') {
-                            return new MList([new Symbol('fn'), $obj->getBindings(), $obj->getAst()]);
+                            $name = $obj->isMacro() ? 'macro' : 'fn';
+                            return new MList([new Symbol($name), $obj->getBindings(), $obj->getAst()]);
                         } else {
                             throw new MadLispException('unknown attribute for meta');
                         }

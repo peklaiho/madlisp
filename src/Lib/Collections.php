@@ -156,6 +156,9 @@ class Collections implements ILib
 
         $env->set('concat', new CoreFunc('concat', 'Concatenate multiple sequences together.', 1, -1,
             function (Seq ...$args) {
+                // This is used by quasiquote, so we need to always return
+                // a list for it to work properly.
+
                 $data = array_map(fn ($a) => $a->getData(), $args);
                 return new MList(array_merge(...$data));
             }

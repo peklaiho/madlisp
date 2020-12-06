@@ -37,7 +37,15 @@ class Evaller
                 }
             }
 
-            // Not list
+            // Return fast for optimization if not list
+            if (!($ast instanceof MList)) {
+                return $this->evalAst($ast, $env);
+            }
+
+            // Perform macro expansion
+            $ast = $this->macroexpand($ast, $env);
+
+            // After macro expansion we have to check for not-a-list again
             if (!($ast instanceof MList)) {
                 return $this->evalAst($ast, $env);
             }
@@ -135,23 +143,23 @@ class Evaller
 
                     $ast = $this->eval($astData[1], $env);
                     continue; // tco
-                } elseif ($symbolName == 'fn') {
+                } elseif ($symbolName == 'fn' || $symbolName == 'macro') {
                     if ($astLength != 3) {
-                        throw new MadLispException("fn requires exactly 2 arguments");
+                        throw new MadLispException("$symbolName requires exactly 2 arguments");
                     }
 
                     if (!($astData[1] instanceof Seq)) {
-                        throw new MadLispException("first argument to fn is not seq");
+                        throw new MadLispException("first argument to $symbolName is not seq");
                     }
 
                     $bindings = $astData[1]->getData();
                     foreach ($bindings as $bind) {
                         if (!($bind instanceof Symbol)) {
-                            throw new MadLispException("binding key for fn is not symbol");
+                            throw new MadLispException("binding key for $symbolName is not symbol");
                         }
                     }
 
-                    $closure = function (...$args) use ($bindings, $ast, $env, $astData) {
+                    $closure = function (...$args) use ($bindings, $env, $astData) {
                         $newEnv = new Env('closure', $env);
 
                         for ($i = 0; $i < count($bindings); $i++) {
@@ -161,7 +169,7 @@ class Evaller
                         return $this->eval($astData[2], $newEnv);
                     };
 
-                    return new UserFunc($closure, $astData[2], $env, $astData[1]);
+                    return new UserFunc($closure, $astData[2], $env, $astData[1], $symbolName == 'macro');
                 } elseif ($symbolName == 'if') {
                     if ($astLength < 3 || $astLength > 4) {
                         throw new MadLispException("if requires 2 or 3 arguments");
@@ -257,6 +265,12 @@ class Evaller
                     $rootEnv->set('__DIR__', $prevDir);
 
                     continue; // tco
+                } elseif ($symbolName == 'macroexpand') {
+                    if ($astLength != 2) {
+                        throw new MadLispException("macroexpand requires exactly 1 argument");
+                    }
+
+                    return $this->macroexpand($astData[1], $env);
                 } elseif ($symbolName == 'or') {
                     if ($astLength == 1) {
                         return false;
@@ -339,6 +353,31 @@ class Evaller
                 $results[$key] = $this->eval($val, $env);
             }
             return new Hash($results);
+        }
+
+        return $ast;
+    }
+
+    private function getMacroFn($ast, Env $env): ?Func
+    {
+        if ($ast instanceof MList) {
+            $data = $ast->getData();
+            if (count($data) > 0 && $data[0] instanceof Symbol) {
+                $fn = $env->get($data[0]->getName(), false);
+                if ($fn && $fn instanceof Func && $fn->isMacro()) {
+                    return $fn;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function macroexpand($ast, Env $env)
+    {
+        while (($fn = $this->getMacroFn($ast, $env))) {
+            // We know ast is a list
+            $ast = $fn->call(array_slice($ast->getData(), 1));
         }
 
         return $ast;

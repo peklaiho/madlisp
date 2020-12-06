@@ -11,7 +11,11 @@ class Printer
     private function doPrint($a, bool $readable): string
     {
         if ($a instanceof Func) {
-            return '<function>';
+            if ($a->isMacro()) {
+                return '<macro>';
+            } else {
+                return '<function>';
+            }
         } elseif ($a instanceof MList) {
             return '(' . implode(' ', array_map(fn ($b) => $this->doPrint($b, $readable), $a->getData())) . ')';
         } elseif ($a instanceof Vector) {
