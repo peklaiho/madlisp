@@ -358,26 +358,18 @@ class Evaller
         return $ast;
     }
 
-    private function getMacroFn($ast, Env $env): ?Func
+    private function macroexpand($ast, Env $env)
     {
-        if ($ast instanceof MList) {
+        while ($ast instanceof MList) {
             $data = $ast->getData();
             if (count($data) > 0 && $data[0] instanceof Symbol) {
                 $fn = $env->get($data[0]->getName(), false);
                 if ($fn && $fn instanceof Func && $fn->isMacro()) {
-                    return $fn;
+                    $ast = $fn->call(array_slice($data, 1));
+                    continue;
                 }
             }
-        }
-
-        return null;
-    }
-
-    private function macroexpand($ast, Env $env)
-    {
-        while (($fn = $this->getMacroFn($ast, $env))) {
-            // We know ast is a list
-            $ast = $fn->call(array_slice($ast->getData(), 1));
+            break;
         }
 
         return $ast;
