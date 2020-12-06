@@ -37,23 +37,28 @@ class Evaller
                 }
             }
 
-            // Return fast for optimization if not list
-            if (!($ast instanceof MList)) {
-                return $this->evalAst($ast, $env);
-            }
+            // Return fast for optimization
+            // Check two times: before and after macro expansion
+            for ($check = 0; $check <= 1; $check++) {
+                if (!($ast instanceof MList)) {
+                    if ($ast instanceof Symbol || $ast instanceof Collection) {
+                        return $this->evalAst($ast, $env);
+                    } else {
+                        // This is not evaluated so we can just return it.
+                        return $ast;
+                    }
+                }
 
-            // Perform macro expansion
-            $ast = $this->macroexpand($ast, $env);
-
-            // After macro expansion we have to check for not-a-list again
-            if (!($ast instanceof MList)) {
-                return $this->evalAst($ast, $env);
+                // Perform macro expansion on first iteration
+                if ($check == 0) {
+                    $ast = $this->macroexpand($ast, $env);
+                }
             }
 
             $astData = $ast->getData();
             $astLength = count($astData);
 
-            // Empty list
+            // Empty list, return
             if ($astLength == 0) {
                 return $ast;
             }
