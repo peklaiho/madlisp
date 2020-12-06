@@ -3,6 +3,10 @@ namespace MadLisp;
 
 class Evaller
 {
+    // Keep cache of macro names so we can skip
+    // macro expansion when possible.
+    protected static array $macros = [];
+
     protected Tokenizer $tokenizer;
     protected Reader $reader;
     protected Printer $printer;
@@ -21,49 +25,51 @@ class Evaller
     public function eval($ast, Env $env, int $depth = 1)
     {
         // Loop for tail call optimization
-        $loops = 0;
+        $isTco = false;
         while (true) {
 
-            // Return fast for optimization
-            // Check two times: before and after macro expansion
-            for ($check = 0; $check <= 1; $check++) {
-                if (!($ast instanceof MList)) {
-                    if ($ast instanceof Symbol || $ast instanceof Collection) {
-                        return $this->evalAst($ast, $env, $depth);
-                    } else {
-                        // This is not evaluated so we can just return it.
-                        return $ast;
-                    }
-                }
+            // Return here after macro expansion
+            $expandMacros = true;
+            beginning:
 
-                // Perform macro expansion on first iteration
-                if ($check == 0) {
-                    $ast = $this->macroexpand($ast, $env);
+            // Return fast for optimization if not list
+            if (!($ast instanceof MList)) {
+                if ($ast instanceof Symbol || $ast instanceof Collection) {
+                    return $this->evalAst($ast, $env, $depth);
+                } else {
+                    // This is not evaluated so we can just return it
+                    // and save one extra call to evalAst.
+                    return $ast;
                 }
             }
 
             $astData = $ast->getData();
             $astLength = count($astData);
 
-            // Empty list, return
+            // Empty list, return we can also return
             if ($astLength == 0) {
                 return $ast;
             }
 
-            // Show debug output here
-            if ($this->debug) {
-                if ($loops++ == 0) {
-                    printf("eval %2d : ", $depth);
-                } else {
-                    printf(" tco %2d : ", $depth);
-                }
+            // Show debug output here (before macro expansion)
+            if ($this->debug && $expandMacros) {
+                printf("%s %2d : ", $isTco ? ' tco' : 'eval', $depth);
                 $this->printer->print($ast);
                 print("\n");
+                $isTco = true;
             }
 
             // Handle special forms
             if ($astData[0] instanceof Symbol) {
                 $symbolName = $astData[0]->getName();
+
+                // Handle macro expansion and go back to beginning to check
+                // again if ast is still something we need to evaluate or not.
+                if ($expandMacros && array_key_exists($symbolName, self::$macros)) {
+                    $ast = $this->macroexpand($ast, $env);
+                    $expandMacros = false;
+                    goto beginning;
+                }
 
                 if ($symbolName == 'and') {
                     if ($astLength == 1) {
@@ -117,6 +123,12 @@ class Evaller
                     }
 
                     $value = $this->eval($astData[2], $env, $depth + 1);
+
+                    // Save macros in cache
+                    if ($value instanceof Func && $value->isMacro()) {
+                        self::$macros[$name] = $value;
+                    }
+
                     return $env->set($name, $value);
                 } elseif ($symbolName == 'do') {
                     if ($astLength == 1) {
