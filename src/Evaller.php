@@ -18,31 +18,18 @@ class Evaller
         $this->safemode = $safemode;
     }
 
-    public function eval($ast, Env $env)
+    public function eval($ast, Env $env, int $depth = 1)
     {
-        if ($this->debug) {
-            print("eval: ");
-            $this->printer->print($ast);
-            print("\n");
-            $loops = 0;
-        }
-
+        // Loop for tail call optimization
+        $loops = 0;
         while (true) {
-
-            if ($this->debug) {
-                if ($loops++ > 0) {
-                    print("eval loop: ");
-                    $this->printer->print($ast);
-                    print("\n");
-                }
-            }
 
             // Return fast for optimization
             // Check two times: before and after macro expansion
             for ($check = 0; $check <= 1; $check++) {
                 if (!($ast instanceof MList)) {
                     if ($ast instanceof Symbol || $ast instanceof Collection) {
-                        return $this->evalAst($ast, $env);
+                        return $this->evalAst($ast, $env, $depth);
                     } else {
                         // This is not evaluated so we can just return it.
                         return $ast;
@@ -63,6 +50,17 @@ class Evaller
                 return $ast;
             }
 
+            // Show debug output here
+            if ($this->debug) {
+                if ($loops++ == 0) {
+                    printf("eval %2d : ", $depth);
+                } else {
+                    printf(" tco %2d : ", $depth);
+                }
+                $this->printer->print($ast);
+                print("\n");
+            }
+
             // Handle special forms
             if ($astData[0] instanceof Symbol) {
                 $symbolName = $astData[0]->getName();
@@ -73,7 +71,7 @@ class Evaller
                     }
 
                     for ($i = 1; $i < $astLength - 1; $i++) {
-                        $value = $this->eval($astData[$i], $env);
+                        $value = $this->eval($astData[$i], $env, $depth + 1);
                         if ($value == false) {
                             return $value;
                         }
@@ -87,7 +85,7 @@ class Evaller
                     }
 
                     for ($i = 1; $i < $astLength - 1; $i += 2) {
-                        $test = $this->eval($astData[$i], $env);
+                        $test = $this->eval($astData[$i], $env, $depth + 1);
                         if ($test == true) {
                             $ast = $astData[$i + 1];
                             continue 2; // tco
@@ -118,7 +116,7 @@ class Evaller
                         throw new MadLispException("def reserved symbol $name");
                     }
 
-                    $value = $this->eval($astData[2], $env);
+                    $value = $this->eval($astData[2], $env, $depth + 1);
                     return $env->set($name, $value);
                 } elseif ($symbolName == 'do') {
                     if ($astLength == 1) {
@@ -126,7 +124,7 @@ class Evaller
                     }
 
                     for ($i = 1; $i < $astLength - 1; $i++) {
-                        $this->eval($astData[$i], $env);
+                        $this->eval($astData[$i], $env, $depth + 1);
                     }
 
                     $ast = $astData[$astLength - 1];
@@ -146,7 +144,7 @@ class Evaller
                         return null;
                     }
 
-                    $ast = $this->eval($astData[1], $env);
+                    $ast = $this->eval($astData[1], $env, $depth + 1);
                     continue; // tco
                 } elseif ($symbolName == 'fn' || $symbolName == 'macro') {
                     if ($astLength != 3) {
@@ -164,14 +162,14 @@ class Evaller
                         }
                     }
 
-                    $closure = function (...$args) use ($bindings, $env, $astData) {
+                    $closure = function (...$args) use ($bindings, $env, $astData, $depth) {
                         $newEnv = new Env('closure', $env);
 
                         for ($i = 0; $i < count($bindings); $i++) {
                             $newEnv->set($bindings[$i]->getName(), $args[$i] ?? null);
                         }
 
-                        return $this->eval($astData[2], $newEnv);
+                        return $this->eval($astData[2], $newEnv, $depth + 1);
                     };
 
                     return new UserFunc($closure, $astData[2], $env, $astData[1], $symbolName == 'macro');
@@ -180,7 +178,7 @@ class Evaller
                         throw new MadLispException("if requires 2 or 3 arguments");
                     }
 
-                    $result = $this->eval($astData[1], $env);
+                    $result = $this->eval($astData[1], $env, $depth + 1);
 
                     if ($result == true) {
                         $ast = $astData[2];
@@ -215,7 +213,7 @@ class Evaller
                             throw new MadLispException("binding key for let is not symbol");
                         }
 
-                        $val = $this->eval($bindings[$i + 1], $newEnv);
+                        $val = $this->eval($bindings[$i + 1], $newEnv, $depth + 1);
                         $newEnv->set($key->getName(), $val);
                     }
 
@@ -234,7 +232,7 @@ class Evaller
                     }
 
                     // We have to evaluate the argument, it could be a function
-                    $filename = $this->eval($astData[1], $env);
+                    $filename = $this->eval($astData[1], $env, $depth + 1);
 
                     if (!is_string($filename)) {
                         throw new MadLispException("first argument to load is not string");
@@ -263,7 +261,7 @@ class Evaller
                     $rootEnv->set('__DIR__', dirname($targetFile) . \DIRECTORY_SEPARATOR);
 
                     // Evaluate the contents
-                    $ast = $this->eval($expr, $env);
+                    $ast = $this->eval($expr, $env, $depth + 1);
 
                     // Restore the special constants to previous values
                     $rootEnv->set('__FILE__', $prevFile);
@@ -282,7 +280,7 @@ class Evaller
                     }
 
                     for ($i = 1; $i < $astLength - 1; $i++) {
-                        $value = $this->eval($astData[$i], $env);
+                        $value = $this->eval($astData[$i], $env, $depth + 1);
                         if ($value == true) {
                             return $value;
                         }
@@ -313,7 +311,7 @@ class Evaller
             }
 
             // Get new evaluated list
-            $ast = $this->evalAst($ast, $env);
+            $ast = $this->evalAst($ast, $env, $depth);
             $astData = $ast->getData();
 
             // First item is function, rest are arguments
@@ -341,7 +339,7 @@ class Evaller
         $this->debug = $val;
     }
 
-    private function evalAst($ast, Env $env)
+    private function evalAst($ast, Env $env, int $depth)
     {
         if ($ast instanceof Symbol) {
             // Lookup symbol from env
@@ -349,13 +347,13 @@ class Evaller
         } elseif ($ast instanceof Seq) {
             $results = [];
             foreach ($ast->getData() as $val) {
-                $results[] = $this->eval($val, $env);
+                $results[] = $this->eval($val, $env, $depth + 1);
             }
             return $ast::new($results);
         } elseif ($ast instanceof Hash) {
             $results = [];
             foreach ($ast->getData() as $key => $val) {
-                $results[$key] = $this->eval($val, $env);
+                $results[$key] = $this->eval($val, $env, $depth + 1);
             }
             return new Hash($results);
         }
