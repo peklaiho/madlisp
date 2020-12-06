@@ -46,7 +46,11 @@ class Types implements ILib
         $env->set('type', new CoreFunc('type', 'Return the type of argument as a string.', 1, 1,
             function ($a) {
                 if ($a instanceof Func) {
-                    return 'function';
+                    if ($a->isMacro()) {
+                        return 'macro';
+                    } else {
+                        return 'function';
+                    }
                 } elseif ($a instanceof MList) {
                     return 'list';
                 } elseif ($a instanceof Vector) {
@@ -74,7 +78,12 @@ class Types implements ILib
         ));
 
         $env->set('fn?', new CoreFunc('fn?', 'Return true if argument is a function.', 1, 1,
+            // This returns true for macros as well, because they are functions
             fn ($a) => $a instanceof Func
+        ));
+
+        $env->set('macro?', new CoreFunc('macro?', 'Return true if argument is a macro.', 1, 1,
+            fn ($a) => $a instanceof Func && $a->isMacro()
         ));
 
         $env->set('list?', new CoreFunc('list?', 'Return true if argument is a list.', 1, 1,
