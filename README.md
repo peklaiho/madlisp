@@ -498,4 +498,4 @@ The project is easy to extend because it is trivial to add new functions whether
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
+[MIT](LICENSE)
