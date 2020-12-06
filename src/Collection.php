@@ -3,6 +3,12 @@ namespace MadLisp;
 
 abstract class Collection
 {
+    public static function new(array $data = []): self
+    {
+        // late static binding
+        return new static($data);
+    }
+
     protected array $data = [];
 
     public function __construct(array $data = [])
