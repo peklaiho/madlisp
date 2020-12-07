@@ -42,12 +42,17 @@ class Evaller
 
             // Handle response for anything but a list
             if ($ast instanceof Symbol) {
-                // Lookup symbol from env
                 return $env->get($ast->getName());
             } elseif ($ast instanceof Vector || $ast instanceof Hash) {
                 $newData = [];
                 foreach ($ast->getData() as $key => $val) {
-                    $newData[$key] = $this->eval($val, $env, $depth + 1);
+                    if ($val instanceof Symbol) {
+                        $newData[$key] = $env->get($val->getName());
+                    } elseif ($val instanceof Collection) {
+                        $newData[$key] = $this->eval($val, $env, $depth + 1);
+                    } else {
+                        $newData[$key] = $val;
+                    }
                 }
                 return $ast::new($newData);
             } elseif ($ast instanceof MList == false) {
@@ -198,10 +203,10 @@ class Evaller
 
                     if ($result == true) {
                         $ast = $astData[2];
-                        continue;
+                        continue; // tco
                     } elseif ($astLength == 4) {
                         $ast = $astData[3];
-                        continue;
+                        continue; // tco
                     } else {
                         return null;
                     }
@@ -330,7 +335,6 @@ class Evaller
             $newData = [];
             foreach ($astData as $a) {
                 if ($a instanceof Symbol) {
-                    // Lookup symbol from env
                     $newData[] = $env->get($a->getName());
                 } elseif ($a instanceof Collection) {
                     $newData[] = $this->eval($a, $env, $depth + 1);
