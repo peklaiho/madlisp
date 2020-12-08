@@ -31,7 +31,7 @@ class Evaller
             // Show debug output
             if ($this->debug) {
                 printf("%s %2d : ", $isTco ? ' tco' : 'eval', $depth);
-                $this->printer->print($ast);
+                $this->printer->print($ast, true);
                 print("\n");
                 $isTco = true;
             }
@@ -150,7 +150,7 @@ class Evaller
 
                     $ast = $astData[$astLength - 1];
                     continue; // tco
-                } elseif (!$this->safemode && $symbolName == 'env') {
+                } elseif ($symbolName == 'env') {
                     if ($astLength >= 2) {
                         if (!($astData[1] instanceof Symbol)) {
                             throw new MadLispException("first argument to env is not symbol");
@@ -160,7 +160,7 @@ class Evaller
                     } else {
                         return $env;
                     }
-                } elseif (!$this->safemode && $symbolName == 'eval') {
+                } elseif ($symbolName == 'eval') {
                     if ($astLength == 1) {
                         return null;
                     }
@@ -295,7 +295,7 @@ class Evaller
                     }
 
                     return $this->macroexpand($astData[1], $env);
-                } elseif (!$this->safemode && $symbolName == 'meta') {
+                } elseif ($symbolName == 'meta') {
                     if ($astLength != 3) {
                         throw new MadLispException("meta requires exactly 2 arguments");
                     } elseif (!is_string($astData[2])) {

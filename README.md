@@ -263,15 +263,15 @@ case  | yes | `(case (= 1 0) 0 (= 1 1) 1)` | `1` | Treat odd arguments as tests 
       | yes | `(case (= 1 0) 0 "no match")` | `"no match"` | You can also give optional last argument to case which is returned if none of the tests evaluated to true.
 def   | yes | `(def addOne (fn (a) (+ a 1)))` | `<function>` | Define a value in the current environment.
 do    | yes | `(do (print 1) 2)` | `12` | Evaluate multiple expressions and return the value of the last.
-env   | no  | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
-eval  | no  | `(eval (quote (+ 1 2)))` | `3` | Evaluate the argument.
+env   | yes | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
+eval  | yes | `(eval (quote (+ 1 2)))` | `3` | Evaluate the argument.
 fn    | yes | `(fn (a b) (+ a b))` | `<function>` | Create a function. Arguments can also be given as a vector instead of a list.
 if    | yes | `(if (< 1 2) "yes" "no")` | `"yes"` | If the first argument evaluates to true, evaluate and return the second argument, otherwise the third argument. If the third argument is omitted return `null` in its place.
 let   | yes | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
 load  | no  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
 macro | yes | | | See the section Macros.
 macroexpand | yes | | | See the section Macros.
-meta | no | | | See the sections Environments and Reflection.
+meta  | yes | | | See the sections Environments and Reflection.
 or    | yes | `(or false 0 1)` | `1` | Return the first value that evaluates to true, or the last value.
 quote | yes | | | See the section Quoting.
 quasiquote | yes | | | See the section Quoting.
@@ -291,8 +291,8 @@ error | yes | `(error "invalid value")` | `error: invalid value` | Throw an exce
 exit  | no  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
 loop  | yes | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
 print | no  | `(print "hello world")` | `hello world` | Print expression on the screen. Give optional second argument as `true` to show strings in readable format. Print returns null (shown in REPL).
-pstr  | yes | `(pstr {"a":"b"} true)` | `"{\"a\":\"b\"}"` | Print expression to string. Give optional second argument as `true` to show strings in readable format.
-read  | no  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
+pstr  | yes | `(pstr {"a":"b"})` | `"{\"a\":\"b\"}"` | Print expression to string.
+read  | yes | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
 sleep | no  | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
 timer | no  | `(timer (fn (d) (sleep d)) 200)` | `0.20010209` | Measure the execution time of a function and return it in seconds.
 

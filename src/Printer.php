@@ -3,12 +3,12 @@ namespace MadLisp;
 
 class Printer
 {
-    public function print($ast, bool $readable = true): void
+    public function print($ast, bool $readable): void
     {
         print($this->pstr($ast, $readable));
     }
 
-    public function pstr($ast, bool $readable = true): string
+    public function pstr($ast, bool $readable): string
     {
         return $this->doPrint($ast, $readable);
     }
