@@ -17,4 +17,15 @@ class Hash extends Collection
         $this->data[$key] = $value;
         return $value;
     }
+
+    public function unset(string $key)
+    {
+        if (array_key_exists($key, $this->data)) {
+            $value = $this->data[$key];
+            unset($this->data[$key]);
+            return $value;
+        }
+
+        return null;
+    }
 }

@@ -329,6 +329,8 @@ reverse | `(reverse [1 2 3])` | `[3 2 1]` | Reverse the order of a sequence. Use
 key?    | `(key? {"a" "b"} "a")` | `true` | Return true if the hash-map contains the given key.
 set     | `(set {"a" 1} "b" 2)` | `{"a":1 "b":2}` | Create new hash-map which contains the given key-value pair.
 set!    | `(set! {"a" 1} "b" 2)` | `2` | Modify the given hash-map by setting the given key-value pair and return the set value. **This function is mutable!**
+unset   | `(unset {"a":1 "b":2 "c":3} "b")` | `{"a":1 "c":3}` | Create a new hash-map with the given key removed.
+unset!  | `(unset! {"a":1 "b":2 "c":3} "b")` | `2` | Modify the given hash-map by removing the given key and return the corresponding value. **This function is mutable!**
 keys    | `(keys {"a" 1 "b" 2})` | `("a" "b")` | Return a list of the keys for a hash-map.
 values  | `(values {"a" 1 "b" 2})` | `(1 2)` | Return a list of the values for a hash-map.
 zip     | `(zip ["a" "b"] [1 2])` | `{"a":1 "b":2}` | Create a hash-map using the first sequence as keys and the second as values. Uses [array_combine](https://www.php.net/manual/en/function.array-combine.php) internally.

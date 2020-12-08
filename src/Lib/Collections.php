@@ -255,6 +255,20 @@ class Collections implements ILib
             }
         ));
 
+        $env->set('unset', new CoreFunc('unset', 'Create a new hash-map from the first argument with the given key removed.', 2, 2,
+            function (Hash $a, string $key) {
+                $data = $a->getData();
+                unset($data[$key]);
+                return new Hash($data);
+            }
+        ));
+
+        $env->set('unset!', new CoreFunc('unset!', 'Modify the hash-map (first argument) and remove the given key.', 2, 2,
+            function (Hash $a, string $key) {
+                return $a->unset($key);
+            }
+        ));
+
         $env->set('keys', new CoreFunc('keys', 'Return the keys of a hash-map as a list.', 1, 1,
             fn (Hash $a) => new MList(array_keys($a->getData()))
         ));
