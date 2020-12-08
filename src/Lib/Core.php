@@ -86,35 +86,6 @@ class Core implements ILib
         ));
 
         if (!$this->safemode) {
-            $env->set('meta', new CoreFunc('meta', 'Read meta information of an entity.', 2, 2,
-                function ($obj, $attribute) {
-                    if ($obj instanceof Env) {
-                        if ($attribute == 'name') {
-                            return $obj->getFullName();
-                        } elseif ($attribute == 'parent') {
-                            return $obj->getParent();
-                        } else {
-                            throw new MadLispException('unknown attribute for meta');
-                        }
-                    } elseif ($obj instanceof UserFunc) {
-                        if ($attribute == 'args') {
-                            return $obj->getBindings();
-                        } elseif ($attribute == 'body') {
-                            return $obj->getAst();
-                        } elseif ($attribute == 'code') {
-                            $name = $obj->isMacro() ? 'macro' : 'fn';
-                            return new MList([new Symbol($name), $obj->getBindings(), $obj->getAst()]);
-                        } else {
-                            throw new MadLispException('unknown attribute for meta');
-                        }
-                    } else {
-                        throw new MadLispException('unknown entity for meta');
-                    }
-                }
-            ));
-        }
-
-        if (!$this->safemode) {
             $env->set('print', new CoreFunc('print', 'Print argument. Give second argument as true to show strings in readable format.', 1, 2,
                 function ($a, bool $readable = false) {
                     $this->printer->print($a, $readable);

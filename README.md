@@ -214,17 +214,20 @@ The `quasiquote` form described above is essential for declaring macros. Interna
 
 ## Reflection
 
-You can use the `meta` function to retrieve the arguments, body or full code of user-defined functions:
+You can use the `meta` special form to retrieve the arguments, body, code or full definition of user-defined functions:
 
 ```text
 > (defn add (a b) (+ a b))
 <function>
+
 > (meta add "args")
 (a b)
 > (meta add "body")
 (+ a b)
 > (meta add "code")
 (fn (a b) (+ a b))
+> (meta add "def")
+(defn add (a b) (+ a b))
 ```
 
 This allows for some fun tricks. For example, we can retrieve the body of a function and evaluate it as part of another function:
@@ -257,6 +260,7 @@ let   | yes | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using
 load  | no  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
 macro | yes | | | See the section Macros.
 macroexpand | yes | | | See the section Macros.
+meta | no | | | See the sections Environments and Reflection.
 or    | yes | `(or false 0 1)` | `1` | Return the first value that evaluates to true, or the last value.
 quote | yes | | | See the section Quoting.
 quasiquote | yes | | | See the section Quoting.
@@ -274,7 +278,6 @@ doc   | yes | `(doc +)` | `"Return the sum of all arguments."` | Show the docume
 error | yes | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
 exit  | no  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
 loop  | yes | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
-meta  | no  | `(meta (env) "name")` | `"root/user"` | Read meta information of an entity.
 print | no  | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
 read  | no  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
 sleep | no  | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).

@@ -295,6 +295,45 @@ class Evaller
                     }
 
                     return $this->macroexpand($astData[1], $env);
+                } elseif (!$this->safemode && $symbolName == 'meta') {
+                    if ($astLength != 3) {
+                        throw new MadLispException("meta requires exactly 2 arguments");
+                    } elseif (!is_string($astData[2])) {
+                        throw new MadLispException("third argument to meta is not string");
+                    }
+
+                    $obj = $this->eval($astData[1], $env, $depth + 1);
+                    $attribute = $astData[2];
+
+                    if ($obj instanceof Env) {
+                        if ($attribute == 'name') {
+                            return $obj->getFullName();
+                        } elseif ($attribute == 'parent') {
+                            return $obj->getParent();
+                        } else {
+                            throw new MadLispException('unknown attribute for meta');
+                        }
+                    } elseif ($obj instanceof UserFunc) {
+                        if ($attribute == 'args') {
+                            return $obj->getBindings();
+                        } elseif ($attribute == 'body') {
+                            return $obj->getAst();
+                        } elseif ($attribute == 'code') {
+                            $name = $obj->isMacro() ? 'macro' : 'fn';
+                            return new MList([new Symbol($name), $obj->getBindings(), $obj->getAst()]);
+                        } elseif ($attribute == 'def') {
+                            if ($astData[1] instanceof Symbol) {
+                                $def = $obj->isMacro() ? 'defmacro' : 'defn';
+                                return new MList([new Symbol($def), $astData[1], $obj->getBindings(), $obj->getAst()]);
+                            } else {
+                                throw new MadLispException('no name for def in meta');
+                            }
+                        } else {
+                            throw new MadLispException('unknown attribute for meta');
+                        }
+                    } else {
+                        throw new MadLispException('unknown entity for meta');
+                    }
                 } elseif ($symbolName == 'or') {
                     if ($astLength == 1) {
                         return false;
