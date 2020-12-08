@@ -21,10 +21,6 @@ MadLisp is a [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%2
 * Ability to call arbitrary PHP functions directly. The language should have control over which PHP functions can be called and how.
 * Namespaces or similar mechanisms. The global namespace is a feature, not a bug! Use a prefix for your function names if this becomes a problem.
 
-## Features
-
-The implementation is pretty minimalistic, but there is a good collection of built-in functions. Also [tail call optimization](https://en.wikipedia.org/wiki/Tail_call) is included.
-
 ## Requirements
 
 The project requires PHP 7.4 or newer.
