@@ -4,6 +4,7 @@ namespace MadLisp\Lib;
 use MadLisp\Collection;
 use MadLisp\CoreFunc;
 use MadLisp\Env;
+use MadLisp\Symbol;
 
 class Compare implements ILib
 {
@@ -44,7 +45,9 @@ class Compare implements ILib
 
     private function getValue($a)
     {
-        if ($a instanceof Collection) {
+        if ($a instanceof Symbol) {
+            return $a->getName();
+        } elseif ($a instanceof Collection) {
             return $a->getData();
         }
 
