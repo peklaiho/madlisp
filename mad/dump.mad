@@ -1,0 +1,24 @@
+
+;;
+;; Tools for dumping code from memory into files.
+;;
+;; Example usage:
+;; > (dumpEnv (env) "funcs.mad")
+;;
+;; This will write all function definitions from the current environment into file "funcs.mad".
+;;
+
+;; Return the string for defining the given function
+(defn funcToStr (f name)
+  (str (if (macro? f) "(defmacro " "(defn ")
+    name " " (pstr (meta f "args")) " "
+    (pstr (meta f "body")) ")"))
+
+;; Write a hash-map of functions into a file
+(defn dumpFuncs (funcs filename)
+  (let (fnStrings (map2 (fn (f name) (funcToStr f name)) (values funcs) (keys funcs)))
+    (fput filename (apply join (str EOL EOL) fnStrings))))
+
+;; Write all functions in the given environment to file
+(defn dumpEnv (e filename)
+  (dumpFuncs (filterh fn? e) filename))
