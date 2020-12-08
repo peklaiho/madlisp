@@ -290,7 +290,8 @@ doc   | yes | `(doc +)` | `"Return the sum of all arguments."` | Show the docume
 error | yes | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
 exit  | no  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
 loop  | yes | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
-print | no  | `(print "hello world")` | `"hello world"null` | Print expression on the screen. Print returns null (which is shown due to the extra print in repl). Give optional second argument as `true` to show strings in readable format.
+print | no  | `(print "hello world")` | `hello world` | Print expression on the screen. Give optional second argument as `true` to show strings in readable format. Print returns null (shown in REPL).
+pstr  | yes | `(pstr {"a":"b"} true)` | `"{\"a\":\"b\"}"` | Print expression to string. Give optional second argument as `true` to show strings in readable format.
 read  | no  | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
 sleep | no  | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
 timer | no  | `(timer (fn (d) (sleep d)) 200)` | `0.20010209` | Measure the execution time of a function and return it in seconds.

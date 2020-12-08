@@ -5,7 +5,12 @@ class Printer
 {
     public function print($ast, bool $readable = true): void
     {
-        print($this->doPrint($ast, $readable));
+        print($this->pstr($ast, $readable));
+    }
+
+    public function pstr($ast, bool $readable = true): string
+    {
+        return $this->doPrint($ast, $readable);
     }
 
     private function doPrint($a, bool $readable): string

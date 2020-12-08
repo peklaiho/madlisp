@@ -94,6 +94,12 @@ class Core implements ILib
             ));
         }
 
+        $env->set('pstr', new CoreFunc('pstr', 'Print argument to string. Give second argument as true to show strings in readable format.', 1, 2,
+            function ($a, bool $readable = false) {
+                return $this->printer->pstr($a, $readable);
+            }
+        ));
+
         if (!$this->safemode) {
             $env->set('read', new CoreFunc('read', 'Read string as code.', 1, 1,
                 fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
