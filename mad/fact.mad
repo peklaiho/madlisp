@@ -1,11 +1,11 @@
 ;; Functions to calculate factorial
 
-;; Recursive version, not tail call optimized
-(defn recFact (n) (if (< n 2) 1 (* n (recFact (dec n)))))
+;; Recursive, tail call optimized
+(defn factRec (i n a) (if (= i n) (* a i) (factRec (inc i) n (* a i))))
+(defn fact (n) (if (< n 2) 1 (factRec 2 n 1)))
+
+;; Return a vector of n factorials
+(defn factVec (n) (map fact (range n)))
 
 ;; Apply version
 (defn applyFact (n) (if (< n 2) 1 (apply * (range 1 (inc n)))))
-
-;; Add docstrings
-(doc recFact "Calculate the factor of n recursively.")
-(doc applyFact "Calculate the factor of n iteratively using apply.")
