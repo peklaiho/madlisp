@@ -367,6 +367,16 @@ class Evaller
                     }
 
                     return $this->quasiquote($astData[1]);
+                } elseif ($symbolName == 'undef') {
+                    if ($astLength != 2) {
+                        throw new MadLispException("undef requires exactly 1 argument");
+                    }
+
+                    if (!($astData[1] instanceof Symbol)) {
+                        throw new MadLispException("first argument to undef is not symbol");
+                    }
+
+                    return $env->unset($astData[1]->getName());
                 }
             }
 

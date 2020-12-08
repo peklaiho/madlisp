@@ -276,6 +276,7 @@ or    | yes | `(or false 0 1)` | `1` | Return the first value that evaluates to 
 quote | yes | | | See the section Quoting.
 quasiquote | yes | | | See the section Quoting.
 quasiquote-expand | yes | | | See the section Quoting.
+undef | yes | `(undef myFn)` | `<function>` | Remove a definition from the current environment. Return the removed value.
 
 ## Functions
 
