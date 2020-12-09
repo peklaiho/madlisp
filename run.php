@@ -21,7 +21,19 @@ function ml_repl($lisp)
         } catch (MadLisp\MadLispException $ex) {
             print('error: ' . $ex->getMessage());
         } catch (TypeError $ex) {
-            print('error: invalid argument type: ' . $ex->getMessage());
+            // Clean up the error message a little
+            if (preg_match('/must be an instance of ([^,]+), (.+) given/', $ex->getMessage(), $matches)) {
+                $message = 'expected ' . $matches[1] . ', ' . $matches[2] . ' given';
+            } elseif (preg_match('/must be of the type ([^,]+), (.+) given/', $ex->getMessage(), $matches)) {
+                $message = 'expected ' . $matches[1] . ', ' . $matches[2] . ' given';
+            } else {
+                $message = $ex->getMessage();
+            }
+
+            print('error: invalid argument type: ' . $message);
+        } catch (Throwable $ex) {
+            // Catch all other exceptions
+            print('error: ' . $ex->getMessage());
         }
 
         print(PHP_EOL);
