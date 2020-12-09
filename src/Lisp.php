@@ -18,6 +18,11 @@ class Lisp
         $this->env = $env;
     }
 
+    public function print($value, bool $printReadable): void
+    {
+        $this->printer->print($value, $printReadable);
+    }
+
     public function readEval(string $input)
     {
         $tokens = $this->tokenizer->tokenize($input);
@@ -30,9 +35,7 @@ class Lisp
     // read, eval, print
     public function rep(string $input, bool $printReadable): void
     {
-        $result = $this->readEval($input);
-
-        $this->printer->print($result, $printReadable);
+        $this->print($this->readEval($input), $printReadable);
     }
 
     public function setEnv(Env $env): void

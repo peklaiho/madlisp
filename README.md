@@ -287,13 +287,13 @@ Name  | Safe-mode | Example | Example result | Description
 debug | no  | `(debug)` | `true` |  Toggle debug output.
 doc   | yes | `(doc +)` | `"Return the sum of all arguments."` | Show the documentation string for a function.
       | yes | `(doc myfn "Documentation string.")` | `"Documentation string."` | Set the documentation string for a function.
-error | yes | `(error "invalid value")` | `error: invalid value` | Throw an exception with message as argument.
 exit  | no  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
 loop  | yes | `(loop (fn (a) (do (print a) (coinflip))) "hello ")` | `hello hello hello false` | Call the given function repeatedly in a loop until it returns false.
 print | no  | `(print "hello world")` | `hello world` | Print expression on the screen. Give optional second argument as `true` to show strings in readable format. Print returns null (shown in REPL).
 pstr  | yes | `(pstr {"a":"b"})` | `"{\"a\":\"b\"}"` | Print expression to string.
 read  | yes | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
 sleep | no  | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
+throw | yes | `(throw "invalid value")` | `error: "invalid value"` | Throw an exception. The given value is passed to catch.
 timer | no  | `(timer (fn (d) (sleep d)) 200)` | `0.20010209` | Measure the execution time of a function and return it in seconds.
 
 ### Collection functions
@@ -431,7 +431,7 @@ rand  | `(rand 5 10)` | `8` | Return a random integer between given min and max 
 Name          | Example | Example result | Description
 ------------- | ------- | -------------- | -----------
 re-match      | `(re-match "/^[a-z]{4}[0-9]{4}$/" "test1234")` | `true` | Match subject to regular expression using [preg_match](https://www.php.net/manual/en/function.preg-match.php).
-re-match      | `(re-match "/[a-z]{5}/" "one three five" true)` | `"three"` | Give true as third argument to return the matched text.
+              | `(re-match "/[a-z]{5}/" "one three five" true)` | `"three"` | Give true as third argument to return the matched text.
 re-match-all  | `(re-match-all "/[A-Z][a-z]{2}[0-9]/" "One1 Two2 Three3")` | `["One1" "Two2"]` | Find multiple matches to regular expression using [preg_match_all](https://www.php.net/manual/en/function.preg-match-all.php).
 re-replace    | `(re-replace "/year ([0-9]{4}) month ([0-9]{2})/" "$1-$2-01" "year 2020 month 10")` | `"2020-10-01"` | Perform search and replace with regular expression using [preg_replace](https://www.php.net/manual/en/function.preg-replace.php).
 re-split      | `(re-split "/\\s+/" "aa   bb   cc   ")` | `["aa" "bb" "cc"]` | Split the subject by regular expression using [preg_split](https://www.php.net/manual/en/function.preg-split.php). The flag `PREG_SPLIT_NO_EMPTY` is enabled.

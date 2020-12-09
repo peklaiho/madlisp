@@ -6,7 +6,7 @@ use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Func;
-use MadLisp\MadLispException;
+use MadLisp\MadLispUserException;
 use MadLisp\MList;
 use MadLisp\Printer;
 use MadLisp\Reader;
@@ -60,14 +60,6 @@ class Core implements ILib
             }
         ));
 
-        // This is allowed in safe-mode, because the evaluation should be wrapped in a try-catch in embedded use.
-        $env->set('error', new CoreFunc('error', 'Throw an exception using argument (string) as message.', 1, 1,
-            function (string $error) {
-                // We should probably use another exception type to distinguish user-thrown errors from built-in errors.
-                throw new MadLispException($error);
-            }
-        ));
-
         if (!$this->safemode) {
             $env->set('exit', new CoreFunc('exit', 'Terminate the script with given exit code.', 0, 1,
                 function (int $status = 0) {
@@ -112,6 +104,12 @@ class Core implements ILib
                 }
             ));
         }
+
+        $env->set('throw', new CoreFunc('throw', 'Throw an exception. Takes one argument which is passed to catch.', 1, 1,
+            function ($error) {
+                throw new MadLispUserException($error);
+            }
+        ));
 
         if (!$this->safemode) {
             $env->set('timer', new CoreFunc('timer', 'Measure the execution time of a function and return it in seconds.', 1, -1,

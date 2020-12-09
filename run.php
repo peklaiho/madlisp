@@ -18,6 +18,9 @@ function ml_repl($lisp)
 
         try {
             $lisp->rep($input, true);
+        } catch (MadLisp\MadLispUserException $ex) {
+            print('error: ');
+            $lisp->print($ex->getValue(), true);
         } catch (MadLisp\MadLispException $ex) {
             print('error: ' . $ex->getMessage());
         } catch (TypeError $ex) {
