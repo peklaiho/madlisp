@@ -116,9 +116,7 @@ class Evaller
                 } elseif ($symbolName == 'def') {
                     if ($astLength != 3) {
                         throw new MadLispException("def requires exactly 2 arguments");
-                    }
-
-                    if (!($astData[1] instanceof Symbol)) {
+                    } elseif (!($astData[1] instanceof Symbol)) {
                         throw new MadLispException("first argument to def is not symbol");
                     }
 
@@ -170,9 +168,7 @@ class Evaller
                 } elseif ($symbolName == 'fn' || $symbolName == 'macro') {
                     if ($astLength != 3) {
                         throw new MadLispException("$symbolName requires exactly 2 arguments");
-                    }
-
-                    if (!($astData[1] instanceof Seq)) {
+                    } elseif (!($astData[1] instanceof Seq)) {
                         throw new MadLispException("first argument to $symbolName is not seq");
                     }
 
@@ -213,9 +209,7 @@ class Evaller
                 } elseif ($symbolName == 'let') {
                     if ($astLength != 3) {
                         throw new MadLispException("let requires exactly 2 arguments");
-                    }
-
-                    if (!($astData[1] instanceof MList)) {
+                    } elseif (!($astData[1] instanceof MList)) {
                         throw new MadLispException("first argument to let is not list");
                     }
 
@@ -367,12 +361,47 @@ class Evaller
                     }
 
                     return $this->quasiquote($astData[1]);
+                } elseif ($symbolName == 'try') {
+                    if ($astLength != 3) {
+                        throw new MadLispException("try requires exactly 2 arguments");
+                    } elseif (!($astData[2] instanceof MList)) {
+                        throw new MadLispException("second argument to try is not list");
+                    }
+
+                    $catch = $astData[2]->getData();
+
+                    if (count($catch) == 3 && $catch[0] instanceof Symbol &&
+                        $catch[0]->getName() == 'catch' && $catch[1] instanceof Symbol) {
+
+                        try {
+                            return $this->eval($astData[1], $env, $depth + 1);
+                        } catch (\Throwable $ex) {
+                            if ($ex instanceof MadLispUserException) {
+                                $exVal = $ex->getValue();
+                            } else {
+                                // Return a hash-map for PHP exceptions
+                                $exVal = new Hash([
+                                    'type' => get_class($ex),
+                                    'file' => $ex->getFile(),
+                                    'line' => $ex->getLine(),
+                                    'message' => $ex->getMessage()
+                                ]);
+                            }
+
+                            $newEnv = new Env('catch', $env);
+                            $newEnv->set($catch[1]->getName(), $exVal);
+
+                            $env = $newEnv;
+                            $ast = $catch[2];
+                            continue; // tco
+                        }
+                    } else {
+                        throw new MadLispException("invalid form for catch");
+                    }
                 } elseif ($symbolName == 'undef') {
                     if ($astLength != 2) {
                         throw new MadLispException("undef requires exactly 1 argument");
-                    }
-
-                    if (!($astData[1] instanceof Symbol)) {
+                    } elseif (!($astData[1] instanceof Symbol)) {
                         throw new MadLispException("first argument to undef is not symbol");
                     }
 
