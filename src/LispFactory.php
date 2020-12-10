@@ -19,17 +19,25 @@ class LispFactory
         // Register core libraries
         (new Lib\Collections())->register($env);
         (new Lib\Compare())->register($env);
-        (new Lib\Json())->register($env);
+        if (extension_loaded('json')) {
+            (new Lib\Json())->register($env);
+        }
         (new Lib\Math())->register($env);
-        (new Lib\Regex())->register($env);
+        if (extension_loaded('pcre')) {
+            (new Lib\Regex())->register($env);
+        }
         (new Lib\Strings())->register($env);
         (new Lib\Time())->register($env);
         (new Lib\Types())->register($env);
 
         // Register unsafe libraries if not in safe-mode
         if (!$safemode) {
-            (new Lib\Database())->register($env);
-            (new Lib\Http())->register($env);
+            if (extension_loaded('PDO')) {
+                (new Lib\Database())->register($env);
+            }
+            if (extension_loaded('curl')) {
+                (new Lib\Http())->register($env);
+            }
             (new Lib\IO())->register($env);
         }
 

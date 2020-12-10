@@ -67,21 +67,22 @@ class IO implements ILib
         ));
 
         // Readline support
+        if (extension_loaded('readline')) {
+            $env->set('readline', new CoreFunc('readline', 'Read line of user input.', 0, 1,
+                fn ($prompt = null) => readline($prompt)
+            ));
 
-        $env->set('readline', new CoreFunc('readline', 'Read line of user input.', 0, 1,
-            fn ($prompt = null) => readline($prompt)
-        ));
+            $env->set('readline-add', new CoreFunc('readline-add', 'Add new line of input to history.', 1, 1,
+                fn (string $line) => readline_add_history($line)
+            ));
 
-        $env->set('readline-add', new CoreFunc('readline-add', 'Add new line of input to history.', 1, 1,
-            fn (string $line) => readline_add_history($line)
-        ));
+            $env->set('readline-load', new CoreFunc('readline-load', 'Load the history for readline from a file.', 1, 1,
+                fn (string $file) => readline_read_history($file)
+            ));
 
-        $env->set('readline-load', new CoreFunc('readline-load', 'Load the history for readline from a file.', 1, 1,
-            fn (string $file) => readline_read_history($file)
-        ));
-
-        $env->set('readline-save', new CoreFunc('readline-save', 'Save the readline history into a file.', 1, 1,
-            fn (string $file) => readline_write_history($file)
-        ));
+            $env->set('readline-save', new CoreFunc('readline-save', 'Save the readline history into a file.', 1, 1,
+                fn (string $file) => readline_write_history($file)
+            ));
+        }
     }
 }
