@@ -122,12 +122,19 @@ class Math implements ILib
 
         // Random number generator
 
-        $env->set('coinflip', new CoreFunc('coinflip', 'Return true or false with equal probability.', 0, 0,
-            fn () => boolval(mt_rand(0, 1))
-        ));
-
         $env->set('rand', new CoreFunc('rand', 'Return a random integer between given min and max values.', 2, 2,
             fn ($min, $max) => mt_rand($min, $max)
+        ));
+
+        $env->set('randf', new CoreFunc('randf', 'Return a random float between given 0 (inclusive) and 1 (exclusive).', 0, 0,
+            fn () => mt_rand(0, mt_getrandmax() - 1) / mt_getrandmax()
+        ));
+
+        $env->set('rand-seed', new CoreFunc('rand-seed', 'Seed the random number generator with the given value.', 1, 1,
+            function (int $a) {
+                mt_srand($a);
+                return $a;
+            }
         ));
     }
 }

@@ -444,8 +444,9 @@ floor | `(floor 2.5)` | `2` | Get the next lowest integer.
 ceil  | `(ceil 2.5)` | `3` | Get the next highest integer.
 pow   | `(pow 2 4)` | `16` | Raise the first argument to the power of the second argument.
 sqrt  | `(sqrt 2)` | `1.41` | Calculate the square root.
-coinflip | `(coinflip)` | `true` | Return true or false with equal probability.
 rand  | `(rand 5 10)` | `8` | Return a random integer between given min and max values.
+randf | `(randf)` | `0.678` | Return a random float between 0 (inclusive) and 1 (exclusive).
+rand-seed | `(rand-seed 256)` | `256` | Seed the random number generator with the given value.
 
 ### Regular expression functions
 
