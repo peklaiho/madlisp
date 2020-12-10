@@ -93,26 +93,42 @@ class Evaller
 
                     $ast = $astData[$astLength - 1];
                     continue; // tco
-                } elseif ($symbolName == 'case') {
+                } elseif ($symbolName == 'cond') {
                     if ($astLength < 2) {
-                        throw new MadLispException("case requires at least 1 argument");
+                        throw new MadLispException("cond requires at least 1 argument");
                     }
 
-                    for ($i = 1; $i < $astLength - 1; $i += 2) {
-                        $test = $this->eval($astData[$i], $env, $depth + 1);
+                    for ($i = 1; $i < $astLength; $i++) {
+                        if (!($astData[$i] instanceof Seq)) {
+                            throw new MadLispException("argument to cond is not seq");
+                        }
+
+                        $condData = $astData[$i]->getData();
+
+                        if (count($condData) < 2) {
+                            throw new MadLispException("clause for cond requires at least 2 arguments");
+                        }
+
+                        if ($condData[0] instanceof Symbol && $condData[0]->getName() == 'else') {
+                            $test = true;
+                        } else {
+                            $test = $this->eval($condData[0], $env, $depth + 1);
+                        }
+
                         if ($test == true) {
-                            $ast = $astData[$i + 1];
+                            // Evaluate interval expressions
+                            for ($a = 1; $a < count($condData) - 1; $a++) {
+                                $this->eval($condData[$a], $env, $depth + 1);
+                            }
+
+                            // Evaluate last expression
+                            $ast = $condData[count($condData) - 1];
                             continue 2; // tco
                         }
                     }
 
-                    // Last value, no test
-                    if ($astLength % 2 == 0) {
-                        $ast = $astData[$astLength - 1];
-                        continue; // tco
-                    } else {
-                        return null;
-                    }
+                    // No matches
+                    return null;
                 } elseif ($symbolName == 'def') {
                     if ($astLength != 3) {
                         throw new MadLispException("def requires exactly 2 arguments");

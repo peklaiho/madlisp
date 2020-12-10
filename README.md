@@ -279,8 +279,8 @@ This allows for some fun tricks. For example, we can retrieve the body of a func
 Name  | Safe-mode | Example | Example result | Description
 ----- | --------- | ------- | -------------- | -----------
 and   | yes | `(and 1 0 2)` | `0` | Return the first value that evaluates to false, or the last value.
-case  | yes | `(case (= 1 0) 0 (= 1 1) 1)` | `1` | Treat odd arguments as tests and even arguments as values. Evaluate and return the value after the first test that evaluates to true.
-      | yes | `(case (= 1 0) 0 "no match")` | `"no match"` | You can also give optional last argument to case which is returned if none of the tests evaluated to true.
+cond  | yes | `(cond [(= 0 1) 0] [(= 1 1) (print "1") 1])` | `11` | Treat first item of each argument as test. If test evaluates to true, evaluate the following expressions and return the value of the last.
+      | yes | `(cond [(= 0 1) 0] [(= 1 2) 1] [else 3])` | `3` | The symbol `else` evaluates to true. It can be used as the last condition in case no previous test evaluates to true.
 def   | yes | `(def addOne (fn (a) (+ a 1)))` | `<function>` | Define a value in the current environment.
 do    | yes | `(do (print 1) 2)` | `12` | Evaluate multiple expressions and return the value of the last.
 env   | yes | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
