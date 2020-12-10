@@ -150,7 +150,11 @@ class Collections implements ILib
         $env->set('chunk', new CoreFunc('chunk', 'Divide first argument (sequence) into new sequences with length of second argument (int).', 2, 2,
             function (Seq $a, int $len) {
                 $chunks = array_chunk($a->getData(), $len);
-                return $a::new(array_map(fn ($b) => $a::new($b), $chunks));
+                $data = [];
+                foreach ($chunks as $c) {
+                    $data[] = $a::new($c);
+                }
+                return $a::new($data);
             }
         ));
 
@@ -159,7 +163,11 @@ class Collections implements ILib
                 // This is used by quasiquote, so we need to always return
                 // a list for it to work properly.
 
-                $data = array_map(fn ($a) => $a->getData(), $args);
+                $data = [];
+                foreach ($args as $a) {
+                    $data[] = $a->getData();
+                }
+
                 return new MList(array_merge(...$data));
             }
         ));

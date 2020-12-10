@@ -29,13 +29,15 @@ class Database implements ILib
         ));
 
         $env->set('db-query', new CoreFunc('db-query', 'Execute a database query.', 2, 4,
-            function (PDO $pdo, string $sql, ?Collection $args, bool $rowVectors = false) {
+            function (PDO $pdo, string $sql, ?Collection $args = null, bool $rowVectors = false) {
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute($args ? $args->getData() : []);
                 $rows = $stmt->fetchAll($rowVectors ? PDO::FETCH_NUM : PDO::FETCH_ASSOC);
-                return new Vector(
-                    array_map(fn ($row) => $rowVectors ? new Vector($row) : new Hash($row), $rows)
-                );
+                $data = [];
+                foreach ($rows as $row) {
+                    $data[] = $rowVectors ? new Vector($row) : new Hash($row);
+                }
+                return new Vector($data);
             }
         ));
 
