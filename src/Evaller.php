@@ -264,10 +264,10 @@ class Evaller
                         return null;
                     }
                 } elseif ($symbolName == 'let') {
-                    if ($astLength != 3) {
-                        throw new MadLispException("let requires exactly 2 arguments");
-                    } elseif (!($astData[1] instanceof MList)) {
-                        throw new MadLispException("first argument to let is not list");
+                    if ($astLength < 3) {
+                        throw new MadLispException("let requires at least 2 arguments");
+                    } elseif (!($astData[1] instanceof Seq)) {
+                        throw new MadLispException("first argument to let is not seq");
                     }
 
                     $bindings = $astData[1]->getData();
@@ -289,7 +289,13 @@ class Evaller
                         $newEnv->set($key->getName(), $val);
                     }
 
-                    $ast = $astData[2];
+                    // Eval interval expressions
+                    for ($i = 2; $i < $astLength - 1; $i++) {
+                        $this->eval($astData[$i], $newEnv, $depth + 1);
+                    }
+
+                    // Eval last expression
+                    $ast = $astData[$astLength - 1];
                     $env = $newEnv;
                     continue; // tco
                 } elseif (!$this->safemode && $symbolName == 'load') {
@@ -421,8 +427,8 @@ class Evaller
                 } elseif ($symbolName == 'try') {
                     if ($astLength != 3) {
                         throw new MadLispException("try requires exactly 2 arguments");
-                    } elseif (!($astData[2] instanceof MList)) {
-                        throw new MadLispException("second argument to try is not list");
+                    } elseif (!($astData[2] instanceof Seq)) {
+                        throw new MadLispException("second argument to try is not seq");
                     }
 
                     $catch = $astData[2]->getData();
