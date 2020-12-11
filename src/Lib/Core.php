@@ -110,16 +110,5 @@ class Core implements ILib
                 throw new MadLispUserException($error);
             }
         ));
-
-        if (!$this->safemode) {
-            $env->set('timer', new CoreFunc('timer', 'Measure the execution time of a function and return it in seconds.', 1, -1,
-                function (Func $f, ...$args) {
-                    $start = microtime(true);
-                    $f->call($args);
-                    $end = microtime(true);
-                    return $end - $start;
-                }
-            ));
-        }
     }
 }

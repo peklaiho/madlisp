@@ -13,6 +13,10 @@ class Time implements ILib
             fn () => time()
         ));
 
+        $env->set('mtime', new CoreFunc('mtime', 'Return the current unix timestamp with microseconds as float.', 0, 0,
+            fn () => microtime(true)
+        ));
+
         $env->set('date', new CoreFunc('date', 'Format the time according to first argument.', 1, 2,
             fn (string $format, ?int $time = null) => date($format, $time !== null ? $time : time())
         ));

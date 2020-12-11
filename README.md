@@ -415,7 +415,6 @@ pstr  | yes | `(pstr {"a":"b"})` | `"{\"a\":\"b\"}"` | Print expression to strin
 read  | yes | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
 sleep | no  | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
 throw | yes | `(throw "invalid value")` | `error: "invalid value"` | Throw an exception. The given value is passed to catch. See the section Exceptions.
-timer | no  | `(timer (fn (d) (sleep d)) 200)` | `0.20010209` | Measure the execution time of a function and return it in seconds.
 
 ### Collection functions
 
@@ -582,6 +581,7 @@ Note that support for multibyte characters in strings is limited because the pro
 Name    | Example | Example result | Description
 ------- | ------- | -------------- | -----------
 time | `(time)` | `1592011969` | Return the current unix timestamp using [time](https://www.php.net/manual/en/function.time).
+mtime | `(mtime)` | `1607696761.132` | Return the current unix timestamp as float that includes microseconds. Uses [microtime](https://www.php.net/manual/en/function.microtime).
 date | `(date "Y-m-d H:i:s")` | `"2020-06-13 08:33:29"` | Format the current time and date using [date](https://www.php.net/manual/en/function.date.php).
 strtotime | `(strtotime "2020-06-13 08:34:47")` | `1592012087` | Parse datetime string into unix timestamp using [strtotime](https://www.php.net/manual/en/function.strtotime.php).
 

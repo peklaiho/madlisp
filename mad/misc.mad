@@ -1,0 +1,2 @@
+;; Measure how long it takes to execute f
+(defn timer (f) (let (st (mtime)) (f) (- (mtime) st)))
