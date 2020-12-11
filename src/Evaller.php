@@ -93,6 +93,47 @@ class Evaller
 
                     $ast = $astData[$astLength - 1];
                     continue; // tco
+                } elseif ($symbolName == 'case' || $symbolName == 'case-strict') {
+                    if ($astLength < 3) {
+                        throw new MadLispException("$symbolName requires at least 2 arguments");
+                    }
+
+                    $value = $this->eval($astData[1], $env, $depth + 1);
+
+                    for ($i = 2; $i < $astLength; $i++) {
+                        if (!($astData[$i] instanceof Seq)) {
+                            throw new MadLispException("argument to $symbolName is not seq");
+                        }
+
+                        $data = $astData[$i]->getData();
+
+                        if (count($data) < 2) {
+                            throw new MadLispException("clause for $symbolName requires at least 2 arguments");
+                        }
+
+                        if ($data[0] instanceof Symbol && $data[0]->getName() == 'else') {
+                            $test = true;
+                        } elseif ($symbolName == 'case') {
+                            $test = Util::valueForCompare($value) == Util::valueForCompare($data[0]);
+                        } else {
+                            // Strict comparison
+                            $test = Util::valueForCompare($value) === Util::valueForCompare($data[0]);
+                        }
+
+                        if ($test) {
+                            // Evaluate interval expressions
+                            for ($j = 1; $j < count($data) - 1; $j++) {
+                                $this->eval($data[$j], $env, $depth + 1);
+                            }
+
+                            // Evaluate last expression
+                            $ast = $data[count($data) - 1];
+                            continue 2; // tco
+                        }
+                    }
+
+                    // No match
+                    return null;
                 } elseif ($symbolName == 'cond') {
                     if ($astLength < 2) {
                         throw new MadLispException("cond requires at least 1 argument");
@@ -103,31 +144,31 @@ class Evaller
                             throw new MadLispException("argument to cond is not seq");
                         }
 
-                        $condData = $astData[$i]->getData();
+                        $data = $astData[$i]->getData();
 
-                        if (count($condData) < 2) {
+                        if (count($data) < 2) {
                             throw new MadLispException("clause for cond requires at least 2 arguments");
                         }
 
-                        if ($condData[0] instanceof Symbol && $condData[0]->getName() == 'else') {
+                        if ($data[0] instanceof Symbol && $data[0]->getName() == 'else') {
                             $test = true;
                         } else {
-                            $test = $this->eval($condData[0], $env, $depth + 1);
+                            $test = $this->eval($data[0], $env, $depth + 1);
                         }
 
-                        if ($test == true) {
+                        if ($test) {
                             // Evaluate interval expressions
-                            for ($a = 1; $a < count($condData) - 1; $a++) {
-                                $this->eval($condData[$a], $env, $depth + 1);
+                            for ($j = 1; $j < count($data) - 1; $j++) {
+                                $this->eval($data[$j], $env, $depth + 1);
                             }
 
                             // Evaluate last expression
-                            $ast = $condData[count($condData) - 1];
+                            $ast = $data[count($data) - 1];
                             continue 2; // tco
                         }
                     }
 
-                    // No matches
+                    // No match
                     return null;
                 } elseif ($symbolName == 'def') {
                     if ($astLength != 3) {

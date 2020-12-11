@@ -24,4 +24,15 @@ class Util
 
         return new Hash($data);
     }
+
+    public static function valueForCompare($a)
+    {
+        if ($a instanceof Symbol) {
+            return $a->getName();
+        } elseif ($a instanceof Collection) {
+            return $a->getData();
+        }
+
+        return $a;
+    }
 }

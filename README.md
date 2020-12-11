@@ -65,7 +65,7 @@ You can use the [LispFactory](src/LispFactory.php) class to create an instance o
 
 ### Safe-mode
 
-The language features a safe-mode that disables functions which allow external I/O. This allows a "sandbox" to be created where the evaluated scripts do not have access to the file system or similar resources. It is intended to be used when MadLisp is used as an embedded scripting language inside another application.
+The language includes a safe-mode that disables functions which allow external I/O. This allows a "sandbox" to be created where the evaluated scripts do not have access to the file system or other resources.
 
 ## Types
 
@@ -143,6 +143,105 @@ You can also retrieve the parent environment:
 > (meta (env) "parent")
 {}
 ```
+
+## Control flow
+
+### If
+
+Simple conditional evaluation is accomplished with the `if` expression that is of the form `(if test consequent alternate)`. If *test* evaluates to truthy value, *consequent* is evaluated and returned. If *test* evaluates to falsy value, *alternate* is evaluated and returned.
+
+```text
+> (if (< 1 2) "yes" "no")
+"yes"
+```
+
+If *alternate* is not provided, null is returned in its place:
+
+```text
+> (if (str? 1) "string")
+null
+```
+
+### And, or
+
+The `and` form returns the first expression that evaluates to falsy value:
+
+```text
+> (and 2 true "str" 0 3)
+0
+```
+
+The `or` form returns the first expression that evaluates to truthy value:
+
+```text
+> (or 0 false 3 5)
+3
+```
+
+Without arguments `and` and `or` return true and false respectively:
+
+```text
+> (and)
+true
+> (or)
+false
+```
+
+### Cond, case and case-strict
+
+When you have more than two possible paths of execution, it is convenient to use the `cond` and `case` forms.
+
+For `cond`, the first item of each argument is evaluated. If it evaluates to truthy value, the following expression is evaluated and returned:
+
+```text
+> (def n 4)
+4
+> (cond ((= n 2) "two") ((= n 4) "four") ((= n 6) "six"))
+"four"
+```
+
+For `case`, the first argument is evaluated, and then it is matched against the first item of the remaining arguments. If there is a match, the following expression is evaluated and returned:
+
+```text
+> (case (+ 1 3) (2 "two") (4 "four") (6 "six"))
+"four"
+```
+
+The `case-strict` is similar, but uses strict comparison:
+
+```text
+> (case (+ 1 3) ("4" "string: 4") (4 "integer: 4"))
+"string: 4"
+> (case-strict (+ 1 3) ("4" "string: 4") (4 "integer: 4"))
+"integer: 4"
+```
+
+Both `cond` and `case` can have an `else` form which is matched if nothing else matched up to that point:
+
+```text
+> (cond ((< n 2) "small") (else "big"))
+"big"
+> (case (% 3 2) (0 "even") (else "odd"))
+"odd"
+```
+
+Both `cond` and `case` can have more than one expression which is evaluated after a successful match:
+
+```text
+> (def n 4)
+4
+> (cond ((int? n) (print "Number: ") n))
+Number: 4
+```
+
+Finally, the arguments to `cond` and `case` can be given either as lists or as vectors. It is up to the programmer to decide which syntax to use. The previous example could have been written using square brackets instead:
+
+```text
+> (cond [(int? n) (print "Number: ") n])
+Number: 4
+```
+
+If no match is found, and `else` is not defined, `cond` and `case` return null.
 
 ## Quoting
 
@@ -278,21 +377,22 @@ This allows for some fun tricks. For example, we can retrieve the body of a func
 
 Name  | Safe-mode | Example | Example result | Description
 ----- | --------- | ------- | -------------- | -----------
-and   | yes | `(and 1 0 2)` | `0` | Return the first value that evaluates to false, or the last value.
-cond  | yes | `(cond [(= 0 1) 0] [(= 1 1) (print "1") 1])` | `11` | Treat first item of each argument as test. If test evaluates to true, evaluate the following expressions and return the value of the last.
-      | yes | `(cond [(= 0 1) 0] [(= 1 2) 1] [else 3])` | `3` | The symbol `else` evaluates to true. It can be used as the last condition in case no previous test evaluates to true.
+and   | yes | | | See the section Control flow.
+case  | yes | | | See the section Control flow.
+case-strict | yes | | | See the section Control flow.
+cond  | yes | | | See the section Control flow.
 def   | yes | `(def addOne (fn (a) (+ a 1)))` | `<function>` | Define a value in the current environment.
 do    | yes | `(do (print 1) 2)` | `12` | Evaluate multiple expressions and return the value of the last.
 env   | yes | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
 eval  | yes | `(eval (quote (+ 1 2)))` | `3` | Evaluate the argument.
 fn    | yes | `(fn (a b) (+ a b))` | `<function>` | Create a function. Arguments can also be given as a vector instead of a list.
-if    | yes | `(if (< 1 2) "yes" "no")` | `"yes"` | If the first argument evaluates to true, evaluate and return the second argument, otherwise the third argument. If the third argument is omitted return `null` in its place.
+if    | yes | | | See the section Control flow.
 let   | yes | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
 load  | no  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
 macro | yes | | | See the section Macros.
 macroexpand | yes | | | See the section Macros.
 meta  | yes | | | See the sections Environments and Reflection.
-or    | yes | `(or false 0 1)` | `1` | Return the first value that evaluates to true, or the last value.
+or    | yes | | | See the section Control flow.
 quote | yes | | | See the section Quoting.
 quasiquote | yes | | | See the section Quoting.
 quasiquote-expand | yes | | | See the section Quoting.
