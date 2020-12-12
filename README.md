@@ -126,25 +126,137 @@ Internally hash maps are just regular associative PHP arrays wrapped in a class.
 
 Symbols are words which do not match any other type and are separated by whitespace. They can contain special characters. Examples of symbols are `a`, `name` or `+`.
 
+When the evaluation encounters a symbol, it looks up the corresponding value from the current environment.
+
+## Functions
+
+Functions are created using the `fn` special form, also known as *lambda* in some Lisp languages:
+
+```text
+> (fn (a b) (+ a b))
+<function>
+```
+
+The first argument to `fn` is a list of bindings which are used as arguments to the created function. The second argument is the function body.
+
+A function is applied or "called" when a list is evaluated. The function is the first item of the list and the remaining items are arguments to the function. When a function is applied, a new environment is created where the bindings are bound to the given arguments, and then the function body is evaluated in this new environment.
+
+So we can apply the above function directly by putting it inside a list and giving it some arguments:
+
+```text
+> ((fn (a b) (+ a b)) 1 2)
+3
+```
+
+More commonly we define a function in the environment first, essentially giving it a "name", and then apply it separately:
+
+```text
+> (def add (fn (a b) (+ a b)))
+<function>
+> (add 1 2)
+3
+```
+
+Note that trying to evaluate a list which does not contain a function as the first item is an error:
+
+```text
+> ("string" 1 2)
+error: eval: first item of list is not function
+```
+
+Finally, the bindings to `fn` can be given as a vector, if that syntax is preferred:
+
+```text
+> (fn [a b] (+ a b))
+<function>
+```
+
 ## Environments
 
-Environments are hash-maps which store key-value pairs and use symbols as keys. Symbols are evaluated by looking up the corresponding value from the current environment. If the key is not defined in current environment the lookup proceeds to the parent environment and so forth. The initial environment is called `root` and contains all the built-in functions listed here. Then another environment called `user` is created for anything the user wants to define. The `let` and `fn` special forms create new local environments. Note that `def` always uses the current environment, so anything defined with `def` is not visible in the parent environment.
+Environments are hash-maps which store key-value pairs and use symbols as keys. Symbols are evaluated by looking up the corresponding value from the current environment. If the key is not defined in current environment the lookup proceeds to the parent environment and so forth. The initial environment is called `root` and contains all the built-in functions listed here. Then another environment called `user` is created for anything the user wants to define.
 
-You can get the name of an environment using the `meta` function:
+You can define values in the environment using `def`:
+
+```text
+> (def abc 123)
+123
+> abc
+123
+> (def addOne (fn (a) (+ a 1)))
+<function>
+> (addOne abc)
+124
+```
+
+Note that `def` always uses the current environment, so anything defined with `def` is not visible in the parent environment.
+
+You can retrieve the current environment using `env`:
+
+```text
+> (env)
+{"abc":123 "addOne":<function>}
+```
+
+You can remove a definition from the environment using `undef`:
+
+```text
+> (undef addOne)
+<function>
+```
+
+You can get the name of an environment and the parent environment using the `meta`:
 
 ```text
 > (meta (env) "name")
 "root/user"
-```
-
-You can also retrieve the parent environment:
-
-```text
 > (meta (env) "parent")
 {}
 ```
 
+### Let
+
+You can create a new environment using `let` for "local variables":
+
+```text
+> (let (a 1 b 2) (+ a b))
+3
+```
+
+The first argument to let is a list of bindings defined in the new environment. In this example the value of `a` is set to 1, and the value of `b` to 2. Then the body expression, `(+ a b)` in the example, is evaluated in this new environment.
+
+The body of `let` can contain multiple expressions and the value of the whole expression is the value of the last expression:
+
+```text
+> (let (a 1 b 2) (print "Number is: ") (+ a b))
+Number is: 3
+```
+
+The values of previous bindings can be used in subsequent bindings:
+
+```text
+> (let (a (+ 1 2) b (* a 2)) b)
+6
+```
+
+Finally, the bindings can be given as a vector, if that syntax is preferred:
+
+```text
+> (let [a 1 b 2] (+ a b))
+3
+```
+
 ## Control flow
+
+### Do
+
+You can evaluate multiple expressions together using `do`:
+
+```text
+> (do (print "Number: ") (+ 1 2))
+Number: 3
+```
+
+The value of the whole expression is the value of the last expression.
 
 ### If
 
@@ -191,11 +303,16 @@ false
 
 When you have more than two possible paths of execution, it is convenient to use the `cond` and `case` forms.
 
-For `cond`, the first item of each argument is evaluated. If it evaluates to truthy value, the following expression is evaluated and returned:
+Consider the following defined for these examples:
 
 ```text
 > (def n 4)
 4
+```
+
+For `cond`, the first item of each argument is evaluated. If it evaluates to truthy value, the following expression is evaluated and returned:
+
+```text
 > (cond ((= n 2) "two") ((= n 4) "four") ((= n 6) "six"))
 "four"
 ```
@@ -203,17 +320,19 @@ For `cond`, the first item of each argument is evaluated. If it evaluates to tru
 For `case`, the first argument is evaluated, and then it is matched against the first item of the remaining arguments. If there is a match, the following expression is evaluated and returned:
 
 ```text
-> (case (+ 1 3) (2 "two") (4 "four") (6 "six"))
-"four"
+> (case (% n 2) (0 "even") (1 "odd"))
+"even"
 ```
+
+Note that the values to match against, `0` and `1` in the above example, are not evaluated.
 
 The `case-strict` is similar, but uses strict comparison:
 
 ```text
-> (case (+ 1 3) ("4" "string: 4") (4 "integer: 4"))
-"string: 4"
-> (case-strict (+ 1 3) ("4" "string: 4") (4 "integer: 4"))
-"integer: 4"
+> (case n ("4" "string") (4 "integer"))
+"string"
+> (case-strict n ("4" "string") (4 "integer"))
+"integer"
 ```
 
 Both `cond` and `case` can have an `else` form which is matched if nothing else matched up to that point:
@@ -221,24 +340,22 @@ Both `cond` and `case` can have an `else` form which is matched if nothing else 
 ```text
 > (cond ((< n 2) "small") (else "big"))
 "big"
-> (case (% 3 2) (0 "even") (else "odd"))
-"odd"
+> (case (% n 2) (0 "even") (else "odd"))
+"even"
 ```
 
 Both `cond` and `case` can have more than one expression which is evaluated after a successful match:
 
 ```text
-> (def n 4)
-4
 > (cond ((int? n) (print "Number: ") n))
 Number: 4
 ```
 
-Finally, the arguments to `cond` and `case` can be given either as lists or as vectors. It is up to the programmer to decide which syntax to use. The previous example could have been written using square brackets instead:
+The arguments to `cond` and `case` can be also be given as vectors:
 
 ```text
-> (cond [(int? n) (print "Number: ") n])
-Number: 4
+> (cond [(int? n) "integer"] [else "other"])
+"integer"
 ```
 
 If no match is found, and `else` is not defined, `cond` and `case` return null.
@@ -375,31 +492,31 @@ This allows for some fun tricks. For example, we can retrieve the body of a func
 
 ## Special forms
 
-Name  | Safe-mode | Example | Example result | Description
------ | --------- | ------- | -------------- | -----------
-and   | yes | | | See the section Control flow.
-case  | yes | | | See the section Control flow.
-case-strict | yes | | | See the section Control flow.
-cond  | yes | | | See the section Control flow.
-def   | yes | `(def addOne (fn (a) (+ a 1)))` | `<function>` | Define a value in the current environment.
-do    | yes | `(do (print 1) 2)` | `12` | Evaluate multiple expressions and return the value of the last.
-env   | yes | `(env +)` | `<function>` | Return a definition from the current environment represented by argument. Without arguments return the current environment as a hash-map.
-eval  | yes | `(eval (quote (+ 1 2)))` | `3` | Evaluate the argument.
-fn    | yes | `(fn (a b) (+ a b))` | `<function>` | Create a function. Arguments can also be given as a vector instead of a list.
-if    | yes | | | See the section Control flow.
-let   | yes | `(let (a (+ 1 2)) a)` | `3` | Create a new local environment using the first argument (list) to define values. Odd arguments are treated as keys and even arguments are treated as values. The last argument is the body of the let-expression which is evaluated using this new environment.
-load  | no  | `(load "file.mad")` | | Read and evaluate a file. The contents are implicitly wrapped in a `do` expression.
-macro | yes | | | See the section Macros.
-macroexpand | yes | | | See the section Macros.
-meta  | yes | | | See the sections Environments and Reflection.
-or    | yes | | | See the section Control flow.
-quote | yes | | | See the section Quoting.
-quasiquote | yes | | | See the section Quoting.
-quasiquote-expand | yes | | | See the section Quoting.
-try   | yes | | | See the section Exceptions.
-undef | yes | `(undef myFn)` | `<function>` | Remove a definition from the current environment. Return the removed value.
+Name  | Safe-mode | Described in sections
+----- | --------- | ---------------------
+and   | yes | Control flow
+case  | yes | Control flow
+case-strict | Control flow
+cond  | yes | Control flow
+def   | yes | Environments
+do    | yes | Control flow
+env   | yes | Environments
+eval  | yes |
+fn    | yes | Functions
+if    | yes | Control flow
+let   | yes | Environments
+load  | no  |
+macro | yes | Macros
+macroexpand | Macros
+meta  | yes | Environments, Reflection
+or    | yes | Control flow
+quote | yes | Quoting
+quasiquote | yes | Quoting
+quasiquote-expand | yes | Quoting
+try   | yes | Exceptions
+undef | yes | Environments
 
-## Functions
+## Built-in functions
 
 ### Core functions
 
