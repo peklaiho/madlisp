@@ -206,15 +206,11 @@ class Evaller
                     $ast = $astData[$astLength - 1];
                     continue; // tco
                 } elseif ($symbolName == 'env') {
-                    if ($astLength >= 2) {
-                        if (!($astData[1] instanceof Symbol)) {
-                            throw new MadLispException("first argument to env is not symbol");
-                        }
-
-                        return $env->get($astData[1]->getName());
-                    } else {
-                        return $env;
+                    if ($astLength != 1) {
+                        throw new MadLispException("env does not take arguments");
                     }
+
+                    return $env;
                 } elseif ($symbolName == 'eval') {
                     if ($astLength == 1) {
                         return null;
