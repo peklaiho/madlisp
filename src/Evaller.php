@@ -465,6 +465,22 @@ class Evaller
                     }
 
                     return $env->unset($astData[1]->getName());
+                } elseif ($symbolName == 'while') {
+                    if ($astLength < 3) {
+                        throw new MadLispException("while at least 2 arguments");
+                    }
+
+                    $result = null;
+
+                    $test = $this->eval($astData[1], $env, $depth + 1);
+                    while ($test) {
+                        for ($i = 2; $i < $astLength; $i++) {
+                            $result = $this->eval($astData[$i], $env, $depth + 1);
+                        }
+                        $test = $this->eval($astData[1], $env, $depth + 1);
+                    }
+
+                    return $result;
                 }
             }
 

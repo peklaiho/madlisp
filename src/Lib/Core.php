@@ -68,15 +68,6 @@ class Core implements ILib
             ));
         }
 
-        $env->set('loop', new CoreFunc('loop', 'Call the given function repeatedly in a loop until it returns false.', 1, -1,
-            function (Func $f, ...$args) {
-                do {
-                    $result = $f->call($args);
-                } while ($result);
-                return $result;
-            }
-        ));
-
         if (!$this->safemode) {
             $env->set('print', new CoreFunc('print', 'Print argument. Give second argument as true to show strings in readable format.', 1, 2,
                 function ($a, bool $readable = false) {

@@ -47,12 +47,8 @@
 (readline-load readlineFile)
 
 ;; Main loop: Read input from user, add it to readline, and parse it
-(defn mainLoop ()
+(while true
   (let (inp (readline "[calc] "))
-    (do (readline-add inp)
-      (readline-save readlineFile)
-      (print (str (parseInput inp) EOL))
-      true)))
-
-;; Run it
-(loop mainLoop)
+    (readline-add inp)
+    (readline-save readlineFile)
+    (print (str "⇒ " (parseInput inp) EOL))))
