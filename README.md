@@ -87,7 +87,7 @@ Special keywords are `true`, `false` and `null` which correspond to same PHP val
 
 ### Sequences
 
-Lists are limited by parenthesis. When they are evaluated, the first item of a list is called as a function with the remaining items as arguments. They can be defined using the built-in `list` function:
+Lists are limited by parenthesis. They can be defined using the built-in `list` function:
 
 ```text
 > (list 1 2 3)
@@ -126,11 +126,11 @@ Internally hash maps are just regular associative PHP arrays wrapped in a class.
 
 Symbols are words which do not match any other type and are separated by whitespace. They can contain special characters. Examples of symbols are `a`, `name` or `+`.
 
-When the evaluation encounters a symbol, it looks up the corresponding value from the current environment.
+Symbols are evaluated by looking up the corresponding value from the current environment.
 
 ## Functions
 
-Functions are created using the `fn` special form, also known as *lambda* in some Lisp languages:
+Functions are created using the `fn` special form, also known as `lambda` in other Lisp languages:
 
 ```text
 > (fn (a b) (+ a b))
@@ -139,9 +139,9 @@ Functions are created using the `fn` special form, also known as *lambda* in som
 
 The first argument to `fn` is a list of bindings which are used as arguments to the created function. The second argument is the function body.
 
-A function is applied or "called" when a list is evaluated. The function is the first item of the list and the remaining items are arguments to the function. When a function is applied, a new environment is created where the bindings are bound to the given arguments, and then the function body is evaluated in this new environment.
+A function is applied or "called" when a list is evaluated. The function is the first item of the list and the remaining items are arguments to the function. When a function is applied, a new environment is created where the bindings are bound to the given arguments, and the function body is then evaluated in this new environment.
 
-So we can apply the above function directly by putting it inside a list and giving it some arguments:
+We can apply the above function directly by putting it inside a list and giving it some arguments:
 
 ```text
 > ((fn (a b) (+ a b)) 1 2)
@@ -173,7 +173,7 @@ Finally, the bindings to `fn` can be given as a vector, if that syntax is prefer
 
 ## Environments
 
-Environments are hash-maps which store key-value pairs and use symbols as keys. Symbols are evaluated by looking up the corresponding value from the current environment. If the key is not defined in current environment the lookup proceeds to the parent environment and so forth. The initial environment is called `root` and contains all the built-in functions listed here. Then another environment called `user` is created for anything the user wants to define.
+Environments are hash-maps which store key-value pairs and use symbols as keys. If the key is not defined in current environment the lookup proceeds to the parent environment and so forth. The initial environment is called `root` and contains all the built-in functions listed here. Another environment called `user` is created for anything the user wants to define.
 
 You can define values in the environment using `def`:
 
@@ -197,7 +197,7 @@ You can retrieve the current environment using `env`:
 {"abc":123 "addOne":<function>}
 ```
 
-You can remove a definition from the environment using `undef`:
+You can remove a definition from the current environment using `undef`:
 
 ```text
 > (undef addOne)
@@ -215,14 +215,14 @@ You can get the name of an environment and the parent environment using the `met
 
 ### Let
 
-You can create a new environment using `let` for "local variables":
+You can create a new environment using `let`. It is useful for "local variables":
 
 ```text
 > (let (a 1 b 2) (+ a b))
 3
 ```
 
-The first argument to let is a list of bindings defined in the new environment. In this example the value of `a` is set to 1, and the value of `b` to 2. Then the body expression, `(+ a b)` in the example, is evaluated in this new environment.
+The first argument to let is a list of bindings defined in the new environment. In this example the value of `a` is set to 1, and the value of `b` to 2. Then the body expression, `(+ a b)` in the example, is evaluated in the new environment.
 
 The body of `let` can contain multiple expressions and the value of the whole expression is the value of the last expression:
 
@@ -260,7 +260,7 @@ The value of the whole expression is the value of the last expression.
 
 ### If
 
-Simple conditional evaluation is accomplished with the `if` expression that is of the form `(if test consequent alternate)`. If *test* evaluates to truthy value, *consequent* is evaluated and returned. If *test* evaluates to falsy value, *alternate* is evaluated and returned.
+Conditional evaluation is accomplished with the `if` expression that is of the form `(if test consequent alternate)`. If *test* evaluates to truthy value, *consequent* is evaluated and returned. If *test* evaluates to falsy value, *alternate* is evaluated and returned:
 
 ```text
 > (if (< 1 2) "yes" "no")
@@ -340,7 +340,7 @@ Both `cond` and `case` can have an `else` form which is matched if nothing else 
 ```text
 > (cond ((< n 2) "small") (else "big"))
 "big"
-> (case (% n 2) (0 "even") (else "odd"))
+> (case (% n 2) (1 "odd") (else "even"))
 "even"
 ```
 
@@ -415,13 +415,15 @@ All special forms related to quoting require exactly one argument.
 
 The language has support for Lisp-style macros. Macros are like preprocessor directives and allow the manipulation of the language syntax before evaluation.
 
-There are two built-in macros: `defn` which is a shortcut for the form `(def ... (fn ...))` and `defmacro` which is a shortcut for the form `(def ... (macro ...))`.
-
-We can use the special form `macroexpand` to test macro expansion without evaluating the resulting code. To illustrate how macros work, lets use `defn` as an example, and then view the expanded form using `macroexpand`:
+There are two built-in macros: `defn` which is a shortcut for the form `(def ... (fn ...))` and `defmacro` which is a shortcut for the form `(def ... (macro ...))`. To illustrate how macros work, lets look at the definition of `defn`:
 
 ```text
-> (def defn (macro (name args body) (quasiquote (def (unquote name) (fn (unquote args) (unquote body))))))
-<macro>
+(def defn (macro (name args body) (quasiquote (def (unquote name) (fn (unquote args) (unquote body))))))
+```
+
+We can use the special form `macroexpand` to test macro expansion without evaluating the resulting code:
+
+```text
 > (macroexpand (defn add (a b) (+ a b)))
 (def add (fn (a b) (+ a b)))
 ```
@@ -431,10 +433,10 @@ For another example, lets combine `if` and `not` into a macro named `unless`, th
 ```text
 > (defmacro unless (pred a b) `(if (not ~pred) ~a ~b))
 <macro>
-> (macroexpand (unless false "is false" "not false"))
-(if (not false) "is false" "not false")
-> (unless false "is false" "not false")
-"is false"
+> (unless 0 "zero" "non-zero")
+"zero"
+> (macroexpand (unless 0 "zero" "non-zero"))
+(if (not 0) "zero" "non-zero")
 ```
 
 The `quasiquote` form described above is essential for declaring macros. Internally macros are just functions with a special flag.
@@ -453,7 +455,7 @@ Simple example of throwing and catching an exception:
 Exceptions generated by PHP are catched as well. Their value will be a hash-map with keys `type`, `file`, `line` and `message`:
 
 ```
-> (try (get "wrong" "type") (catch ex (get ex "type")))
+> (try (get "wrong" "key") (catch ex (get ex "type")))
 "TypeError"
 ```
 
@@ -496,7 +498,7 @@ Name  | Safe-mode | Described in sections
 ----- | --------- | ---------------------
 and   | yes | Control flow
 case  | yes | Control flow
-case-strict | Control flow
+case-strict | yes | Control flow
 cond  | yes | Control flow
 def   | yes | Environments
 do    | yes | Control flow
@@ -507,7 +509,7 @@ if    | yes | Control flow
 let   | yes | Environments
 load  | no  |
 macro | yes | Macros
-macroexpand | Macros
+macroexpand | yes | Macros
 meta  | yes | Environments, Reflection
 or    | yes | Control flow
 quote | yes | Quoting
