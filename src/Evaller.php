@@ -322,6 +322,11 @@ class Evaller
 
                     $input = @file_get_contents($targetFile);
 
+                    // Remove #! from the beginning that is used by shell scripts
+                    if (extension_loaded('pcre')) {
+                        $input = preg_replace('/^#![^\n\r]*[\n\r]+/', '', $input, 1);
+                    }
+
                     // Wrap input in a do to process multiple expressions
                     $input = "(do $input)";
 
