@@ -5,6 +5,19 @@ if (php_sapi_name() != 'cli') {
     exit('Currently only cli usage is supported.');
 }
 
+function ml_help()
+{
+    print("Usage:" . PHP_EOL);
+    print("-d              :: Enable debug mode" . PHP_EOL);
+    print("-e <code>       :: Evaluate code" . PHP_EOL);
+    print("-h              :: Show this help" . PHP_EOL);
+    print("-q              :: Skip the init file" . PHP_EOL);
+    print("-r              :: Run the interactive REPL" . PHP_EOL);
+    print("<file>          :: Evaluate file" . PHP_EOL);
+    print("                :: Read from stdin" . PHP_EOL);
+    exit(0);
+}
+
 function ml_repl($lisp)
 {
     // Read history
@@ -48,42 +61,89 @@ function ml_repl($lisp)
     }
 }
 
+// Parse command line arguments
+$debugMode = false;
+$evalCode = null;
+$loadInit = true;
+$runRepl = false;
+$filename = null;
+$lastArg = null;
+
+// Arguments after -- are passed to the script
+$dividerFound = false;
+$passedArgs = [];
+
+for ($i = 1; $i < $argc; $i++) {
+    $a = $argv[$i];
+
+    if ($dividerFound) {
+        $passedArgs[] = $a;
+    } elseif ($a == '--') {
+        $dividerFound = true;
+    } elseif ($a == '-d') {
+        $debugMode = true;
+    } elseif ($a == '-e') {
+
+    } elseif ($a == '-h') {
+        ml_help(); // exit
+    } elseif ($a == '-q') {
+        $loadInit = false;
+    } elseif ($a == '-r') {
+        $runRepl = true;
+    } else {
+        if ($lastArg == '-e') {
+            $evalCode = $a;
+        } else {
+            $filename = $a;
+        }
+    }
+
+    $lastArg = $a;
+}
+
 // Create the Lisp interpreter
 $factory = new MadLisp\LispFactory();
 $lisp = $factory->make();
 
+// Pass command line arguments
+$lisp->setEnvValue('argc', count($passedArgs));
+$lisp->setEnvValue('argv', new MadLisp\Vector($passedArgs));
+
 // Load the user's init file if present
-$initfile = $_SERVER['HOME'] . DIRECTORY_SEPARATOR . '.madlisp_init';
-if (is_readable($initfile)) {
-    $lisp->readEval("(load \"$initfile\")");
+if ($loadInit) {
+    $initfile = $_SERVER['HOME'] . DIRECTORY_SEPARATOR . '.madlisp_init';
+    if (is_readable($initfile)) {
+        $lisp->readEval("(load \"$initfile\")");
+    }
 }
 
-if ($argc < 2) {
-    // Read input from stdin
+// Enable debug mode if requested
+if ($debugMode) {
+    $lisp->setDebug(true);
+}
+
+// Eval code passed via -e
+if ($evalCode) {
+    $lisp->rep($evalCode, false);
+}
+
+// Eval file
+if ($filename) {
+    if (is_readable($filename)) {
+        $lisp->rep("(load \"$filename\")", false);
+    } else {
+        print("Unable to read file: $filename" . PHP_EOL);
+        exit(1);
+    }
+}
+
+// Run REPL
+if ($runRepl) {
+    ml_repl($lisp);
+}
+
+// Finally, if we had no other actions, read input from stdin
+if (!$evalCode && !$filename) {
     $input = file_get_contents('php://stdin');
     $lisp->rep($input, false);
-} elseif ($argv[1] == '-r') {
-    // Run the repl
-    ml_repl($lisp);
-} elseif ($argv[1] == '-e') {
-    // Evaluate next argument
-    $lisp->rep($argv[2] ?? '', false);
-} elseif ($argv[1] == '-h') {
-    // Show help
-    print("Usage:" . PHP_EOL);
-    print("-e <code>       :: Evaluate code" . PHP_EOL);
-    print("-h              :: Show this help" . PHP_EOL);
-    print("-r              :: Run the interactive Repl" . PHP_EOL);
-    print("<filename>      :: Evaluate file" . PHP_EOL);
-    print("<no arguments>  :: Read from stdin" . PHP_EOL);
-} else {
-    // Read file
-    $file = $argv[1];
-    if (is_readable($file)) {
-        $input = "(load \"$file\")";
-        $lisp->rep($input, false);
-    } else {
-        print("Unable to read file: $file\n");
-        exit(1); // exit with error code
-    }
 }

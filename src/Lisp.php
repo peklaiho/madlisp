@@ -38,8 +38,18 @@ class Lisp
         $this->print($this->readEval($input), $printReadable);
     }
 
+    public function setDebug(bool $value): void
+    {
+        $this->eval->setDebug($value);
+    }
+
     public function setEnv(Env $env): void
     {
         $this->env = $env;
+    }
+
+    public function setEnvValue(string $key, $value): void
+    {
+        $this->env->set($key, $value);
     }
 }
