@@ -188,7 +188,7 @@ class Evaller
                     // Do not allow reserved symbols to be defined
                     $reservedSymbols = ['__FILE__', '__DIR__'];
                     if (in_array($name, $reservedSymbols)) {
-                        throw new MadLispException("def reserved symbol $name");
+                        throw new MadLispException("attempt to def reserved symbol $name");
                     }
 
                     $value = $this->eval($astData[2], $env, $depth + 1);
@@ -478,7 +478,7 @@ class Evaller
                     return $env->unset($astData[1]->getName());
                 } elseif ($symbolName == 'while') {
                     if ($astLength < 3) {
-                        throw new MadLispException("while at least 2 arguments");
+                        throw new MadLispException("while requires at least 2 arguments");
                     }
 
                     $result = null;
