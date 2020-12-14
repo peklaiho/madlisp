@@ -69,15 +69,26 @@ class Core implements ILib
         }
 
         if (!$this->safemode) {
-            $env->set('print', new CoreFunc('print', 'Print argument. Give second argument as true to show strings in readable format.', 1, 2,
-                function ($a, bool $readable = false) {
-                    $this->printer->print($a, $readable);
+            $env->set('print', new CoreFunc('print', 'Print arguments.', 0, -1,
+                function (...$args) {
+                    foreach ($args as $a) {
+                        $this->printer->print($a, false);
+                    }
                     return null;
                 }
             ));
         }
 
-        $env->set('pstr', new CoreFunc('pstr', 'Print argument to string.', 1, 1,
+        if (!$this->safemode) {
+            $env->set('printr', new CoreFunc('printr', 'Print argument in readable format.', 1, 1,
+                function ($a) {
+                    $this->printer->print($a, true);
+                    return null;
+                }
+            ));
+        }
+
+        $env->set('prints', new CoreFunc('prints', 'Print argument in readable format to string.', 1, 1,
             function ($a) {
                 return $this->printer->pstr($a, true);
             }

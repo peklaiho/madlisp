@@ -212,8 +212,8 @@ class Evaller
 
                     return $env;
                 } elseif ($symbolName == 'eval') {
-                    if ($astLength == 1) {
-                        return null;
+                    if ($astLength != 2) {
+                        throw new MadLispException("eval requires exactly 1 argument");
                     }
 
                     $ast = $this->eval($astData[1], $env, $depth + 1);

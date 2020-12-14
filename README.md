@@ -534,17 +534,18 @@ while | yes | Control flow
 
 ### Core functions
 
-Name  | Safe-mode | Example | Example result | Description
------ | --------- | ------- | -------------- | -----------
-debug | no  | `(debug)` | `true` |  Toggle debug output.
-doc   | yes | `(doc +)` | `"Return the sum of all arguments."` | Show the documentation string for a function.
-      | yes | `(doc myfn "Documentation string.")` | `"Documentation string."` | Set the documentation string for a function.
-exit  | no  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
-print | no  | `(print "hello world")` | `hello world` | Print expression on the screen. Give optional second argument as `true` to show strings in readable format. Print returns null (shown in REPL).
-pstr  | yes | `(pstr {"a":"b"})` | `"{\"a\":\"b\"}"` | Print expression to string.
-read  | yes | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
-sleep | no  | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
-throw | yes | `(throw "invalid value")` | `error: "invalid value"` | Throw an exception. The given value is passed to catch. See the section Exceptions.
+Name   | Safe-mode | Example | Example result | Description
+------ | --------- | ------- | -------------- | -----------
+debug  | no  | `(debug)` | `true` |  Toggle debug output.
+doc    | yes | `(doc +)` | `"Return the sum of all arguments."` | Show the documentation string for a function.
+       | yes | `(doc myfn "Documentation string.")` | `"Documentation string."` | Set the documentation string for a function.
+exit   | no  | `(exit 1)` | | Terminate the script with given exit code using [exit](https://www.php.net/manual/en/function.exit.php).
+print  | no  | `(print "hello world")` | `hello world` | Print expression on the screen.
+printr | no  | `(printr "hello world")` | `"hello world"` | Print expression on the screen in readable format.
+prints | yes | `(prints "hello world")` | `"\"hello world\""` | Print expression to string in readable format.
+read   | yes | `(read "(+ 1 2 3)")` | `(+ 1 2 3)` | Read a string as code and return the expression.
+sleep  | no  | `(sleep 2000)` | `null` | Sleep for the given period given in milliseconds using [usleep](https://www.php.net/manual/en/function.usleep).
+throw  | yes | `(throw "invalid value")` | `error: "invalid value"` | Throw an exception. The given value is passed to catch. See the section Exceptions.
 
 ### Collection functions
 

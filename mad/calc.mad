@@ -15,7 +15,8 @@
 (defn cmdMod (args) (apply % args))
 (defn cmdMul (args) (apply * args))
 (defn cmdSub (args) (apply - args))
-(defn cmdHelp (args) (str "Available commands: " (apply join ", " (keys cmdMap))))
+(defn cmdHelp () (str "Available commands: " (apply join ", " (keys cmdMap))))
+(defn cmdQuit () (exit))
 
 ;; And we define a hash-map for command lookups with minimum number of arguments
 (def cmdMap {
@@ -25,6 +26,7 @@
   "mul": [cmdMul 2]
   "sub": [cmdSub 2]
   "help": [cmdHelp 0]
+  "quit": [cmdQuit 0]
 })
 
 ;; Find the first command which starts with the given name, or null
@@ -38,8 +40,8 @@
 ;; and call it, giving the rest of the words as arguments.
 (defn parseInput (inp)
   (let (words (split " " inp) cname (first words) args (tail words) cmd (findCmd cname))
-    (if (null? cmd) (print "Unknown command, try 'help'.")
-      (if (< (len args) (second cmd)) (print (str "Give at least 2 arguments to " cname "."))
+    (if (null? cmd) "Unknown command, try 'help'."
+      (if (< (len args) (second cmd)) (str "Give at least 2 arguments to " cname ".")
         ((first cmd) args)))))
 
 ;; Define a file for readline and load it
@@ -51,4 +53,4 @@
   (let (inp (readline "[calc] "))
     (readline-add inp)
     (readline-save readlineFile)
-    (print (str "⇒ " (parseInput inp) EOL))))
+    (print "⇒ " (parseInput inp) EOL)))

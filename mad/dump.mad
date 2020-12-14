@@ -11,8 +11,8 @@
 ;; Return the string for defining the given function
 (defn funcToStr (f name)
   (str (if (macro? f) "(defmacro " "(defn ")
-    name " " (pstr (meta f "args")) " "
-    (pstr (meta f "body")) ")"))
+    name " " (prints (meta f "args")) " "
+    (prints (meta f "body")) ")"))
 
 ;; Write a hash-map of functions into a file
 (defn dumpFuncs (funcs filename)
