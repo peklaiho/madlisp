@@ -16,6 +16,7 @@ class Tokenizer
 
         $isString = false;
         $isComment = false;
+        $isEscape = false;
 
         $parens = [0, 0, 0];
         $parenIndexes = ['(' => 0, ')' => 0, '[' => 1, ']' => 1, '{' => 2, '}' => 2];
@@ -31,13 +32,25 @@ class Tokenizer
             $c = substr($a, $i, 1);
 
             if ($isString) {
-                // Inside string, add all characters
-                $current .= $c;
-
-                // Stop at first double quote
-                if ($c == '"') {
-                    // If previous character is not a backslash
-                    if (strlen($current) < 2 || substr($current, -2, 1) != "\\") {
+                if ($isEscape) {
+                    if ($c == 'n') {
+                        $current .= "\n";
+                    } elseif ($c == 'r') {
+                        $current .= "\r";
+                    } elseif ($c == 't') {
+                        $current .= "\t";
+                    } elseif ($c == "\\" || $c == '"') {
+                        $current .= $c;
+                    } else {
+                        throw new MadLispException("invalid escape sequence \\$c");
+                    }
+                    $isEscape = false;
+                } elseif ($c == "\\") {
+                    $isEscape = true;
+                } else {
+                    // Not handling escape sequence
+                    $current .= $c;
+                    if ($c == '"') {
                         $addCurrent();
                         $isString = false;
                     }
@@ -49,12 +62,12 @@ class Tokenizer
                 }
             } else {
                 // Not inside string or comment
-
                 if ($c == '"') {
                     // Start of string
                     $addCurrent();
                     $current .= $c;
                     $isString = true;
+                    $isEscape = false;
                 } elseif ($c == ';') {
                     // Start of comment
                     $addCurrent();
