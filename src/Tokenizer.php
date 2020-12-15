@@ -28,8 +28,17 @@ class Tokenizer
             }
         };
 
-        for ($i = 0; $i < strlen($a); $i++) {
-            $c = substr($a, $i, 1);
+        // Use mbstring extension if available to support Unicode characters
+        if (extension_loaded('mbstring')) {
+            $lenfn = 'mb_strlen';
+            $subfn = 'mb_substr';
+        } else {
+            $lenfn = 'strlen';
+            $subfn = 'substr';
+        }
+
+        for ($i = 0; $i < $lenfn($a); $i++) {
+            $c = $subfn($a, $i, 1);
 
             if ($isString) {
                 if ($isEscape) {

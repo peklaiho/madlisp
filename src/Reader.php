@@ -92,7 +92,11 @@ class Reader
         } elseif ($a === 'null') {
             return null;
         } elseif (substr($a, 0, 1) === '"') {
-            // remove quotes around string
+            // Remove quotes around string.
+            //
+            // Hopefully this should work correctly with Unicode strings as well,
+            // because we just want to remove one byte from beginning and end,
+            // so mb_substr should not be needed?
             return substr($a, 1, -1);
         } elseif (is_numeric($a)) {
             if (filter_var($a, FILTER_VALIDATE_INT) !== false) {

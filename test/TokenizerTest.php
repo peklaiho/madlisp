@@ -103,4 +103,31 @@ class TokenizerTest extends TestCase
         $result = $tokenizer->tokenize($input);
         $this->assertSame($expected, $result);
     }
+
+    public function unicodeProvider(): array
+    {
+        return [
+            ["(∫≈♡)", ['(', '∫≈♡', ')']],
+            [
+                "αβγδ\"εζηθ\"ικλμ;νξοπ\nρς[σ τ]υ{\"φ\":\"χ\"}ψω",
+                ['αβγδ', "\"εζηθ\"", 'ικλμ', 'ρς', '[', 'σ', 'τ', ']', 'υ', '{', '"φ"', '"χ"', '}', 'ψω']
+            ],
+            ["[←↑\"→↓\"⇐⇑⇒⇓]", ['[', '←↑', '"→↓"', '⇐⇑⇒⇓', ']']],
+        ];
+    }
+
+    /**
+     * Test Unicode inputs.
+     * @dataProvider unicodeProvider
+     */
+    public function testUnicode(string $input, array $expected)
+    {
+        if (!extension_loaded('mbstring')) {
+            $this->markTestSkipped('The mbstring extension is not available.');
+        }
+
+        $tokenizer = new Tokenizer();
+        $result = $tokenizer->tokenize($input);
+        $this->assertSame($expected, $result);
+    }
 }
