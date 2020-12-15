@@ -1,2 +1,5 @@
 ;; Measure how long it takes to execute f
 (defn timeFn (f) (let (st (mtime)) (f) (- (mtime) st)))
+
+;; Allow λ instead of fn for lambda
+(defmacro λ (args body) (quasiquote (fn (unquote args) (unquote body))))
