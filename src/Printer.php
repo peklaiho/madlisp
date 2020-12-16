@@ -52,6 +52,7 @@ class Printer
                 $a = str_replace("\\", "\\\\", $a);
                 $a = str_replace("\n", "\\n", $a);
                 $a = str_replace("\r", "\\r", $a);
+                $a = str_replace("\t", "\\t", $a);
                 $a = str_replace("\"", "\\\"", $a);
                 return '"' . $a . '"';
             } else {

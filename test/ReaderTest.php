@@ -7,7 +7,6 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\MadLispException;
 use MadLisp\Hash;
 use MadLisp\MList;
 use MadLisp\Reader;
