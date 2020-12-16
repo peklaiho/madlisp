@@ -89,7 +89,10 @@ class TokenizerTest extends TestCase
             ["aa\"bb\\\\\\\"cc\"dd", ['aa', "\"bb\\\"cc\"", 'dd']],
 
             // Test everything together
-            ["(abc<+=-_!?>\"str\n\\r;\\\"\";com\"ment\r{\"a\":\"b\"})", ['(', 'abc<+=-_!?>', "\"str\n\r;\"\"", '{', '"a"', '"b"', '}', ')']],
+            [
+                "(abc<+=-_!?>\"str\n\\r;\\\"\";com\"ment\r{\"a\":\"b\"})",
+                ['(', 'abc<+=-_!?>', "\"str\n\r;\"\"", '{', '"a"', '"b"', '}', ')']
+            ],
         ];
     }
 
