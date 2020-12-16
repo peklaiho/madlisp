@@ -101,6 +101,14 @@ class Tokenizer
                     // Other special characters
                     $addCurrent();
                     $tokens[] = $c;
+                } elseif ($c == '@') {
+                    // If the last token was ~ then add @ to it
+                    if (count($tokens) > 0 && $tokens[count($tokens) - 1] == '~') {
+                        $tokens[count($tokens) - 1] .= $c;
+                    } else {
+                        // Otherwise treat it like normal character
+                        $current .= $c;
+                    }
                 } else {
                     // All other characters
                     $current .= $c;

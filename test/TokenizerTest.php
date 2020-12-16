@@ -76,6 +76,9 @@ class TokenizerTest extends TestCase
             // Other non-alphabet characters are symbols
             ["(aa!@#$%^&*-_=+bb<>,./?\\|cc)", ['(', "aa!@#$%^&*-_=+bb<>,./?\\|cc", ')']],
 
+            // @ after ~ is single token, @ anywhere else is normal character
+            ['aa@~@@bb', ['aa@', '~@', '@bb']],
+
             // Strings
             ['"abc"', ['"abc"']],
             ['aa"bb"cc', ['aa', '"bb"', 'cc']],

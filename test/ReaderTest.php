@@ -28,6 +28,7 @@ class ReaderTest extends TestCase
             ["'", 'quote'],
             ['`', 'quasiquote'],
             ['~', 'unquote'],
+            ['~@', 'unquote-splice'],
         ];
     }
 

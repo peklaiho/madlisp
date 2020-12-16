@@ -27,6 +27,8 @@ class Reader
             return $this->readSpecialForm($tokens, $index, 'quasiquote');
         } elseif ($tokens[$index] == "~") {
             return $this->readSpecialForm($tokens, $index, 'unquote');
+        } elseif ($tokens[$index] == "~@") {
+            return $this->readSpecialForm($tokens, $index, 'unquote-splice');
         } elseif ($tokens[$index] == '(') {
             return $this->readList($tokens, $index);
         } elseif ($tokens[$index] == '[') {
