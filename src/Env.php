@@ -47,7 +47,7 @@ class Env extends Hash
         return $this->parent;
     }
 
-    public function getRoot(): ?Env
+    public function getRoot(): Env
     {
         return $this->parent ? $this->parent->getRoot() : $this;
     }
