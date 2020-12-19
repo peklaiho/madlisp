@@ -90,9 +90,11 @@ class Collections implements ILib
 
         // Get partial seq
 
-        $env->set('first', new CoreFunc('first', 'Return the first element of a sequence or null.', 1, 1,
-            fn (Seq $a) => $a->getData()[0] ?? null
-        ));
+        foreach (['car', 'first'] as $name) {
+            $env->set($name, new CoreFunc($name, 'Return the first element of a sequence or null.', 1, 1,
+                fn (Seq $a) => $a->getData()[0] ?? null
+            ));
+        }
 
         $env->set('second', new CoreFunc('second', 'Return the second element of a sequence or null.', 1, 1,
             fn (Seq $a) => $a->getData()[1] ?? null
@@ -116,11 +118,13 @@ class Collections implements ILib
             }
         ));
 
-        $env->set('tail', new CoreFunc('tail', 'Return new sequence containing all elements of argument except first.', 1, 1,
-            function (Seq $a) {
-                return $a::new(array_slice($a->getData(), 1));
-            }
-        ));
+        foreach (['cdr', 'tail'] as $name) {
+            $env->set($name, new CoreFunc($name, 'Return new sequence containing all elements of argument except first.', 1, 1,
+                function (Seq $a) {
+                    return $a::new(array_slice($a->getData(), 1));
+                }
+            ));
+        }
 
         $env->set('slice', new CoreFunc('slice', 'Return a slice of the given sequence. Second argument is offset and third is length.', 2, 3,
             function (Seq $a, int $offset, ?int $length = null) {
