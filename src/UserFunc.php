@@ -38,10 +38,7 @@ class UserFunc extends Func
     {
         $newEnv = new Env('apply', $this->tempEnv);
 
-        $bindings = $this->bindings->getData();
-        for ($i = 0; $i < count($bindings); $i++) {
-            $newEnv->set($bindings[$i]->getName(), $args[$i] ?? null);
-        }
+        Util::bindArguments($newEnv, $this->bindings->getData(), $args);
 
         return $newEnv;
     }

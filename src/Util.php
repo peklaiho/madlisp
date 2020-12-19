@@ -9,6 +9,22 @@ namespace MadLisp;
 
 class Util
 {
+    public static function bindArguments(Env $env, array $bindings, array $args): void
+    {
+        for ($i = 0; $i < count($bindings); $i++) {
+            if ($bindings[$i]->getName() == '&') {
+                if ($i < count($bindings) - 1) {
+                    $env->set($bindings[$i + 1]->getName(), new Vector(array_slice($args, $i)));
+                    return;
+                } else {
+                    throw new MadLispException('no binding after &');
+                }
+            } else {
+                $env->set($bindings[$i]->getName(), $args[$i] ?? null);
+            }
+        }
+    }
+
     public static function makeHash(array $args): Hash
     {
         if (count($args) % 2 == 1) {

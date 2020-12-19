@@ -241,9 +241,7 @@ class Evaller
                     $closure = function (...$args) use ($bindings, $env, $astData, $depth) {
                         $newEnv = new Env('closure', $env);
 
-                        for ($i = 0; $i < count($bindings); $i++) {
-                            $newEnv->set($bindings[$i]->getName(), $args[$i] ?? null);
-                        }
+                        Util::bindArguments($newEnv, $bindings, $args);
 
                         return $this->eval($astData[2], $newEnv, $depth + 1);
                     };
