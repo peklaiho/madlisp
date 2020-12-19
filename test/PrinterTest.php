@@ -47,10 +47,25 @@ class PrinterTest extends TestCase
     /**
      * @dataProvider notReadableProvider
      */
-    public function testPrintNotReadable($input, string $expected)
+    public function testPrintStringNotReadable($input, string $expected)
     {
         $printer = new Printer();
         $result = $printer->pstr($input, false);
+        $this->assertSame($expected, $result);
+    }
+
+    /**
+     * @dataProvider notReadableProvider
+     */
+    public function testPrintNotReadable($input, string $expected)
+    {
+        $printer = new Printer();
+
+        ob_start();
+        $printer->print($input, false);
+        $result = ob_get_contents();
+        ob_end_clean();
+
         $this->assertSame($expected, $result);
     }
 
@@ -69,10 +84,25 @@ class PrinterTest extends TestCase
     /**
      * @dataProvider readableProvider
      */
-    public function testPrintReadable($input, string $expected)
+    public function testPrintStringReadable($input, string $expected)
     {
         $printer = new Printer();
         $result = $printer->pstr($input, true);
+        $this->assertSame($expected, $result);
+    }
+
+    /**
+     * @dataProvider readableProvider
+     */
+    public function testPrintReadable($input, string $expected)
+    {
+        $printer = new Printer();
+
+        ob_start();
+        $printer->print($input, true);
+        $result = ob_get_contents();
+        ob_end_clean();
+
         $this->assertSame($expected, $result);
     }
 

@@ -16,7 +16,9 @@ use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Symbol;
 use MadLisp\Tokenizer;
+use MadLisp\UserFunc;
 use MadLisp\Vector;
+use MadLisp\Lib\Compare;
 use MadLisp\Lib\Math;
 
 class EvallerTest extends TestCase
@@ -188,12 +190,267 @@ class EvallerTest extends TestCase
         $evaller->eval($input, $env);
     }
 
+    public function testDebug()
+    {
+        $evaller = $this->getEvaller();
+
+        $this->assertFalse($evaller->getDebug());
+        $evaller->setDebug(true);
+        $this->assertTrue($evaller->getDebug());
+    }
+
+    // -------------------
+    // Tests special forms
+    // -------------------
+
+    public function andProvider(): array
+    {
+        return [
+            [[], true],
+            [[1, 2, 0, 3], 0],
+            [[1, 2, 3], 3]
+        ];
+    }
+
+    /**
+     * @dataProvider andProvider
+     */
+    public function testAnd(array $args, $expected)
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList(array_merge([new Symbol('and')], $args));
+
+        $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
+    public function caseProvider(): array
+    {
+        return [
+            [
+                [
+                    new MList([new Symbol('+'), 1, 2]),
+                    new MList([2, "two"]),
+                    new MList([3, "three"]),
+                    new MList([4, "four"])
+                ],
+                "three"
+            ],
+            [
+                [
+                    new MList([new Symbol('+'), 2, 3]),
+                    new MList([2, "two"]),
+                    new MList([3, "three"]),
+                    new MList([4, "four"]),
+                    new MList([new Symbol('else'), 'other'])
+                ],
+                "other"
+            ]
+        ];
+    }
+
+    /**
+     * @dataProvider caseProvider
+     */
+    public function testCase(array $args, $expected)
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList(array_merge([new Symbol('case')], $args));
+
+        $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
+    public function condProvider(): array
+    {
+        return [
+            [
+                [
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 2]), "two"]),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 4]), "four"]),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 6]), "six"]),
+                ],
+                "four"
+            ],
+            [
+                [
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 1]), "one"]),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 3]), "three"]),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 5]), "five"]),
+                    new MList([new Symbol('else'), 'other'])
+                ],
+                "other"
+            ]
+        ];
+    }
+
+    /**
+     * @dataProvider condProvider
+     */
+    public function testCond(array $args, $expected)
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $env->set('n', 4);
+
+        $input = new MList(array_merge([new Symbol('cond')], $args));
+
+        $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
+    public function testDef()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList([new Symbol('def'), new Symbol('abc'), 123]);
+
+        $evaller->eval($input, $env);
+
+        $this->assertSame($env->get('abc'), 123);
+    }
+
+    public function testEnv()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList([new Symbol('env')]);
+
+        $this->assertSame($env, $evaller->eval($input, $env));
+    }
+
+    public function testEval()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList([new Symbol('eval'), new MList([new Symbol('quote'), new MList([new Symbol('+'), 1, 2])])]);
+
+        $this->assertSame(3, $evaller->eval($input, $env));
+    }
+
+    public function testFn()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList([new Symbol('fn'), new MList([]), new MList([])]);
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertInstanceOf(UserFunc::class, $result);
+    }
+
+    public function ifProvider(): array
+    {
+        return [
+            [[new MList([new Symbol('<'), 1, 2]), "yes", "no"], "yes"],
+            [[new MList([new Symbol('>'), 1, 2]), "yes", "no"], "no"],
+
+            [[new MList([new Symbol('>'), 1, 2]), "yes"], null],
+        ];
+    }
+
+    /**
+     * @dataProvider ifProvider
+     */
+    public function testIf(array $args, $expected)
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList(array_merge([new Symbol('if')], $args));
+
+        $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
+    public function testLet()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList([new Symbol('let'), new MList([
+                new Symbol('a'), new MList([new Symbol('+'), 1, 2]),
+                new Symbol('b'), new MList([new Symbol('*'), new Symbol('a'), 3])
+            ]),
+            new MList([new Symbol('*'), new Symbol('b'), 4])
+        ]);
+
+        $this->assertSame(36, $evaller->eval($input, $env));
+    }
+
+    public function orProvider(): array
+    {
+        return [
+            [[], false],
+            [[0, false, 2, 3], 2],
+            [[0, 1], 1]
+        ];
+    }
+
+    /**
+     * @dataProvider orProvider
+     */
+    public function testOr(array $args, $expected)
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList(array_merge([new Symbol('or')], $args));
+
+        $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
+    public function testQuote()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList([new Symbol('quote'), new MList([new Symbol('+'), 1, 2])]);
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertInstanceOf(MList::class, $result);
+        $data = $result->getData();
+        $this->assertCount(3, $data);
+        $this->assertInstanceOf(Symbol::class, $data[0]);
+        $this->assertSame('+', $data[0]->getName());
+        $this->assertSame(1, $data[1]);
+        $this->assertSame(2, $data[2]);
+    }
+
+    public function testUndef()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $env->set('aa', 12);
+
+        $this->assertTrue($env->has('aa'));
+
+        $input = new MList([new Symbol('undef'), new Symbol('aa')]);
+
+        $evaller->eval($input, $env);
+
+        $this->assertFalse($env->has('aa'));
+    }
+
+    // -----------------
+    // End special forms
+    // -----------------
+
     private function getEnv(): Env
     {
         $env = new Env('env');
 
-        // Define some math functions for testing
+        // Define some functions for testing
         $lib = new Math();
+        $lib->register($env);
+        $lib = new Compare();
         $lib->register($env);
 
         return $env;
