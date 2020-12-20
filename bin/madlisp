@@ -2,7 +2,13 @@
 <?php
 
 $autoload = null;
-foreach ([__DIR__ . '/../../autoload.php', __DIR__ . '/../vendor/autoload.php', __DIR__ . '/vendor/autoload.php'] as $file) {
+$autoloadLocations = [
+    __DIR__ . '/vendor/autoload.php',
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php'
+];
+
+foreach ($autoloadLocations as $file) {
     if (file_exists($file)) {
         $autoload = $file;
         break;
