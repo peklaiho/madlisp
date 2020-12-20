@@ -1,13 +1,22 @@
 {
     "name": "maddy83/madlisp",
     "description": "Lisp interpreter for the MadLisp language.",
+    "keywords": [
+        "lisp"
+    ],
+    "homepage": "http://madlisp.com/",
     "license": "MIT",
     "authors": [
         {
             "name": "Pekka Laiho",
-            "email": "pekka.i.laiho@gmail.com"
+            "email": "pekka.i.laiho@gmail.com",
+            "homepage": "http://laihoconsulting.com/"
         }
     ],
+    "support": {
+        "source": "https://bitbucket.org/maddy83/madlisp/",
+        "docs": "http://madlisp.com/"
+    },
     "require": {
         "php": ">=7.4"
     },
@@ -18,5 +27,8 @@
         "psr-4": {
             "MadLisp\\": "src/"
         }
-    }
+    },
+    "bin": [
+        "bin/madlisp"
+    ]
 }
