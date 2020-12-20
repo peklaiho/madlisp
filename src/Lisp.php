@@ -24,6 +24,11 @@ class Lisp
         $this->env = $env;
     }
 
+    public function getEnv(): Env
+    {
+        return $this->env;
+    }
+
     public function print($value, bool $printReadable): void
     {
         $this->printer->print($value, $printReadable);
