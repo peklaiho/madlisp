@@ -1,11 +1,20 @@
 #!/usr/bin/env php
 <?php
 
-if (php_sapi_name() != 'cli') {
-    exit('Currently only cli usage is supported.');
+$autoload = null;
+foreach ([__DIR__ . '/../../autoload.php', __DIR__ . '/../vendor/autoload.php', __DIR__ . '/vendor/autoload.php'] as $file) {
+    if (file_exists($file)) {
+        $autoload = $file;
+        break;
+    }
 }
 
-require(__DIR__ . '/../vendor/autoload.php');
+if ($autoload) {
+    require($autoload);
+} else {
+    print('Unable to find Composer autoloader.' . PHP_EOL);
+    exit(1);
+}
 
 function ml_help()
 {
@@ -86,7 +95,7 @@ for ($i = 1; $i < $argc; $i++) {
         $debugMode = true;
     } elseif ($a == '-e') {
 
-    } elseif ($a == '-h') {
+    } elseif ($a == '-h' || $a == '--help') {
         ml_help(); // exit
     } elseif ($a == '-q') {
         $loadInit = false;
