@@ -40,7 +40,7 @@ class PrinterTest extends TestCase
 
             // Test strings
             ['abc', 'abc'],
-            ["a\\b\nc\rd\te\"f", "a\\b\nc\rd\te\"f"],
+            ["a\\b\nc\rd\te\"f\vg\0h", "a\\b\nc\rd\te\"f\vg\0h"],
         ];
     }
 
@@ -77,7 +77,7 @@ class PrinterTest extends TestCase
 
             // Test strings
             ['abc', '"abc"'],
-            ["a\\b\nc\rd\te\"f", "\"a\\\\b\\nc\\rd\\te\\\"f\""],
+            ["a\\b\nc\rd\te\"f\vg\0h", "\"a\\\\b\\nc\\rd\\te\\\"f\\vg\\0h\""],
         ];
     }
 

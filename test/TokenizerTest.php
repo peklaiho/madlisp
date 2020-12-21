@@ -58,8 +58,8 @@ class TokenizerTest extends TestCase
             ["\n", []],
             ["\r", []],
             [":", []],
-            [" \t\n\r: ", []],
-            [" aa\t\n\rbb:\r\ncc\t ", ['aa', 'bb', 'cc']],
+            [" \t\n\r\v\0: ", []],
+            [" aa\t\n\rbb:\r\ncc\t\v\0dd ", ['aa', 'bb', 'cc', 'dd']],
 
             // Comments
             [";comment", []],
@@ -93,8 +93,8 @@ class TokenizerTest extends TestCase
 
             // Test everything together
             [
-                "(abc<+=-_!?>\"str\n\\r;\\\"\";com\"ment\r{\"a\":\"b\"})",
-                ['(', 'abc<+=-_!?>', "\"str\n\r;\"\"", '{', '"a"', '"b"', '}', ')']
+                "(abc<+=-_!?>\"str\n\\r;\v\\\"\";com\"me\0nt\r{\"a\":\"b\"})",
+                ['(', 'abc<+=-_!?>', "\"str\n\r;\v\"\"", '{', '"a"', '"b"', '}', ')']
             ],
         ];
     }

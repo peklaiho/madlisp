@@ -48,6 +48,10 @@ class Tokenizer
                         $current .= "\r";
                     } elseif ($c == 't') {
                         $current .= "\t";
+                    } elseif ($c == 'v') {
+                        $current .= "\v";
+                    } elseif ($c == '0') {
+                        $current .= "\0";
                     } elseif ($c == "\\" || $c == '"') {
                         $current .= $c;
                     } else {
@@ -81,7 +85,7 @@ class Tokenizer
                     // Start of comment
                     $addCurrent();
                     $isComment = true;
-                } elseif ($c == ' ' || $c == "\t" || $c == "\n" || $c == "\r" || $c == ':') {
+                } elseif ($c == ' ' || $c == "\t" || $c == "\n" || $c == "\r" || $c == "\v" || $c == "\0" || $c == ':') {
                     // Whitespace and colon are ignored
                     $addCurrent();
                 } elseif ($c == '(' || $c == '[' || $c == '{') {
