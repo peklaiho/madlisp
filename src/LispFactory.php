@@ -25,6 +25,8 @@ class LispFactory
         // Register core libraries
         (new Lib\Collections())->register($env);
         (new Lib\Compare())->register($env);
+        (new Lib\Crypto())->register($env);
+        (new Lib\Encoding())->register($env);
         if (extension_loaded('json')) {
             (new Lib\Json())->register($env);
         }

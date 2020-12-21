@@ -142,5 +142,9 @@ class Math implements ILib
                 return $a;
             }
         ));
+
+        $env->set('rand-bytes', new CoreFunc('rand-bytes', 'Generate the number of random bytes as specified by the argument.', 1, 1,
+            fn (int $length) => random_bytes($length)
+        ));
     }
 }
