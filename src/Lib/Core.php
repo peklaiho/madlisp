@@ -19,6 +19,7 @@ use MadLisp\Reader;
 use MadLisp\Symbol;
 use MadLisp\Tokenizer;
 use MadLisp\UserFunc;
+use MadLisp\Vector;
 
 class Core implements ILib
 {
@@ -109,6 +110,24 @@ class Core implements ILib
                 function (int $time) {
                     usleep($time * 1000);
                     return null;
+                }
+            ));
+        }
+
+        if (!$this->safemode) {
+            $env->set('system', new CoreFunc('system', 'Execute a command on the system.', 1, 1,
+                function (string $command) {
+                    // Use passthru to capture the raw output
+
+                    ob_start();
+                    passthru($command, $status);
+                    $output = ob_get_contents();
+                    ob_end_clean();
+
+                    return new Vector([
+                        $status,
+                        $output
+                    ]);
                 }
             ));
         }
