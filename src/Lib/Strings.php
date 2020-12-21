@@ -15,6 +15,9 @@ class Strings implements ILib
 {
     public function register(Env $env): void
     {
+        // Note that some functions in the Collections library
+        // work for strings as well: empty?, len, reverse
+
         $env->set('EOL', \PHP_EOL);
 
         $env->set('trim', new CoreFunc('trim', 'Remove whitespace from beginning and end of string. Give characters to remove in optional second argument.', 1, 2,
@@ -107,6 +110,24 @@ class Strings implements ILib
 
         $env->set('suffix?', new CoreFunc('suffix?', 'Return true if the first argument ends with the second argument.', 2, 2,
             fn (string $str, string $end) => substr($str, strlen($str) - strlen($end)) === $end
+        ));
+
+        // Comparison functions
+
+        $env->set('strcmp', new CoreFunc('strcmp', 'Compare two strings.', 2, 2,
+            fn (string $a, string $b) => strcmp($a, $b)
+        ));
+
+        $env->set('strcasecmp', new CoreFunc('strcasecmp', 'Compare two strings case-insensitively.', 2, 2,
+            fn (string $a, string $b) => strcasecmp($a, $b)
+        ));
+
+        $env->set('strnatcmp', new CoreFunc('strnatcmp', 'Compare two strings using natural ordering.', 2, 2,
+            fn (string $a, string $b) => strnatcmp($a, $b)
+        ));
+
+        $env->set('strnatcasecmp', new CoreFunc('strnatcasecmp', 'Compare two strings case-insensitively using natural ordering.', 2, 2,
+            fn (string $a, string $b) => strnatcasecmp($a, $b)
         ));
 
         // If the mbstring extension is loaded,

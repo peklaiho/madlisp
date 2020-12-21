@@ -248,7 +248,15 @@ class Collections implements ILib
         ));
 
         $env->set('reverse', new CoreFunc('reverse', 'Create new sequence with reversed order.', 1, 1,
-            fn (Seq $a) => $a::new(array_reverse($a->getData()))
+            function ($a) {
+                if ($a instanceof Seq) {
+                    return $a::new(array_reverse($a->getData()));
+                } elseif (is_string($a)) {
+                    return strrev($a);
+                }
+
+                throw new MadLispException('argument to reverse is not sequence or string');
+            }
         ));
 
         // Hash map functions
