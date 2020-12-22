@@ -1,0 +1,16 @@
+
+;;
+;; Generic utility functions.
+;;
+
+;; Return first item of sequence, or null if it is empty.
+(defn first-or-null (seq) (if (empty? seq) null (first seq)))
+
+;; Split string by whitespace, removing empty strings.
+(defn split-ws (s) (re-split "/[\\s]+/" s))
+
+;; Split string by whitespace into first and rest.
+;; Useful for parsing a string for command name and arguments.
+(defn str-first-rest (s)
+  (let (words (split-ws s))
+    [(first-or-null words) (tail words)]))
