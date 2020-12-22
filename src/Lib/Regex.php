@@ -42,11 +42,20 @@ class Regex implements ILib
         ));
 
         $env->set('re-replace', new CoreFunc('re-replace', 'Replace matches to regular expression (first argument) by the second argument in the subject (third argument).', 3, 4,
-            fn (string $pattern, string $replacement, string $subject, int $limit = -1) => preg_replace($pattern, $replacement, $subject, $limit)
+            function (string $pattern, string $replacement, string $subject, int $limit = -1) {
+                return preg_replace($pattern, $replacement, $subject, $limit);
+            }
         ));
 
-        $env->set('re-split', new CoreFunc('re-split', 'Split second argument by regular expression given as first argument.', 2, 3,
-            fn (string $pattern, string $subject, int $limit = -1) => new Vector(preg_split($pattern, $subject, $limit, PREG_SPLIT_NO_EMPTY))
+        $env->set('re-split', new CoreFunc('re-split', 'Split second argument by regular expression given as first argument.', 2, 4,
+            function (string $pattern, string $subject, int $limit = -1, bool $removeEmpty = true) {
+                $flags = 0;
+                if ($removeEmpty) {
+                    $flags = PREG_SPLIT_NO_EMPTY;
+                }
+
+                return new Vector(preg_split($pattern, $subject, $limit, $flags));
+            }
         ));
     }
 }
