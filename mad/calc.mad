@@ -9,6 +9,9 @@
 ;; This script should be executed directly, not inside the repl.
 ;;
 
+;; Load some utility functions we use
+(load (str __DIR__ "util.mad"))
+
 ;; Define commands
 (defn cmdAdd (args) (apply + args))
 (defn cmdDiv (args) (apply / args))
@@ -31,7 +34,7 @@
 
 ;; Find the first command which starts with the given name, or null
 (defn findCmd (name)
-  (if (empty? name) null
+  (if (null? name) null
     (let (matches (filterh (fn (v k) (prefix? k name)) cmdMap))
       (if (empty? matches) null
         (get matches (first (keys matches)))))))
@@ -39,7 +42,7 @@
 ;; Split input by spaces, find command that matches the first word
 ;; and call it, giving the rest of the words as arguments.
 (defn parseInput (inp)
-  (let (words (split " " inp) cname (first words) args (tail words) cmd (findCmd cname))
+  (let (words (str-first-rest inp) cname (first words) args (second words) cmd (findCmd cname))
     (if (null? cmd) "Unknown command, try 'help'."
       (if (< (len args) (second cmd)) (str "Give at least 2 arguments to " cname ".")
         ((first cmd) args)))))
