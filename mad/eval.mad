@@ -1,0 +1,39 @@
+
+;;
+;; MadLisp interpreter written in... MadLisp?
+;;
+;; Inspired by "The Most Beautiful Program Ever Written" by William Byrd:
+;; https://youtu.be/OyfBQmvr2Hc
+;;
+;; Currently supports very minimal functionality. Note that the expression
+;; to evaluate must be quoted, because otherwise it is evaluated before
+;; eval-expr!
+;;
+;; Some examples:
+;; > (eval-expr '(+ 1 2 (* 3 4)) (make-envr))
+;; 15
+;; > (eval-expr '((fn (a) (* a 2)) 7) (make-envr))
+;; 14
+;;
+
+(defn eval-list (lst envr)
+  (case (let (item (first lst)) (if (symbol? item) (str item) "other"))
+    ["if" (if (eval-expr (second lst) envr)
+              (eval-expr (get lst 2) envr)
+              (eval-expr (get lst 3) envr))]
+    ["fn" (let (x (first (second lst)) body (get lst 2))
+            (fn (arg) (eval-expr body
+              (fn (y) (if (= x y) arg (envr y))))))]
+    [else (apply (eval-expr (first lst) envr)
+            (map (fn (a) (eval-expr a envr)) (tail lst)))]))
+
+(defn eval-expr (expr envr)
+  (cond
+    [(symbol? expr) (envr expr)]
+    [(list? expr) (if (empty? expr) expr (eval-list expr envr))]
+    [else expr]))
+
+(defn make-envr ()
+  (fn (key) (case key
+    (+ +) (- -) (* *) (/ /)
+    (else (throw (str key " not found in envr"))))))
