@@ -43,6 +43,19 @@ function ml_repl($lisp)
         readline_read_history($historyFile);
     }
 
+    // Tab-completion
+    $completions = array_keys($lisp->getEnv()->getRoot()->getData());
+    sort($completions);
+    readline_completion_function(function ($word, $start, $end) use ($completions) {
+        $matches = [];
+        foreach ($completions as $comp) {
+            if ($word == substr($comp, 0, strlen($word))) {
+                $matches[] = $comp;
+            }
+        }
+        return $matches;
+    });
+
     while (true) {
         $input = readline('> ');
 
