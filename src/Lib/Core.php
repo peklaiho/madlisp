@@ -75,6 +75,14 @@ class Core implements ILib
             ));
         }
 
+        $env->set('php-sapi', new CoreFunc('php-sapi', 'Get the name of the PHP SAPI.', 0, 0,
+            fn () => php_sapi_name()
+        ));
+
+        $env->set('php-version', new CoreFunc('php-version', 'Get the PHP version.', 0, 0,
+            fn () => phpversion()
+        ));
+
         if (!$this->safemode) {
             $env->set('print', new CoreFunc('print', 'Print arguments.', 0, -1,
                 function (...$args) {

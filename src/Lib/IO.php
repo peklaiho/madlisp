@@ -18,6 +18,13 @@ class IO implements ILib
         $env->set('DIRSEP', \DIRECTORY_SEPARATOR);
         $env->set('HOME', $_SERVER['HOME'] . \DIRECTORY_SEPARATOR);
 
+        if (php_sapi_name() == 'cli') {
+            // Define standard I/O streams
+            $env->set('STDIN', STDIN);
+            $env->set('STDOUT', STDOUT);
+            $env->set('STDERR', STDERR);
+        }
+
         $env->set('wd', new CoreFunc('wd', 'Get the current working directory.', 0, 0,
             fn () => getcwd() . \DIRECTORY_SEPARATOR
         ));
@@ -32,6 +39,10 @@ class IO implements ILib
 
         $env->set('dir?', new CoreFunc('dir?', 'Check if directory exists and is not a file.', 1, 1,
             fn (string $dir) => is_dir($dir)
+        ));
+
+        $env->set('tty?', new CoreFunc('tty?', 'Return true if the given file descriptor is a TTY.', 1, 1,
+            fn ($stream) => stream_isatty($stream)
         ));
 
         $env->set('fsize', new CoreFunc('fsize', 'Return the size of a file.', 1, 1,
