@@ -9,6 +9,8 @@ namespace MadLisp\Lib;
 
 use MadLisp\CoreFunc;
 use MadLisp\Env;
+use MadLisp\MadLispException;
+use MadLisp\Seq;
 
 class Math implements ILib
 {
@@ -116,6 +118,34 @@ class Math implements ILib
 
         $env->set('ceil', new CoreFunc('ceil', 'Return the next highest integer by rounding argument up.', 1, 1,
             fn ($a) => intval(ceil($a))
+        ));
+
+        $env->set('max', new CoreFunc('max', 'Find the largest of arguments.', 1, -1,
+            function (...$args) {
+                if (count($args) == 1) {
+                    $seq = $args[0];
+                    if (!($seq instanceof Seq)) {
+                        throw new MadLispException('single argument to max is not sequence');
+                    }
+                    return max($seq->getData());
+                } else {
+                    return max(...$args);
+                }
+            }
+        ));
+
+        $env->set('min', new CoreFunc('min', 'Find the smallest of arguments.', 1, -1,
+            function (...$args) {
+                if (count($args) == 1) {
+                    $seq = $args[0];
+                    if (!($seq instanceof Seq)) {
+                        throw new MadLispException('single argument to min is not sequence');
+                    }
+                    return min($seq->getData());
+                } else {
+                    return min(...$args);
+                }
+            }
         ));
 
         $env->set('pow', new CoreFunc('pow', 'Return the first argument raised to the power of second argument.', 2, 2,
