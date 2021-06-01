@@ -28,6 +28,7 @@ function ml_help()
     print("-d              :: Enable debug mode" . PHP_EOL);
     print("-e <code>       :: Evaluate code" . PHP_EOL);
     print("-h              :: Show this help" . PHP_EOL);
+    print("-p              :: Print out result" . PHP_EOL);
     print("-q              :: Skip the init file" . PHP_EOL);
     print("-r              :: Run the interactive REPL" . PHP_EOL);
     print("<file>          :: Evaluate file" . PHP_EOL);
@@ -98,6 +99,7 @@ $loadInit = true;
 $runRepl = false;
 $filename = null;
 $lastArg = null;
+$printResult = false;
 
 // Arguments after -- are passed to the script
 $dividerFound = false;
@@ -116,6 +118,8 @@ for ($i = 1; $i < $argc; $i++) {
 
     } elseif ($a == '-h' || $a == '--help') {
         ml_help(); // exit
+    } elseif ($a == '-p') {
+        $printResult = true;
     } elseif ($a == '-q') {
         $loadInit = false;
     } elseif ($a == '-r') {
@@ -154,13 +158,19 @@ if ($debugMode) {
 
 // Eval code passed via -e
 if ($evalCode) {
-    $lisp->rep($evalCode, false);
+    $result = $lisp->readEval($evalCode);
+    if ($printResult) {
+        $lisp->print($result, false);
+    }
 }
 
 // Eval file
 if ($filename) {
     if (is_readable($filename)) {
-        $lisp->rep("(load \"$filename\")", false);
+        $result = $lisp->readEval("(load \"$filename\")");
+        if ($printResult) {
+            $lisp->print($result, false);
+        }
     } else {
         print("Unable to read file: $filename" . PHP_EOL);
         exit(1);
@@ -175,5 +185,8 @@ if ($runRepl) {
 // Finally, if we had no other actions, read input from stdin
 if (!$evalCode && !$filename) {
     $input = file_get_contents('php://stdin');
-    $lisp->rep($input, false);
+    $result = $lisp->readEval($input);
+    if ($printResult) {
+        $lisp->print($result, false);
+    }
 }
