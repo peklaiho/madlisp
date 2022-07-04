@@ -55,6 +55,9 @@ class LispFactory
         $lisp->readEval('(def defn (macro (name args body) (quasiquote (def (unquote name) (fn (unquote args) (unquote body))))))');
         $lisp->readEval('(def defmacro (macro (name args body) (quasiquote (def (unquote name) (macro (unquote args) (unquote body))))))');
 
+        $lisp->readEval('(def when (macro (test body) (quasiquote (if (unquote test) (unquote body) null))))');
+        $lisp->readEval('(def unless (macro (test body) (quasiquote (if (unquote test) null (unquote body)))))');
+
         // Separate environment for user-defined stuff
         $lisp->setEnv(new Env('user', $env));
 
