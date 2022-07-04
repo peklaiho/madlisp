@@ -72,6 +72,10 @@ class Collections implements ILib
             }
         ));
 
+        $env->set('contains?', new CoreFunc('contains?', 'Return true if first argument (collection) contains the second argument. Use optional third argument for strict comparison.', 2, 3,
+            fn (Seq $a, $b, bool $strict = false) => in_array($b, $a->getData(), $strict)
+        ));
+
         $env->set('get', new CoreFunc('get', 'Get the item from first argument (collection) by using the second argument as index or key.', 2, 2,
             fn (Collection $a, $b) => $a->get($b)
         ));
