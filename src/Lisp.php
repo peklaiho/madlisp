@@ -39,13 +39,13 @@ class Lisp
         return $this->printer->pstr($value, $printReadable);
     }
 
-    public function readEval(string $input)
+    public function readEval(string $input, ?Env $customEnv = null)
     {
         $tokens = $this->tokenizer->tokenize($input);
 
         $expr = $this->reader->read($tokens);
 
-        return $this->eval->eval($expr, $this->env);
+        return $this->eval->eval($expr, $customEnv ? $customEnv : $this->env);
     }
 
     // read, eval, print
