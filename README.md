@@ -42,6 +42,10 @@ $ vendor/bin/madlisp mylisp.mad
 
 The full [documentation](http://madlisp.com/) is available on the project website.
 
+## Status
+
+The language seems stable at this point so I am releasing it as 1.0. Please report any issues.
+
 ## License
 
 [MIT](https://bitbucket.org/maddy83/madlisp/src/master/LICENSE)
