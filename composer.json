@@ -1,5 +1,5 @@
 {
-    "name": "maddy83/madlisp",
+    "name": "peklaiho/madlisp",
     "description": "Lisp interpreter for the MadLisp language.",
     "keywords": [
         "lisp"
@@ -14,7 +14,7 @@
         }
     ],
     "support": {
-        "source": "https://bitbucket.org/maddy83/madlisp/",
+        "source": "https://github.com/peklaiho/madlisp",
         "docs": "http://madlisp.com/"
     },
     "require": {

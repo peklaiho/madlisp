@@ -13,7 +13,7 @@ Create a new directory and require the project using composer:
 ```text
 $ mkdir mylisp
 $ cd mylisp
-$ composer require maddy83/madlisp
+$ composer require peklaiho/madlisp
 ```
 
 Use the `vendor/bin/madlisp` executable to start the interpreter. Start the REPL with the `-r` option:
@@ -48,4 +48,4 @@ The language seems stable at this point so I am releasing it as 1.0. Please repo
 
 ## License
 
-[MIT](https://bitbucket.org/maddy83/madlisp/src/master/LICENSE)
+MIT
