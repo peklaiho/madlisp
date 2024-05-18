@@ -23,6 +23,9 @@
     "require-dev": {
         "phpunit/phpunit": "^9.5"
     },
+    "replace": {
+        "maddy83/madlisp": "^1.0"
+    },
     "autoload": {
         "psr-4": {
             "MadLisp\\": "src/"
