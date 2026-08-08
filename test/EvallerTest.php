@@ -2,11 +2,12 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 use PHPUnit\Framework\TestCase;
 
+use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Hash;
@@ -35,7 +36,7 @@ class EvallerTest extends TestCase
         $this->assertSame(null, $evaller->eval(null, $env));
         $this->assertSame(123, $evaller->eval(123, $env));
         $this->assertSame(4.56, $evaller->eval(4.56, $env));
-        $this->assertSame("abc", $evaller->eval("abc", $env));
+        $this->assertSame('abc', $evaller->eval('abc', $env));
 
         $obj = new \stdClass();
         $this->assertSame($obj, $evaller->eval($obj, $env));
@@ -132,9 +133,9 @@ class EvallerTest extends TestCase
         $evaller = $this->getEvaller();
 
         $input = new Hash([
-            "aa" => new MList([new Symbol('+'), 1, 2]),
-            "bb" => new Hash([
-                "cc" => new MList([new Symbol('+'), 3, 4])
+            'aa' => new MList([new Symbol('+'), 1, 2]),
+            'bb' => new Hash([
+                'cc' => new MList([new Symbol('+'), 3, 4])
             ])
         ]);
 
@@ -228,24 +229,36 @@ class EvallerTest extends TestCase
     public function caseProvider(): array
     {
         return [
+            // basic match
             [
                 [
                     new MList([new Symbol('+'), 1, 2]),
-                    new MList([2, "two"]),
-                    new MList([3, "three"]),
-                    new MList([4, "four"])
+                    new MList([2, 'two']),
+                    new MList([3, 'three']),
+                    new MList([4, 'four'])
                 ],
-                "three"
+                'three'
             ],
+            // non-strict case matches number as a string
+            [
+                [
+                    new MList([new Symbol('+'), 1, 2]),
+                    new MList(['2', 'two']),
+                    new MList(['3', 'three']),
+                    new MList(['4', 'four'])
+                ],
+                'three'
+            ],
+            // test else
             [
                 [
                     new MList([new Symbol('+'), 2, 3]),
-                    new MList([2, "two"]),
-                    new MList([3, "three"]),
-                    new MList([4, "four"]),
+                    new MList([2, 'two']),
+                    new MList([3, 'three']),
+                    new MList([4, 'four']),
                     new MList([new Symbol('else'), 'other'])
                 ],
-                "other"
+                'other'
             ]
         ];
     }
@@ -263,25 +276,76 @@ class EvallerTest extends TestCase
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
 
+    public function caseStrictProvider(): array
+    {
+        return [
+            // basic match
+            [
+                [
+                    new MList([new Symbol('+'), 1, 2]),
+                    new MList([2, 'two']),
+                    new MList([3, 'three']),
+                    new MList([4, 'four'])
+                ],
+                'three'
+            ],
+            // strict case does NOT match number as a string
+            // check that the non-matching case returns null
+            [
+                [
+                    new MList([new Symbol('+'), 1, 2]),
+                    new MList(['2', 'two']),
+                    new MList(['3', 'three']),
+                    new MList(['4', 'four'])
+                ],
+                null
+            ],
+            // test else
+            [
+                [
+                    new MList([new Symbol('+'), 2, 3]),
+                    new MList([2, 'two']),
+                    new MList([3, 'three']),
+                    new MList([4, 'four']),
+                    new MList([new Symbol('else'), 'other'])
+                ],
+                'other'
+            ]
+        ];
+    }
+
+    /**
+     * @dataProvider caseStrictProvider
+     */
+    public function testCaseStrict(array $args, $expected)
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList(array_merge([new Symbol('case-strict')], $args));
+
+        $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
     public function condProvider(): array
     {
         return [
             [
                 [
-                    new MList([new MList([new Symbol('='), new Symbol('n'), 2]), "two"]),
-                    new MList([new MList([new Symbol('='), new Symbol('n'), 4]), "four"]),
-                    new MList([new MList([new Symbol('='), new Symbol('n'), 6]), "six"]),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 2]), 'two']),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 4]), 'four']),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 6]), 'six']),
                 ],
-                "four"
+                'four'
             ],
             [
                 [
-                    new MList([new MList([new Symbol('='), new Symbol('n'), 1]), "one"]),
-                    new MList([new MList([new Symbol('='), new Symbol('n'), 3]), "three"]),
-                    new MList([new MList([new Symbol('='), new Symbol('n'), 5]), "five"]),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 1]), 'one']),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 3]), 'three']),
+                    new MList([new MList([new Symbol('='), new Symbol('n'), 5]), 'five']),
                     new MList([new Symbol('else'), 'other'])
                 ],
-                "other"
+                'other'
             ]
         ];
     }
@@ -311,6 +375,25 @@ class EvallerTest extends TestCase
         $evaller->eval($input, $env);
 
         $this->assertSame($env->get('abc'), 123);
+    }
+
+    public function testDo()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        // Test that func gets called
+        $funcCalls = 0;
+        $func = new CoreFunc('test', '', 0, 0, function () use (&$funcCalls) {
+            $funcCalls++;
+        });
+
+        $input = new MList([new Symbol('do'), new MList([$func]), new MList([new Symbol('+'), 3, 4])]);
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertSame(1, $funcCalls);
+        $this->assertSame(7, $result);
     }
 
     public function testEnv()
@@ -343,15 +426,29 @@ class EvallerTest extends TestCase
         $result = $evaller->eval($input, $env);
 
         $this->assertInstanceOf(UserFunc::class, $result);
+        $this->assertFalse($result->isMacro());
+    }
+
+    public function testMacro()
+    {
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $input = new MList([new Symbol('macro'), new MList([]), new MList([])]);
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertInstanceOf(UserFunc::class, $result);
+        $this->assertTrue($result->isMacro());
     }
 
     public function ifProvider(): array
     {
         return [
-            [[new MList([new Symbol('<'), 1, 2]), "yes", "no"], "yes"],
-            [[new MList([new Symbol('>'), 1, 2]), "yes", "no"], "no"],
+            [[new MList([new Symbol('<'), 1, 2]), 'yes', 'no'], 'yes'],
+            [[new MList([new Symbol('>'), 1, 2]), 'yes', 'no'], 'no'],
 
-            [[new MList([new Symbol('>'), 1, 2]), "yes"], null],
+            [[new MList([new Symbol('>'), 1, 2]), 'yes'], null],
         ];
     }
 
@@ -381,6 +478,26 @@ class EvallerTest extends TestCase
         ]);
 
         $this->assertSame(36, $evaller->eval($input, $env));
+    }
+
+    public function testLoad()
+    {
+        $baseFile = __FILE__;
+        $baseDir = __DIR__;
+
+        $contents = '(def adder (fn (a b) (+ a b))) (let (c 3 d 4) (adder c d))';
+
+        $filename = tempnam('/tmp', 'madlisp-test');
+        file_put_contents($filename, $contents);
+
+        $input = new MList([new Symbol('load'), $filename]);
+
+        $env = $this->getEnv();
+        $evaller = $this->getEvaller();
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertSame(7, $result);
     }
 
     public function orProvider(): array
@@ -446,6 +563,9 @@ class EvallerTest extends TestCase
     private function getEnv(): Env
     {
         $env = new Env('env');
+
+        $env->set('__FILE__', null);
+        $env->set('__DIR__', null);
 
         // Define some functions for testing
         $lib = new Math();
