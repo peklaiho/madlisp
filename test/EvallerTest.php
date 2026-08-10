@@ -200,9 +200,9 @@ class EvallerTest extends TestCase
         $this->assertTrue($evaller->getDebug());
     }
 
-    // -------------------
-    // Tests special forms
-    // -------------------
+    // ---
+    // Special form: and
+    // ---
 
     public function andProvider(): array
     {
@@ -224,6 +224,10 @@ class EvallerTest extends TestCase
 
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
+
+    // ---
+    // Special forms: case, case-strict
+    // ---
 
     public function caseProvider(): array
     {
@@ -324,6 +328,52 @@ class EvallerTest extends TestCase
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
 
+    public function caseErrorProvider(): array
+    {
+        $tests = [];
+
+        // Test both case and case-strict
+        foreach (['case', 'case-strict'] as $type) {
+            $tests[] = [
+                [$type],
+                "$type requires at least 2 arguments"
+            ];
+            $tests[] = [
+                [$type, 1],
+                "$type requires at least 2 arguments"
+            ];
+            $tests[] = [
+                [$type, 1, 2],
+                "argument to $type is not seq"
+            ];
+            $tests[] = [
+                [$type, 1, [2]],
+                "clause for $type requires at least 2 arguments"
+            ];
+        }
+
+        return $tests;
+    }
+
+    /**
+     * @dataProvider caseErrorProvider
+     */
+    public function testCaseExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: cond
+    // ---
+
     public function condProvider(): array
     {
         return [
@@ -361,6 +411,43 @@ class EvallerTest extends TestCase
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
 
+    public function condErrorProvider(): array
+    {
+        return [
+            [
+                ['cond'],
+                'cond requires at least 1 argument'
+            ],
+            [
+                ['cond', 1],
+                'argument to cond is not seq'
+            ],
+            [
+                ['cond', [1]],
+                'clause for cond requires at least 2 arguments'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider condErrorProvider
+     */
+    public function testCondExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: def
+    // ---
+
     public function testDef()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -371,6 +458,51 @@ class EvallerTest extends TestCase
 
         $this->assertSame($env->get('abc'), 123);
     }
+
+    public function defErrorProvider(): array
+    {
+        return [
+            [
+                ['def', 1],
+                'def requires exactly 2 arguments'
+            ],
+            [
+                ['def', 1, 2, 3],
+                'def requires exactly 2 arguments'
+            ],
+            [
+                ['def', 1, 2],
+                'first argument to def is not symbol'
+            ],
+            [
+                ['def', '__FILE__', 'abc'],
+                'attempt to def reserved symbol __FILE__'
+            ],
+            [
+                ['def', '__DIR__', 'abc'],
+                'attempt to def reserved symbol __DIR__'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider defErrorProvider
+     */
+    public function testDefExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: do
+    // ---
 
     public function testDo()
     {
@@ -390,6 +522,10 @@ class EvallerTest extends TestCase
         $this->assertSame(7, $result);
     }
 
+    // ---
+    // Special form: env
+    // ---
+
     public function testEnv()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -398,6 +534,22 @@ class EvallerTest extends TestCase
 
         $this->assertSame($env, $evaller->eval($input, $env));
     }
+
+    public function testEnvWithArg()
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('env does not take arguments');
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm(['env', 1]);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: eval
+    // ---
 
     public function testEval()
     {
@@ -408,6 +560,33 @@ class EvallerTest extends TestCase
 
         $this->assertSame(3, $evaller->eval($input, $env));
     }
+
+    public function evalErrorProvider(): array
+    {
+        return [
+            [['eval']],
+            [['eval', 1, 2]],
+        ];
+    }
+
+    /**
+     * @dataProvider evalErrorProvider
+     */
+    public function testEvalExceptions(array $data)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('eval requires exactly 1 argument');
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special forms: fn, macro
+    // ---
 
     public function testFn()
     {
@@ -433,6 +612,52 @@ class EvallerTest extends TestCase
         $this->assertTrue($result->isMacro());
     }
 
+    public function fnErrorProvider(): array
+    {
+        $tests = [];
+
+        // Test both fn and macro
+        foreach (['fn', 'macro'] as $type) {
+            $tests[] = [
+                [$type, 1],
+                "$type requires exactly 2 arguments"
+            ];
+            $tests[] = [
+                [$type, 1, 2, 3],
+                "$type requires exactly 2 arguments"
+            ];
+            $tests[] = [
+                [$type, 1, 2],
+                "first argument to $type is not seq"
+            ];
+            $tests[] = [
+                [$type, [1], 2],
+                "binding key for $type is not symbol"
+            ];
+        }
+
+        return $tests;
+    }
+
+    /**
+     * @dataProvider fnErrorProvider
+     */
+    public function testFnExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: if
+    // ---
+
     public function ifProvider(): array
     {
         return [
@@ -455,6 +680,37 @@ class EvallerTest extends TestCase
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
 
+    public function ifErrorProvider(): array
+    {
+        return [
+            [
+                ['if'],
+                ['if', 1],
+                // 2 or 3 args is ok
+                ['if', 1, 2, 3, 4],
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider ifErrorProvider
+     */
+    public function testIfExceptions(array $data)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('if requires 2 or 3 arguments');
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: let
+    // ---
+
     public function testLet()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -469,6 +725,47 @@ class EvallerTest extends TestCase
 
         $this->assertSame(36, $evaller->eval($input, $env));
     }
+
+    public function letErrorProvider(): array
+    {
+        return [
+            [
+                ['let', 1],
+                'let requires at least 2 arguments'
+            ],
+            [
+                ['let', 1, 2],
+                'first argument to let is not seq'
+            ],
+            [
+                ['let', ['a'], 1],
+                'uneven number of bindings for let'
+            ],
+            [
+                ['let', [1, 2], 1],
+                'binding key for let is not symbol'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider letErrorProvider
+     */
+    public function testLetExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: load
+    // ---
 
     public function testLoad()
     {
@@ -492,6 +789,9 @@ class EvallerTest extends TestCase
             $filename,
             '/tmp/',
         ], $result->getData());
+
+        // delete the temporary file
+        unlink($filename);
     }
 
     public function testLoadDisabledInSafeMode()
@@ -505,6 +805,47 @@ class EvallerTest extends TestCase
 
         $evaller->eval($input, $env);
     }
+
+    public function loadErrorProvider(): array
+    {
+        return [
+            [
+                ['load'],
+                'load requires exactly 1 argument'
+            ],
+            [
+                ['load', 1, 2],
+                'load requires exactly 1 argument'
+            ],
+            [
+                ['load', 1],
+                'first argument to load is not string'
+            ],
+            [
+                ['load', '"file-that-does-not-exist"'],
+                'unable to read file file-that-does-not-exist'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider loadErrorProvider
+     */
+    public function testLoadExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: macroexpand
+    // ---
 
     public function testMacroExpand()
     {
@@ -525,6 +866,39 @@ class EvallerTest extends TestCase
         $expected = $this->buildForm(['def', 'adder', ['fn', ['a', 'b'], ['+', 'a', 'b']]]);
         $this->assertSameForm($expected, $result);
     }
+
+    public function macroExpandErrorProvider(): array
+    {
+        return [
+            [
+                ['macroexpand'],
+                'macroexpand requires exactly 1 argument'
+            ],
+            [
+                ['macroexpand', 1, 2],
+                'macroexpand requires exactly 1 argument'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider macroExpandErrorProvider
+     */
+    public function testMacroExpandExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: meta
+    // ---
 
     public function testMetaForEnv()
     {
@@ -581,6 +955,64 @@ class EvallerTest extends TestCase
         $this->assertSameForm($expected, $result);
     }
 
+    public function metaErrorProvider(): array
+    {
+        return [
+            [
+                ['meta'],
+                'meta requires exactly 2 arguments'
+            ],
+            [
+                ['meta', 1],
+                'meta requires exactly 2 arguments'
+            ],
+            [
+                ['meta', 1, 2, 3],
+                'meta requires exactly 2 arguments'
+            ],
+            [
+                ['meta', 1, 2],
+                'third argument to meta is not string'
+            ],
+            [
+                ['meta', 1, '"unknown"'],
+                'unknown entity for meta'
+            ],
+            // errors for env type
+            [
+                ['meta', ['env'], '"unknown"'],
+                'unknown attribute for meta'
+            ],
+            // errors for user funcs
+            [
+                ['meta', ['fn', [], [1]], '"unknown"'],
+                'unknown attribute for meta'
+            ],
+            [
+                ['meta', ['fn', [], [1]], '"def"'],
+                'no name for def in meta'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider metaErrorProvider
+     */
+    public function testMetaExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: or
+    // ---
+
     public function orProvider(): array
     {
         return [
@@ -601,6 +1033,10 @@ class EvallerTest extends TestCase
 
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
+
+    // ---
+    // Special forms: quote, quasiquote, quasiquote-expand
+    // ---
 
     public function testQuote()
     {
@@ -680,6 +1116,61 @@ class EvallerTest extends TestCase
         $this->assertSameForm($expected, $result);
     }
 
+    public function quoteErrorProvider(): array
+    {
+        $tests = [];
+
+        // Test both fn and macro
+        foreach (['quote', 'quasiquote', 'quasiquote-expand'] as $type) {
+            $tests[] = [
+                [$type],
+                "$type requires exactly 1 argument"
+            ];
+            $tests[] = [
+                [$type, 1, 2],
+                "$type requires exactly 1 argument"
+            ];
+        }
+
+        $tests[] = [
+            ['quasiquote', ['unquote']],
+            'unquote requires exactly 1 argument'
+        ];
+        $tests[] = [
+            ['quasiquote', ['unquote', 1, 2]],
+            'unquote requires exactly 1 argument'
+        ];
+
+        $tests[] = [
+            ['quasiquote', [['unquote-splice']]],
+            'unquote-splice requires exactly 1 argument'
+        ];
+        $tests[] = [
+            ['quasiquote', [['unquote-splice', 1, 2]]],
+            'unquote-splice requires exactly 1 argument'
+        ];
+
+        return $tests;
+    }
+
+    /**
+     * @dataProvider quoteErrorProvider
+     */
+    public function testQuoteExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: try
+    // ---
+
     public function testTryUserException()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -705,6 +1196,71 @@ class EvallerTest extends TestCase
         $this->assertSame('DivisionByZeroError', $result);
     }
 
+    public function tryErrorProvider(): array
+    {
+        return [
+            [
+                ['try'],
+                'try requires exactly 2 arguments'
+            ],
+            [
+                ['try', 1],
+                'try requires exactly 2 arguments'
+            ],
+            [
+                ['try', 1, 2, 3],
+                'try requires exactly 2 arguments'
+            ],
+            [
+                ['try', 1, 2],
+                'second argument to try is not seq'
+            ],
+            // invalid forms for catch
+            // less than 3 elements
+            [
+                ['try', 1, [1, 2]],
+                'invalid form for catch'
+            ],
+            // more than 3 elements
+            [
+                ['try', 1, [1, 2, 3, 4]],
+                'invalid form for catch'
+            ],
+            // first or second arg in catch not a symbol
+            [
+                ['try', 1, ['a', 0, 1]],
+                'invalid form for catch'
+            ],
+            [
+                ['try', 1, [0, 'a', 1]],
+                'invalid form for catch'
+            ],
+            // first arg of catch has wrong name
+            [
+                ['try', 1, ['cat', 'a', 1]],
+                'invalid form for catch'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider tryErrorProvider
+     */
+    public function testTryExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: undef
+    // ---
+
     public function testUndef()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -719,6 +1275,42 @@ class EvallerTest extends TestCase
 
         $this->assertFalse($env->has('aa'));
     }
+
+    public function undefErrorProvider(): array
+    {
+        return [
+            [
+                ['undef'],
+                'undef requires exactly 1 argument'
+            ],
+            [
+                ['undef', 1, 2],
+                'undef requires exactly 1 argument'
+            ],
+            [
+                ['undef', 1],
+                'first argument to undef is not symbol'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider undefErrorProvider
+     */
+    public function testUndefExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+        $evaller->eval($input, $env);
+    }
+
+    // ---
+    // Special form: while
+    // ---
 
     public function testWhile()
     {
@@ -743,8 +1335,36 @@ class EvallerTest extends TestCase
         $this->assertSame(64, $result);
     }
 
+    public function whileErrorProvider(): array
+    {
+        return [
+            [
+                ['while'],
+                'while requires at least 2 arguments'
+            ],
+            [
+                ['while', 1],
+                'while requires at least 2 arguments'
+            ],
+        ];
+    }
+
+    /**
+     * @dataProvider whileErrorProvider
+     */
+    public function testWhileExceptions(array $data, string $message)
+    {
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm($data);
+        $evaller->eval($input, $env);
+    }
+
     // -----------------
-    // End special forms
+    // Private functions
     // -----------------
 
     private function getEnvAndEvaller(bool $safemode = false): array
