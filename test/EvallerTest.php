@@ -126,6 +126,25 @@ class EvallerTest extends TestCase
         $this->assertSame(6, $data2[2]);
     }
 
+    public function testEvalVectorSymbolLookup()
+    {
+        // Test symbol lookup works inside a vector
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm(['def', 'foo', 10]);
+        $evaller->eval($input, $env);
+
+        $input = $this->buildForm(['foo', ['+', 'foo', 1]], Vector::class);
+        $result = $evaller->eval($input, $env);
+
+        $this->assertInstanceOf(Vector::class, $result);
+        $data = $result->getData();
+        $this->assertCount(2, $data);
+        $this->assertSame(10, $data[0]);
+        $this->assertSame(11, $data[1]);
+    }
+
     public function testEvalHash()
     {
         // Evaluating a hash-map returns a new hash-map where the values are evaluated
@@ -151,6 +170,36 @@ class EvallerTest extends TestCase
         $data2 = $data['bb']->getData();
         $this->assertCount(1, $data2);
         $this->assertSame(7, $data2['cc']);
+    }
+
+    public function testEvalHashSymbolLookup()
+    {
+        // Test symbol lookup works inside a hash
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm(['def', 'foo', 10]);
+        $evaller->eval($input, $env);
+
+        $input = new Hash([
+            'foo' => new Symbol('foo'),
+            'nested' => new Vector([
+                new Symbol('foo')
+            ])
+        ]);
+        $result = $evaller->eval($input, $env);
+
+        // Also tests that the hash key 'foo' was not changed
+
+        $this->assertInstanceOf(Hash::class, $result);
+        $data = $result->getData();
+        $this->assertCount(2, $data);
+        $this->assertSame(10, $data['foo']);
+        $nested = $data['nested'];
+        $this->assertInstanceOf(Vector::class, $nested);
+        $data = $nested->getData();
+        $this->assertCount(1, $data);
+        $this->assertSame(10, $data[0]);
     }
 
     public function testEvalList()
@@ -223,6 +272,16 @@ class EvallerTest extends TestCase
         $input = new MList(array_merge([new Symbol('and')], $args));
 
         $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
+    // Test that if first arg is falsy, second arg is never evaluated
+    public function testAndShortCircuit()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm(['and', false, ['throw', '"error"']]);
+
+        $this->assertFalse($evaller->eval($input, $env));
     }
 
     // ---
@@ -535,6 +594,64 @@ class EvallerTest extends TestCase
         $this->assertSame($env, $evaller->eval($input, $env));
     }
 
+    public function testEnvInsideFn()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // Test that env returns the function invocation environment
+
+        // ((fn (x) (env)) 10)
+        $input = $this->buildForm([['fn', ['x'], ['env']], 10]);
+        $result = $evaller->eval($input, $env);
+
+        $this->assertInstanceOf(Env::class, $result);
+        $this->assertNotSame($env, $result);
+        $this->assertSame($env, $result->getParent());
+        $this->assertSame(10, $result->get('x'));
+    }
+
+    public function testEnvInsideLet()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // Test that env returns the environment of let
+
+        // (let (x 10) (env))
+        $input = $this->buildForm(['let', ['x', 10], ['env']]);
+        $result = $evaller->eval($input, $env);
+
+        $this->assertInstanceOf(Env::class, $result);
+        $this->assertNotSame($env, $result);
+        $this->assertSame($env, $result->getParent());
+        $this->assertSame(10, $result->get('x'));
+    }
+
+    public function testEnvUsesDefiningScope()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // Verify that a function uses the environment where it was defined,
+        // not the environment of the call site.
+
+        // (let (x 10)
+        //   (def get-env (fn () (env)))
+        //   (let (x 20)
+        //     (get-env)))
+        $input = $this->buildForm(
+            ['let', ['x', 10],
+                ['def', 'get-env', ['fn', [], ['env']]],
+                ['let', ['x', 20],
+                    ['get-env']]]
+        );
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertInstanceOf(Env::class, $result);
+        $this->assertNotSame($env, $result);
+        $this->assertSame($env, $result->getParent()->getParent());
+        $this->assertSame(10, $result->get('x'));
+    }
+
     public function testEnvWithArg()
     {
         $this->expectException(MadLispException::class);
@@ -588,7 +705,7 @@ class EvallerTest extends TestCase
     // Special forms: fn, macro
     // ---
 
-    public function testFn()
+    public function testCreateFn()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
 
@@ -600,7 +717,118 @@ class EvallerTest extends TestCase
         $this->assertFalse($result->isMacro());
     }
 
-    public function testMacro()
+    public function testCallFn()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // ((fn (a b) (+ a b)) 3 4)
+        $input = $this->buildForm([['fn', ['a', 'b'], ['+', 'a', 'b']], 3, 4]);
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertSame(7, $result);
+    }
+
+    public function testFnCapturesValue()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // Define a function that captures a value from its defining scope
+        // (def quadrupler (let (a 4) (fn (b) (* a b))))
+        $input = $this->buildForm(['def', 'quadrupler', ['let', ['a', 4], ['fn', ['b'], ['*', 'a', 'b']]]]);
+        $evaller->eval($input, $env);
+
+        // Verify that the function still uses the captured value outside of the let that defined it
+        // (quadrupler 3)
+        $input = $this->buildForm(['quadrupler', 3]);
+        $result = $evaller->eval($input, $env);
+        $this->assertSame(12, $result);
+
+        // Verify that a caller's binding with the same name does not
+        // override the value captured from the defining scope
+        // (let (a 100) (quadrupler 3))
+        $input = $this->buildForm(['let', ['a', 100], ['quadrupler', 3]]);
+        $result = $evaller->eval($input, $env);
+        $this->assertSame(12, $result);
+    }
+
+    // Test function that returns a function
+    public function testFnReturnsFn()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // (def multiplier (fn (a) (fn (b) (* a b))))
+        $input = $this->buildForm(['def', 'multiplier', ['fn', ['a'], ['fn', ['b'], ['*', 'a', 'b']]]]);
+        $evaller->eval($input, $env);
+
+        // ((multiplier 3) 4)
+        $input = $this->buildForm([['multiplier', 3], 4]);
+        $result = $evaller->eval($input, $env);
+        $this->assertSame(12, $result);
+
+        // ((multiplier 6) 7)
+        $input = $this->buildForm([['multiplier', 6], 7]);
+        $result = $evaller->eval($input, $env);
+        $this->assertSame(42, $result);
+    }
+
+    // Test function that takes variable number of arguments
+    public function testFnVariableArgs()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // (def varargs (fn (a b & c) c))
+        $input = $this->buildForm(['def', 'varargs', ['fn', ['a', 'b', '&', 'c'], 'c']]);
+        $evaller->eval($input, $env);
+
+        // (varargs 1 2 3 4 5)
+        $input = $this->buildForm(['varargs', 1, 2, 3, 4, 5]);
+        $result = $evaller->eval($input, $env);
+
+        $this->assertInstanceOf(Vector::class, $result);
+        $this->assertSame([3, 4, 5], $result->getData());
+    }
+
+    public function fibonacciProvider(): array
+    {
+        return [
+            [0, 0],
+            [1, 1],
+            [2, 1],
+            [3, 2],
+            [4, 3],
+            [5, 5],
+            [6, 8],
+            [7, 13],
+            [8, 21],
+            [9, 34],
+            [10, 55],
+        ];
+    }
+
+    /**
+     * @dataProvider fibonacciProvider
+     */
+    public function testRecursiveFn(int $n, int $expected)
+    {
+        // Test recursive function using simple Fibonacci series
+        // This is slow version that does not use tail calls properly
+
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm(['def', 'fib', ['fn', ['n'], ['if', ['<', 'n', 2], 'n',
+            ['+', ['fib', ['-', 'n', 1]], ['fib', ['-', 'n', 2]]]]]]);
+        $evaller->eval($input, $env);
+
+        $input = $this->buildForm(['fib', $n]);
+        $result = $evaller->eval($input, $env);
+
+        $this->assertSame($expected, $result);
+    }
+
+    // Macro tests
+
+    public function testCreateMacro()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
 
@@ -611,6 +839,64 @@ class EvallerTest extends TestCase
         $this->assertInstanceOf(UserFunc::class, $result);
         $this->assertTrue($result->isMacro());
     }
+
+    public function testBasicMacro()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // (def when (macro (test body) (quasiquote (if (unquote test) (unquote body) null))))
+        $input = $this->buildForm(['def', 'when', ['macro', ['test', 'body'],
+            ['quasiquote', ['if', ['unquote', 'test'], ['unquote', 'body'], null]]]]);
+
+        $evaller->eval($input, $env);
+
+        $input = $this->buildForm(['when', true, ['+', 1, 2]]);
+        $result = $evaller->eval($input, $env);
+        $this->assertSame(3, $result);
+
+        $input = $this->buildForm(['when', false, ['throw', '"error"']]);
+        $result = $evaller->eval($input, $env);
+        $this->assertNull($result);
+    }
+
+    public function testNestedMacros()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // Define a macro that expands its body twice
+        // (def twice (macro (body) (quasiquote (do (unquote body) (unquote body)))))
+        $input = $this->buildForm(['def', 'twice', ['macro', ['body'],
+            ['quasiquote', ['do', ['unquote', 'body'], ['unquote', 'body']]]]]);
+        $evaller->eval($input, $env);
+
+        // Define a macro that expands into two nested uses of twice
+        // (def four-times (macro (body) (quasiquote (twice (twice (unquote body))))))
+        $input = $this->buildForm(['def', 'four-times', ['macro', ['body'],
+            ['quasiquote', ['twice', ['twice', ['unquote', 'body']]]]]]);
+        $evaller->eval($input, $env);
+
+        // Set count to 0
+        $evaller->eval($this->buildForm(['def', 'count', 0]), $env);
+
+        // Increase count 4 times
+        $input = $this->buildForm(['four-times', ['def', 'count', ['inc', 'count']]]);
+        $result = $evaller->eval($input, $env);
+
+        $this->assertSame(4, $result);
+        $this->assertSame(4, $env->get('count'));
+
+        // Test also macroexpand here, though we have separate tests for it
+        $input = $this->buildForm(['macroexpand', ['four-times', 'body']]);
+        $result = $evaller->eval($input, $env);
+
+        // Note that macroexpand does not recursively expand the nested 'twice'
+        // forms. It stops when the outer form has a non-macro head ('do').
+        // The nested 'twice' forms are expanded during normal evaluation.
+        $expected = $this->buildForm(['do', ['twice', 'body'], ['twice', 'body']]);
+        $this->assertSameForm($expected, $result);
+    }
+
+    // Errors for fn, macro
 
     public function fnErrorProvider(): array
     {
@@ -680,6 +966,18 @@ class EvallerTest extends TestCase
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
 
+    // Test that the non-active branch of if is never evaluated
+    public function testIfShortCircuit()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm(['if', true, 123, ['throw', '"error"']]);
+        $this->assertSame(123, $evaller->eval($input, $env));
+
+        $input = $this->buildForm(['if', false, ['throw', '"error"'], 456]);
+        $this->assertSame(456, $evaller->eval($input, $env));
+    }
+
     public function ifErrorProvider(): array
     {
         return [
@@ -724,6 +1022,27 @@ class EvallerTest extends TestCase
         ], ['*', 'b', 4]]);
 
         $this->assertSame(36, $evaller->eval($input, $env));
+    }
+
+    public function testLetScope()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // This test verifies that inner let shadows the value of an outer let.
+        // Also check that values defined either by let or def do not exist after the block.
+
+        // (let (x 10)
+        //   (def y 15)
+        //   (let (x 20)
+        //     (+ x y)))
+        $input = $this->buildForm(['let', ['x', 10], ['def', 'y', 15], ['let', ['x', 20], ['+', 'x', 'y']]]);
+        $result = $evaller->eval($input, $env);
+
+        $this->assertSame(35, $result);
+
+        // Verify that environment contains neither x or y
+        $this->assertFalse($env->has('x'));
+        $this->assertFalse($env->has('y'));
     }
 
     public function letErrorProvider(): array
@@ -780,7 +1099,15 @@ class EvallerTest extends TestCase
 
         list($env, $evaller) = $this->getEnvAndEvaller();
 
+        // Set __FILE__ and __DIR__ to some made-up values
+        $env->set('__FILE__', '/path/to/file');
+        $env->set('__DIR__', '/path/to');
+
         $result = $evaller->eval($input, $env);
+
+        // Verify that __FILE__ and __DIR__ are restored correctly
+        $this->assertSame('/path/to/file', $env->get('__FILE__'));
+        $this->assertSame('/path/to', $env->get('__DIR__'));
 
         $this->assertInstanceOf(Vector::class, $result);
 
@@ -1032,6 +1359,16 @@ class EvallerTest extends TestCase
         $input = new MList(array_merge([new Symbol('or')], $args));
 
         $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
+    // Test that if first arg is truthy, second arg is never evaluated
+    public function testOrShortCircuit()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm(['or', true, ['throw', '"error"']]);
+
+        $this->assertTrue($evaller->eval($input, $env));
     }
 
     // ---
