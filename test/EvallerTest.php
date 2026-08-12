@@ -387,6 +387,25 @@ class EvallerTest extends TestCase
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
 
+    public function testCaseEvaluatesOnlySelectedClause()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // The bodies of non-matching clauses must not be evaluated.
+        // The selected clause may contain multiple expressions.
+
+        foreach (['case', 'case-strict'] as $type) {
+            $input = $this->buildForm([
+                $type, ['//', 4, 2],
+                [1, ['throw', '"earlier clause was evaluated"']],
+                [2, ['def', 'value', 10], ['+', 'value', 5]],
+                [3, ['throw', '"later clause was evaluated"']],
+            ]);
+
+            $this->assertSame(15, $evaller->eval($input, $env));
+        }
+    }
+
     public function caseErrorProvider(): array
     {
         $tests = [];
@@ -468,6 +487,34 @@ class EvallerTest extends TestCase
         $input = new MList(array_merge([new Symbol('cond')], $args));
 
         $this->assertSame($expected, $evaller->eval($input, $env));
+    }
+
+    public function testCondEvaluatesOnlySelectedClause()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // The bodies of non-matching clauses must not be evaluated.
+        // Because cond evalutes the clauses in order, the conditions
+        // for later clauses after a match must not be evaluated either.
+        // The selected clause may contain multiple expressions.
+
+        $input = $this->buildForm([
+            'cond',
+            [false, ['throw', '"earlier clause was evaluated"']],
+            [['<', 1, 2], ['def', 'value', 10], ['+', 'value', 5]],
+            [['throw', '"later condition was evaluated"'], 0],
+        ]);
+
+        $this->assertSame(15, $evaller->eval($input, $env));
+    }
+
+    public function testCondReturnsNullWithoutMatch()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        $input = $this->buildForm(['cond', [false, 1], [null, 2]]);
+
+        $this->assertNull($evaller->eval($input, $env));
     }
 
     public function condErrorProvider(): array
@@ -668,7 +715,7 @@ class EvallerTest extends TestCase
     // Special form: eval
     // ---
 
-    public function testEval()
+    public function testBasicEval()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
 
@@ -676,6 +723,18 @@ class EvallerTest extends TestCase
         $input = $this->buildForm(['eval', ['quote', ['+', 1, 2]]]);
 
         $this->assertSame(3, $evaller->eval($input, $env));
+    }
+
+    public function testEvalSeesLocalEnv()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // (let (x 10) (eval (quote (+ x 5))))
+        $input = $this->buildForm(['let', ['x', 10], ['eval', ['quote', ['+', 'x', 5]]]]);
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertSame(15, $result);
     }
 
     public function evalErrorProvider(): array
@@ -1043,6 +1102,20 @@ class EvallerTest extends TestCase
         // Verify that environment contains neither x or y
         $this->assertFalse($env->has('x'));
         $this->assertFalse($env->has('y'));
+    }
+
+    public function testLetVectorArgs()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // Test that let also accepts arguments as a Vector
+
+        // (let [x 2] (+ x 3))
+        $input = $this->buildForm(['let', $this->buildForm(['x', 2], Vector::class), ['+', 'x', 3]]);
+
+        $result = $evaller->eval($input, $env);
+
+        $this->assertSame(5, $result);
     }
 
     public function letErrorProvider(): array
@@ -1533,6 +1606,19 @@ class EvallerTest extends TestCase
         $this->assertSame('DivisionByZeroError', $result);
     }
 
+    public function testTrySuccess()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // Test that successful try returns its normal result
+
+        // (try (+ 4 5) (catch ex (throw "error")))
+        $input = $this->buildForm(['try', ['+', 4, 5], ['catch', 'ex', ['throw', '"error"']]]);
+
+        $result = $evaller->eval($input, $env);
+        $this->assertSame(9, $result);
+    }
+
     public function tryErrorProvider(): array
     {
         return [
@@ -1672,6 +1758,19 @@ class EvallerTest extends TestCase
         $this->assertSame(64, $result);
     }
 
+    public function testWhileWithFalse()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // Test while with initial false value, make sure
+        // that the body is not executed and result is null.
+
+        $input = $this->buildForm(['while', false, ['throw', '"error"']]);
+        $result = $evaller->eval($input, $env);
+
+        $this->assertNull($result);
+    }
+
     public function whileErrorProvider(): array
     {
         return [
@@ -1760,6 +1859,7 @@ class EvallerTest extends TestCase
             return new Symbol($shape);
         }
 
+        // Anything other than array or string is passed through as-is
         return $shape;
     }
 
