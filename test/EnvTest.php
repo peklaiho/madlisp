@@ -2,7 +2,7 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 use PHPUnit\Framework\TestCase;
@@ -45,5 +45,74 @@ class EnvTest extends TestCase
 
         $env = new Env('env');
         $env->get('abc');
+    }
+
+    public function testChildShadowsParentBinding()
+    {
+        $parent = new Env('parent');
+        $child = new Env('child', $parent);
+
+        $parent->set('value', 10);
+        $child->set('value', 20);
+
+        $this->assertSame(20, $child->get('value'));
+        $this->assertSame(10, $parent->get('value'));
+    }
+
+    public function testSetCreatesOrUpdatesOnlyLocalBinding()
+    {
+        $parent = new Env('parent');
+        $child = new Env('child', $parent);
+
+        $parent->set('value', 10);
+        $child->set('value', 20);
+        $child->set('new-value', 30);
+
+        $this->assertSame(10, $parent->get('value'));
+        $this->assertSame(20, $child->get('value'));
+        $this->assertFalse($parent->has('new-value'));
+        $this->assertSame(30, $child->get('new-value'));
+    }
+
+    public function testUnsetOnlyRemovesLocalBinding()
+    {
+        $parent = new Env('parent');
+        $child = new Env('child', $parent);
+
+        $parent->set('value', 10);
+        $child->set('value', 20);
+
+        $this->assertSame(20, $child->unset('value'));
+        $this->assertSame(10, $child->get('value'));
+        $this->assertNull($child->unset('value'));
+        $this->assertSame(10, $parent->get('value'));
+    }
+
+    public function testNullBindingIsDefined()
+    {
+        $env = new Env('env');
+        $env->set('value', null);
+
+        $this->assertTrue($env->has('value'));
+        $this->assertNull($env->get('value'));
+    }
+
+    public function testMissingLookupCanReturnNull()
+    {
+        $root = new Env('root');
+        $child = new Env('child', $root);
+        $grandchild = new Env('grandchild', $child);
+
+        $this->assertNull($grandchild->get('missing', false));
+    }
+
+    public function testNonThrowingLookupStillFindsParentValue()
+    {
+        $parent = new Env('parent');
+        $child = new Env('child', $parent);
+
+        $parent->set('value', 123);
+
+        $this->assertSame(123, $child->get('value', false));
     }
 }

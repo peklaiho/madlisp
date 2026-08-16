@@ -2,7 +2,7 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 use PHPUnit\Framework\TestCase;
@@ -17,6 +17,21 @@ use MadLisp\Lib\Math;
 
 class LispTest extends TestCase
 {
+    public function testGetEnv()
+    {
+        $env = new Env('env');
+
+        $lisp = new Lisp(
+            $this->createMock(Tokenizer::class),
+            $this->createMock(Reader::class),
+            $this->createMock(Evaller::class),
+            $this->createMock(Printer::class),
+            $env
+        );
+
+        $this->assertSame($env, $lisp->getEnv());
+    }
+
     public function testPrint()
     {
         $tokenizer = $this->createMock(Tokenizer::class);
@@ -31,6 +46,23 @@ class LispTest extends TestCase
         $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, new Env('env'));
 
         $lisp->print('abc', false);
+    }
+
+    public function testPstr()
+    {
+        $tokenizer = $this->createMock(Tokenizer::class);
+        $reader = $this->createMock(Reader::class);
+        $printer = $this->createMock(Printer::class);
+        $evaller = $this->createMock(Evaller::class);
+
+        $printer->expects($this->once())
+            ->method('pstr')
+            ->with($this->equalTo('abc'), $this->equalTo(true))
+            ->willReturn('"abc"');
+
+        $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, new Env('env'));
+
+        $this->assertSame('"abc"', $lisp->pstr('abc', true));
     }
 
     public function testReadEval()
@@ -52,6 +84,39 @@ class LispTest extends TestCase
         $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, new Env('env'));
 
         $lisp->readEval('abc');
+    }
+
+    public function testReadEvalCustomEnv()
+    {
+        $tokenizer = $this->createMock(Tokenizer::class);
+        $reader = $this->createMock(Reader::class);
+        $printer = $this->createMock(Printer::class);
+        $evaller = $this->createMock(Evaller::class);
+
+        $defaultEnv = new Env('default');
+        $customEnv = new Env('custom');
+
+        $tokens = ['token'];
+        $ast = 'ast';
+
+        $tokenizer->expects($this->once())
+            ->method('tokenize')
+            ->with('input')
+            ->willReturn($tokens);
+
+        $reader->expects($this->once())
+            ->method('read')
+            ->with($tokens)
+            ->willReturn($ast);
+
+        $evaller->expects($this->once())
+            ->method('eval')
+            ->with($ast, $customEnv)
+            ->willReturn('result');
+
+        $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, $defaultEnv);
+
+        $this->assertSame('result', $lisp->readEval('input', $customEnv));
     }
 
     public function repProvider(): array
@@ -106,5 +171,40 @@ class LispTest extends TestCase
         $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, new Env('env'));
 
         $lisp->setDebug(true);
+    }
+
+    public function testSetEnv()
+    {
+        $oldEnv = new Env('old');
+        $newEnv = new Env('new');
+
+        $lisp = new Lisp(
+            $this->createMock(Tokenizer::class),
+            $this->createMock(Reader::class),
+            $this->createMock(Evaller::class),
+            $this->createMock(Printer::class),
+            $oldEnv
+        );
+
+        $lisp->setEnv($newEnv);
+
+        $this->assertSame($newEnv, $lisp->getEnv());
+    }
+
+    public function testSetEnvValue()
+    {
+        $env = new Env('env');
+
+        $lisp = new Lisp(
+            $this->createMock(Tokenizer::class),
+            $this->createMock(Reader::class),
+            $this->createMock(Evaller::class),
+            $this->createMock(Printer::class),
+            $env
+        );
+
+        $lisp->setEnvValue('answer', 42);
+
+        $this->assertSame(42, $env->get('answer'));
     }
 }

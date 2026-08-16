@@ -2,7 +2,7 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 use PHPUnit\Framework\TestCase;
@@ -32,5 +32,31 @@ class HashTest extends TestCase
 
         $hash = new Hash();
         $hash->get('abc');
+    }
+
+    public function testSetReplacesExistingValue()
+    {
+        $hash = new Hash(['a' => 1]);
+
+        $this->assertSame(2, $hash->set('a', 2));
+        $this->assertSame(2, $hash->get('a'));
+        $this->assertSame(['a' => 2], $hash->getData());
+    }
+
+    public function testHasChecksWhetherKeyExists()
+    {
+        $hash = new Hash(['a' => 1, 'null' => null]);
+
+        $this->assertTrue($hash->has('a'));
+        $this->assertTrue($hash->has('null'));
+        $this->assertFalse($hash->has('missing'));
+    }
+
+    public function testUnsetMissingKeyReturnsNull()
+    {
+        $hash = new Hash(['a' => 1]);
+
+        $this->assertNull($hash->unset('missing'));
+        $this->assertSame(['a' => 1], $hash->getData());
     }
 }
