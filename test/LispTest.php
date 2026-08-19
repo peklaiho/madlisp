@@ -7,8 +7,10 @@
 
 use PHPUnit\Framework\TestCase;
 
+use MadLisp\Compiler;
 use MadLisp\Env;
 use MadLisp\Evaller;
+use MadLisp\Executor;
 use MadLisp\Lisp;
 use MadLisp\Printer;
 use MadLisp\Reader;
@@ -24,6 +26,8 @@ class LispTest extends TestCase
         $lisp = new Lisp(
             $this->createMock(Tokenizer::class),
             $this->createMock(Reader::class),
+            $this->createMock(Compiler::class),
+            $this->createMock(Executor::class),
             $this->createMock(Evaller::class),
             $this->createMock(Printer::class),
             $env
@@ -36,6 +40,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
+        $compiler = $this->createMock(Compiler::class);
+        $executor = $this->createMock(Executor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -43,7 +49,7 @@ class LispTest extends TestCase
             ->method('print')
             ->with($this->equalTo("abc"), $this->equalTo(false));
 
-        $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, new Env('env'));
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, $printer, new Env('env'));
 
         $lisp->print('abc', false);
     }
@@ -52,6 +58,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
+        $compiler = $this->createMock(Compiler::class);
+        $executor = $this->createMock(Executor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -60,7 +68,7 @@ class LispTest extends TestCase
             ->with($this->equalTo('abc'), $this->equalTo(true))
             ->willReturn('"abc"');
 
-        $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, new Env('env'));
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, $printer, new Env('env'));
 
         $this->assertSame('"abc"', $lisp->pstr('abc', true));
     }
@@ -69,6 +77,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
+        $compiler = $this->createMock(Compiler::class);
+        $executor = $this->createMock(Executor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -81,15 +91,92 @@ class LispTest extends TestCase
         $evaller->expects($this->once())
             ->method('eval');
 
-        $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, new Env('env'));
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, $printer, new Env('env'));
 
         $lisp->readEval('abc');
+    }
+
+    public function testReadEvalCompiledExecutesCompiledProgram(): void
+    {
+        $tokenizer = $this->createMock(Tokenizer::class);
+        $reader = $this->createMock(Reader::class);
+        $compiler = $this->createMock(Compiler::class);
+        $executor = $this->createMock(Executor::class);
+        $evaller = $this->createMock(Evaller::class);
+        $env = new Env('env');
+        $program = new \MadLisp\CompiledProgram([], [], 0);
+
+        $tokenizer->expects($this->once())
+            ->method('tokenize')
+            ->with('input')
+            ->willReturn(['token']);
+
+        $reader->expects($this->once())
+            ->method('read')
+            ->with(['token'])
+            ->willReturn('ast');
+
+        $compiler->expects($this->once())
+            ->method('compile')
+            ->with('ast', $env)
+            ->willReturn($program);
+
+        $executor->expects($this->once())
+            ->method('execute')
+            ->with($program, $env)
+            ->willReturn('compiled result');
+
+        $evaller->expects($this->never())
+            ->method('eval');
+
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, new Printer(), $env);
+
+        $this->assertSame('compiled result', $lisp->readEvalCompiled('input'));
+    }
+
+    public function testReadEvalCompiledFallsBackToEvaller(): void
+    {
+        $tokenizer = $this->createMock(Tokenizer::class);
+        $reader = $this->createMock(Reader::class);
+        $compiler = $this->createMock(Compiler::class);
+        $executor = $this->createMock(Executor::class);
+        $evaller = $this->createMock(Evaller::class);
+        $env = new Env('env');
+
+        $tokenizer->expects($this->once())
+            ->method('tokenize')
+            ->with('input')
+            ->willReturn(['token']);
+
+        $reader->expects($this->once())
+            ->method('read')
+            ->with(['token'])
+            ->willReturn('ast');
+
+        $compiler->expects($this->once())
+            ->method('compile')
+            ->with('ast', $env)
+            ->willReturn(null);
+
+        $executor->expects($this->never())
+            ->method('execute');
+
+        $evaller->expects($this->once())
+            ->method('eval')
+            ->with('ast', $env)
+            ->willReturn('legacy result');
+
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, new Printer(), $env);
+
+        $this->assertSame('legacy result', $lisp->readEvalCompiled('input'));
     }
 
     public function testReadEvalCustomEnv()
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
+        $compiler = $this->createMock(Compiler::class);
+        $executor = $this->createMock(Executor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -114,7 +201,7 @@ class LispTest extends TestCase
             ->with($ast, $customEnv)
             ->willReturn('result');
 
-        $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, $defaultEnv);
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, $printer, $defaultEnv);
 
         $this->assertSame('result', $lisp->readEval('input', $customEnv));
     }
@@ -139,6 +226,8 @@ class LispTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
+        $compiler = new Compiler();
+        $executor = new Executor();
         $printer = new Printer();
         $evaller = new Evaller($tokenizer, $reader, $printer, false);
 
@@ -147,7 +236,7 @@ class LispTest extends TestCase
         $lib = new Math();
         $lib->register($env);
 
-        $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, $env);
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, $printer, $env);
 
         ob_start();
         $lisp->rep($input, $readable);
@@ -161,6 +250,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
+        $compiler = $this->createMock(Compiler::class);
+        $executor = $this->createMock(Executor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -168,7 +259,7 @@ class LispTest extends TestCase
             ->method('setDebug')
             ->with($this->equalTo(true));
 
-        $lisp = new Lisp($tokenizer, $reader, $evaller, $printer, new Env('env'));
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, $printer, new Env('env'));
 
         $lisp->setDebug(true);
     }
@@ -181,6 +272,8 @@ class LispTest extends TestCase
         $lisp = new Lisp(
             $this->createMock(Tokenizer::class),
             $this->createMock(Reader::class),
+            $this->createMock(Compiler::class),
+            $this->createMock(Executor::class),
             $this->createMock(Evaller::class),
             $this->createMock(Printer::class),
             $oldEnv
@@ -198,6 +291,8 @@ class LispTest extends TestCase
         $lisp = new Lisp(
             $this->createMock(Tokenizer::class),
             $this->createMock(Reader::class),
+            $this->createMock(Compiler::class),
+            $this->createMock(Executor::class),
             $this->createMock(Evaller::class),
             $this->createMock(Printer::class),
             $env

@@ -1,0 +1,18 @@
+<?php
+/**
+ * MadLisp language
+ * @link http://madlisp.com/
+ * @copyright Copyright (c) 2026 Pekka Laiho
+ */
+
+namespace MadLisp;
+
+class OpCode
+{
+    public const int LOAD_CONSTANT = 1;
+    public const int LOAD_GLOBAL = 2;
+    public const int JUMP_IF_FALSE = 3;
+    public const int JUMP = 4;
+    public const int RETURN = 5;
+    public const int CALL = 6;
+}

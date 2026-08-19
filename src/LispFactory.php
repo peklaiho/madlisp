@@ -2,7 +2,7 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 namespace MadLisp;
@@ -13,6 +13,8 @@ class LispFactory
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
+        $compiler = new Compiler();
+        $executor = new Executor();
         $printer = new Printer();
         $eval = new Evaller($tokenizer, $reader, $printer, $safemode);
 
@@ -49,7 +51,7 @@ class LispFactory
             (new Lib\IO())->register($env);
         }
 
-        $lisp = new Lisp($tokenizer, $reader, $eval, $printer, $env);
+        $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $eval, $printer, $env);
 
         // Add some built-in macros
         $lisp->readEval('(def defn (macro (name args body) (quasiquote (def (unquote name) (fn (unquote args) (unquote body))))))');
