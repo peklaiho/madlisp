@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 use MadLisp\CompiledProgram;
 use MadLisp\CoreFunc;
+use MadLisp\CoreFuncId;
 use MadLisp\Env;
 use MadLisp\Executor;
 use MadLisp\MadLispException;
@@ -92,6 +93,41 @@ class ExecutorTest extends TestCase
         ], [true, 1, 2], 0);
 
         $this->assertSame(1, $executor->execute($program, $env));
+    }
+
+    public function testCallsAdditionalArithmeticCoreFunctionsDirectly(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $cases = [
+            [CoreFuncId::ADD, [1, 2], 3],
+            [CoreFuncId::SUBTRACT, [10, 3, 2], 5],
+            [CoreFuncId::MULTIPLY, [6, 7], 42],
+            [CoreFuncId::DIVIDE, [21, 3], 7],
+            [CoreFuncId::INTDIV, [22, 4], 5],
+            [CoreFuncId::MODULO, [22, 5], 2],
+            [CoreFuncId::INC, [4], 5],
+            [CoreFuncId::DEC, [4], 3],
+            [CoreFuncId::MAX, [2, 8, 3], 8],
+            [CoreFuncId::MIN, [2, 8, 3], 2],
+        ];
+
+        foreach ($cases as [$coreFuncId, $args, $expected]) {
+            $code = [];
+            foreach ($args as $index => $arg) {
+                $code[] = OpCode::LOAD_CONSTANT;
+                $code[] = $index;
+            }
+            $code[] = OpCode::CALL_CORE;
+            $code[] = $coreFuncId;
+            $code[] = count($args);
+            $code[] = OpCode::RETURN;
+
+            $program = new CompiledProgram($code, $args, 0);
+
+            $this->assertSame($expected, $executor->execute($program, $env));
+        }
     }
 
     public function testCallsFunction(): void

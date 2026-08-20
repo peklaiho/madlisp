@@ -8,8 +8,11 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\Compiler;
+use MadLisp\CoreFunc;
+use MadLisp\CoreFuncId;
 use MadLisp\Env;
 use MadLisp\MList;
+use MadLisp\MadLispException;
 use MadLisp\OpCode;
 use MadLisp\Symbol;
 
@@ -154,6 +157,47 @@ class CompilerTest extends TestCase
             OpCode::RETURN,
         ], $program->getCode());
         $this->assertSame(['+', 1, 2], $program->getConstants());
+    }
+
+    public function testCompilesSupportedCoreCall(): void
+    {
+        $compiler = new Compiler();
+        $env = new Env('root');
+        $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
+
+        $ast = new MList([
+            new Symbol('+'),
+            1,
+            2,
+        ]);
+
+        $program = $compiler->compile($ast, $env);
+
+        $this->assertNotNull($program);
+        $this->assertSame([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::LOAD_CONSTANT, 1,
+            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
+            OpCode::RETURN,
+        ], $program->getCode());
+        $this->assertSame([1, 2], $program->getConstants());
+    }
+
+    public function testRejectsCoreCallBelowMinimumArity(): void
+    {
+        $compiler = new Compiler();
+        $env = new Env('root');
+        $env->set('*', new CoreFunc('*', '', 2, -1, fn (...$args) => $args[0] * $args[1]));
+
+        $ast = new MList([
+            new Symbol('*'),
+            2,
+        ]);
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('* requires at least 2 arguments');
+
+        $compiler->compile($ast, $env);
     }
 
     public function testUnsupportedSpecialFormReturnsNull(): void

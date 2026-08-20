@@ -15,4 +15,5 @@ class OpCode
     public const int JUMP = 4;
     public const int RETURN = 5;
     public const int CALL = 6;
+    public const int CALL_CORE = 7;
 }

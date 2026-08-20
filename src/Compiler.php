@@ -25,22 +25,23 @@ class Compiler
 
     private function compileExpression($ast, array &$code, array &$constants, Env $env): bool
     {
+        // Symbol is a load from Env
         if ($ast instanceof Symbol) {
             $constants[] = $ast->getName();
             $code[] = OpCode::LOAD_GLOBAL;
             $code[] = count($constants) - 1;
-
             return true;
         }
 
+        // Not a collection is a constant (like number or string)
         if (!($ast instanceof Collection)) {
             $constants[] = $ast;
             $code[] = OpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
-
             return true;
         }
 
+        // Not a list: not supported yet
         if (!($ast instanceof MList)) {
             return false;
         }
@@ -52,21 +53,56 @@ class Compiler
             return false;
         }
 
+        // Special form: if
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'if') {
             return $this->compileIf($data, $length, $code, $constants, $env);
         }
 
+        // Other special forms: not supported yet
         if ($this->isSpecialForm($data[0])) {
             return false;
         }
 
+        // Check for a supported core function
+        $coreFuncMetadata = null;
         if ($data[0] instanceof Symbol) {
-            $operator = $env->get($data[0]->getName(), false);
+            $operatorName = $data[0]->getName();
+            $operator = $env->get($operatorName, false);
             if ($operator instanceof Func && $operator->isMacro()) {
                 return false;
             }
+
+            if ($operator instanceof CoreFunc) {
+                $coreFuncMetadata = CoreFuncId::fromName($operatorName);
+            }
         }
 
+        // Found core function
+        if ($coreFuncMetadata !== null) {
+            $argumentCount = $length - 1;
+            $minimumArguments = $coreFuncMetadata[1];
+            if ($argumentCount < $minimumArguments) {
+                throw new MadLispException(sprintf(
+                    "%s requires at least %s argument%s",
+                    $operatorName,
+                    $minimumArguments,
+                    $minimumArguments == 1 ? '' : 's'
+                ));
+            }
+
+            for ($i = 1; $i < $length; $i++) {
+                if (!$this->compileExpression($data[$i], $code, $constants, $env)) {
+                    return false;
+                }
+            }
+
+            $code[] = OpCode::CALL_CORE;
+            $code[] = $coreFuncMetadata[0];
+            $code[] = $argumentCount;
+            return true;
+        }
+
+        // Handle as normal function call
         foreach ($data as $item) {
             if (!$this->compileExpression($item, $code, $constants, $env)) {
                 return false;
@@ -75,7 +111,6 @@ class Compiler
 
         $code[] = OpCode::CALL;
         $code[] = $length - 1;
-
         return true;
     }
 
