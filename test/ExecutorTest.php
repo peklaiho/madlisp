@@ -95,6 +95,37 @@ class ExecutorTest extends TestCase
         $this->assertSame(1, $executor->execute($program, $env));
     }
 
+    public function testStoresAndLoadsLocal(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = new CompiledProgram([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::STORE_LOCAL, 0,
+            OpCode::LOAD_LOCAL, 0,
+            OpCode::RETURN,
+        ], [42], 1);
+
+        $this->assertSame(42, $executor->execute($program, $env));
+    }
+
+    public function testRejectsInvalidLocalSlot(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = new CompiledProgram([
+            OpCode::LOAD_LOCAL, 1,
+            OpCode::RETURN,
+        ], [], 1);
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('exec: invalid local slot 1');
+
+        $executor->execute($program, $env);
+    }
+
     public function testCallsAdditionalArithmeticCoreFunctionsDirectly(): void
     {
         $executor = new Executor();

@@ -38,6 +38,24 @@ class Executor
                     $stack[] = $env->get($constants[$nameIndex]);
                     break;
 
+                case OpCode::LOAD_LOCAL:
+                    $localSlot = $code[$pc++];
+                    if (!array_key_exists($localSlot, $frame->locals)) {
+                        throw new MadLispException("exec: invalid local slot $localSlot");
+                    }
+
+                    $stack[] = $frame->locals[$localSlot];
+                    break;
+
+                case OpCode::STORE_LOCAL:
+                    $localSlot = $code[$pc++];
+                    if (!array_key_exists($localSlot, $frame->locals)) {
+                        throw new MadLispException("exec: invalid local slot $localSlot");
+                    }
+
+                    $frame->locals[$localSlot] = array_pop($stack);
+                    break;
+
                 case OpCode::JUMP_IF_FALSE:
                     $target = $code[$pc++];
                     $condition = array_pop($stack);

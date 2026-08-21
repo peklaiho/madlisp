@@ -13,20 +13,34 @@ class Compiler
     {
         $code = [];
         $constants = [];
+        $scope = new CompileScope();
 
-        if (!$this->compileExpression($ast, $code, $constants, $env)) {
+        if (!$this->compileExpression($ast, $code, $constants, $env, $scope)) {
             return null;
         }
 
         $code[] = OpCode::RETURN;
 
-        return new CompiledProgram($code, $constants, 0);
+        return new CompiledProgram($code, $constants, $scope->getLocalCount());
     }
 
-    private function compileExpression($ast, array &$code, array &$constants, Env $env): bool
+    private function compileExpression(
+        $ast,
+        array &$code,
+        array &$constants,
+        Env $env,
+        CompileScope $scope
+    ): bool
     {
         // Symbol is a load from Env
         if ($ast instanceof Symbol) {
+            $localSlot = $scope->resolve($ast->getName());
+            if ($localSlot !== null) {
+                $code[] = OpCode::LOAD_LOCAL;
+                $code[] = $localSlot;
+                return true;
+            }
+
             $constants[] = $ast->getName();
             $code[] = OpCode::LOAD_GLOBAL;
             $code[] = count($constants) - 1;
@@ -55,7 +69,7 @@ class Compiler
 
         // Special form: if
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'if') {
-            return $this->compileIf($data, $length, $code, $constants, $env);
+            return $this->compileIf($data, $length, $code, $constants, $env, $scope);
         }
 
         // Other special forms: not supported yet
@@ -91,7 +105,7 @@ class Compiler
             }
 
             for ($i = 1; $i < $length; $i++) {
-                if (!$this->compileExpression($data[$i], $code, $constants, $env)) {
+                if (!$this->compileExpression($data[$i], $code, $constants, $env, $scope)) {
                     return false;
                 }
             }
@@ -104,7 +118,7 @@ class Compiler
 
         // Handle as normal function call
         foreach ($data as $item) {
-            if (!$this->compileExpression($item, $code, $constants, $env)) {
+            if (!$this->compileExpression($item, $code, $constants, $env, $scope)) {
                 return false;
             }
         }
@@ -114,13 +128,20 @@ class Compiler
         return true;
     }
 
-    private function compileIf(array $data, int $length, array &$code, array &$constants, Env $env): bool
+    private function compileIf(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        Env $env,
+        CompileScope $scope
+    ): bool
     {
         if ($length < 3 || $length > 4) {
             return false;
         }
 
-        if (!$this->compileExpression($data[1], $code, $constants, $env)) {
+        if (!$this->compileExpression($data[1], $code, $constants, $env, $scope)) {
             return false;
         }
 
@@ -128,7 +149,7 @@ class Compiler
         $code[] = OpCode::JUMP_IF_FALSE;
         $code[] = 0;
 
-        if (!$this->compileExpression($data[2], $code, $constants, $env)) {
+        if (!$this->compileExpression($data[2], $code, $constants, $env, $scope)) {
             return false;
         }
 
@@ -140,7 +161,7 @@ class Compiler
         $code[$jumpIfFalse + 1] = $elseAddress;
 
         if ($length == 4) {
-            if (!$this->compileExpression($data[3], $code, $constants, $env)) {
+            if (!$this->compileExpression($data[3], $code, $constants, $env, $scope)) {
                 return false;
             }
         } else {
