@@ -34,8 +34,11 @@ class Compiler
     {
         // Symbol is a load from Env
         if ($ast instanceof Symbol) {
-            if ($scope->isCapture($ast->getName())) {
-                return false;
+            $captureIndex = $scope->resolveCapture($ast->getName());
+            if ($captureIndex !== null) {
+                $code[] = OpCode::LOAD_CAPTURE;
+                $code[] = $captureIndex;
+                return true;
             }
 
             $localSlot = $scope->resolve($ast->getName());
@@ -253,7 +256,11 @@ class Compiler
             $functionScope->getLocalCount()
         );
 
-        $constants[] = new CompiledFuncTemplate($functionProgram, $parameterCount);
+        $constants[] = new CompiledFuncTemplate(
+            $functionProgram,
+            $parameterCount,
+            $functionScope->getCaptureSources()
+        );
         $code[] = OpCode::MAKE_FUNCTION;
         $code[] = count($constants) - 1;
 

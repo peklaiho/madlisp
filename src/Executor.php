@@ -47,6 +47,15 @@ class Executor
                     $stack[] = $frame->locals[$localSlot];
                     break;
 
+                case OpCode::LOAD_CAPTURE:
+                    $captureIndex = $code[$pc++];
+                    if (!array_key_exists($captureIndex, $frame->captures)) {
+                        throw new MadLispException("exec: invalid capture slot $captureIndex");
+                    }
+
+                    $stack[] = $frame->captures[$captureIndex];
+                    break;
+
                 case OpCode::STORE_LOCAL:
                     $localSlot = $code[$pc++];
                     if (!array_key_exists($localSlot, $frame->locals)) {
@@ -80,7 +89,28 @@ class Executor
                         throw new MadLispException('exec: invalid compiled function template');
                     }
 
-                    $stack[] = new CompiledFunc($template->program, $env, $template->arity);
+                    $captures = [];
+                    foreach ($template->captureSources as $captureIndex => $source) {
+                        if ($source['kind'] == 'local') {
+                            $sourceIndex = $source['index'];
+                            if (!array_key_exists($sourceIndex, $frame->locals)) {
+                                throw new MadLispException("exec: invalid local slot $sourceIndex");
+                            }
+
+                            $captures[$captureIndex] = $frame->locals[$sourceIndex];
+                        } elseif ($source['kind'] == 'capture') {
+                            $sourceIndex = $source['index'];
+                            if (!array_key_exists($sourceIndex, $frame->captures)) {
+                                throw new MadLispException("exec: invalid capture slot $sourceIndex");
+                            }
+
+                            $captures[$captureIndex] = $frame->captures[$sourceIndex];
+                        } else {
+                            throw new MadLispException('exec: invalid capture source');
+                        }
+                    }
+
+                    $stack[] = new CompiledFunc($template->program, $env, $template->arity, $captures);
                     break;
 
                 case OpCode::CALL:
@@ -107,7 +137,9 @@ class Executor
                         $callee = new ExecutionFrame(
                             $func->getProgram(),
                             $func->getEnv(),
-                            $callerBase
+                            $callerBase,
+                            null,
+                            $func->getCaptures()
                         );
                         foreach ($args as $index => $arg) {
                             $callee->locals[$index] = $arg;

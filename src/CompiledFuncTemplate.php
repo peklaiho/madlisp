@@ -11,7 +11,8 @@ class CompiledFuncTemplate
 {
     public function __construct(
         public CompiledProgram $program,
-        public int $arity
+        public int $arity,
+        public array $captureSources
     ) {
     }
 }

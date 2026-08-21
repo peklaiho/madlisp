@@ -342,22 +342,29 @@ class CompilerTest extends TestCase
         $this->assertSame(5, $executor->execute($program, $env));
     }
 
-    public function testNonCapturingFnRejectsOuterLocalReference(): void
+    public function testExecutesClosureWithCopiedCapture(): void
     {
         $compiler = new Compiler();
+        $executor = new Executor();
         $env = new Env('root');
+        $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
 
         $ast = new MList([
             new Symbol('let'),
             new MList([new Symbol('x'), 10]),
             new MList([
-                new Symbol('fn'),
-                new MList([new Symbol('y')]),
-                new MList([new Symbol('+'), new Symbol('x'), new Symbol('y')]),
+                new MList([
+                    new Symbol('fn'),
+                    new MList([new Symbol('y')]),
+                    new MList([new Symbol('+'), new Symbol('x'), new Symbol('y')]),
+                ]),
+                5,
             ]),
         ]);
 
-        $this->assertNull($compiler->compile($ast, $env));
+        $program = $compiler->compile($ast, $env);
+
+        $this->assertSame(15, $executor->execute($program, $env));
     }
 
     public function testUnsupportedSpecialFormReturnsNull(): void

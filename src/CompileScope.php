@@ -14,6 +14,9 @@ class CompileScope
     protected CompileScope $root;
     protected int $nextSlot = 0;
     protected bool $functionBoundary;
+    protected ?CompileScope $functionOwner;
+    protected array $captures = [];
+    protected array $captureSources = [];
 
     public function __construct(
         ?CompileScope $parent = null,
@@ -23,6 +26,7 @@ class CompileScope
         $this->parent = $parent;
         $this->root = $isolatedSlots || !$parent ? $this : $parent->root;
         $this->functionBoundary = $functionBoundary;
+        $this->functionOwner = $functionBoundary ? $this : $parent?->functionOwner;
     }
 
     public function child(): CompileScope
@@ -33,25 +37,6 @@ class CompileScope
     public function functionChild(): CompileScope
     {
         return new CompileScope($this, true, true);
-    }
-
-    public function isCapture(string $name): bool
-    {
-        $scope = $this;
-
-        while ($scope) {
-            if (array_key_exists($name, $scope->locals)) {
-                return false;
-            }
-
-            if ($scope->functionBoundary) {
-                return $scope->parent?->resolve($name) !== null;
-            }
-
-            $scope = $scope->parent;
-        }
-
-        return false;
     }
 
     public function allocate(): int
@@ -81,8 +66,85 @@ class CompileScope
         return $this->parent ? $this->parent->resolve($name) : null;
     }
 
+    /**
+     * Resolve a name captured by the function containing this scope.
+     * The returned index is local to that function's capture array.
+     */
+    public function resolveCapture(string $name): ?int
+    {
+        $owner = $this->functionOwner;
+        if (!$owner) {
+            return null;
+        }
+
+        for ($scope = $this; $scope && $scope !== $owner; $scope = $scope->parent) {
+            if (array_key_exists($name, $scope->locals)) {
+                return null;
+            }
+        }
+
+        if (array_key_exists($name, $owner->locals)) {
+            return null;
+        }
+
+        $source = $owner->captureSource($name);
+        if ($source === null) {
+            return null;
+        }
+
+        return $owner->registerCapture($name, $source);
+    }
+
+    public function getCaptureSources(): array
+    {
+        return $this->captureSources;
+    }
+
     public function getLocalCount(): int
     {
         return $this->root->nextSlot;
+    }
+
+    private function captureSource(string $name): ?array
+    {
+        for ($scope = $this->parent; $scope; $scope = $scope->parent) {
+            if (array_key_exists($name, $scope->locals)) {
+                return ['kind' => 'local', 'index' => $scope->locals[$name]];
+            }
+
+            if ($scope->functionBoundary) {
+                $index = $scope->registerCaptureFromParent($name);
+                if ($index === null) {
+                    return null;
+                }
+
+                return ['kind' => 'capture', 'index' => $index];
+            }
+        }
+
+        return null;
+    }
+
+    private function registerCaptureFromParent(string $name): ?int
+    {
+        $source = $this->captureSource($name);
+        if ($source === null) {
+            return null;
+        }
+
+        return $this->registerCapture($name, $source);
+    }
+
+    private function registerCapture(string $name, array $source): int
+    {
+        if (array_key_exists($name, $this->captures)) {
+            return $this->captures[$name];
+        }
+
+        $index = count($this->captures);
+        $this->captures[$name] = $index;
+        $this->captureSources[$index] = $source;
+
+        return $index;
     }
 }

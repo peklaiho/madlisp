@@ -12,7 +12,8 @@ class CompiledFunc extends Func
     public function __construct(
         protected CompiledProgram $program,
         protected Env $env,
-        protected int $arity
+        protected int $arity,
+        protected array $captures = []
     ) {
         parent::__construct(fn () => null);
     }
@@ -30,6 +31,11 @@ class CompiledFunc extends Func
     public function getArity(): int
     {
         return $this->arity;
+    }
+
+    public function getCaptures(): array
+    {
+        return $this->captures;
     }
 
     public function call(array $args)

@@ -20,4 +20,5 @@ class OpCode
     public const int STORE_LOCAL = 9;
     public const int POP = 10;
     public const int MAKE_FUNCTION = 11;
+    public const int LOAD_CAPTURE = 12;
 }
