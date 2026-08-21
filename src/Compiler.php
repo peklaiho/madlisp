@@ -78,6 +78,16 @@ class Compiler
             return $this->compileIf($data, $length, $code, $constants, $scope);
         }
 
+        // Special form: quote
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'quote') {
+            return $this->compileQuote($data, $length, $code, $constants);
+        }
+
+        // Special form: while
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'while') {
+            return $this->compileWhile($data, $length, $code, $constants, $scope);
+        }
+
         // Special forms: and/or
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'and') {
             return $this->compileAnd($data, $length, $code, $constants, $scope);
@@ -169,6 +179,72 @@ class Compiler
 
         $code[] = OpCode::CALL;
         $code[] = $length - 1;
+        return true;
+    }
+
+    private function compileQuote(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants
+    ): bool
+    {
+        if ($length != 2) {
+            throw new MadLispException('quote requires exactly 1 argument');
+        }
+
+        $constants[] = $data[1];
+        $code[] = OpCode::LOAD_CONSTANT;
+        $code[] = count($constants) - 1;
+        return true;
+    }
+
+    private function compileWhile(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        CompileScope $scope
+    ): bool
+    {
+        if ($length < 3) {
+            throw new MadLispException('while requires at least 2 arguments');
+        }
+
+        $resultSlot = $scope->allocate();
+        $constants[] = null;
+        $code[] = OpCode::LOAD_CONSTANT;
+        $code[] = count($constants) - 1;
+        $code[] = OpCode::STORE_LOCAL;
+        $code[] = $resultSlot;
+
+        $loopStart = count($code);
+        if (!$this->compileExpression($data[1], $code, $constants, $scope)) {
+            return false;
+        }
+
+        $code[] = OpCode::JUMP_IF_FALSE;
+        $exitJump = count($code);
+        $code[] = 0;
+
+        for ($i = 2; $i < $length - 1; $i++) {
+            if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
+                return false;
+            }
+            $code[] = OpCode::POP;
+        }
+
+        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope)) {
+            return false;
+        }
+        $code[] = OpCode::STORE_LOCAL;
+        $code[] = $resultSlot;
+        $code[] = OpCode::JUMP;
+        $code[] = $loopStart;
+
+        $code[$exitJump] = count($code);
+        $code[] = OpCode::LOAD_LOCAL;
+        $code[] = $resultSlot;
         return true;
     }
 

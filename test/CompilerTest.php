@@ -247,6 +247,54 @@ class CompilerTest extends TestCase
         $this->assertSame(42, $env->get('value'));
     }
 
+    public function testCompilesQuote(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+        $quoted = new MList([new Symbol('value'), 1]);
+
+        $program = $compiler->compile(new MList([
+            new Symbol('quote'),
+            $quoted,
+        ]));
+
+        $this->assertSame($quoted, $executor->execute($program, $env));
+    }
+
+    public function testCompilesWhileWithMultipleBodyExpressions(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+        $env->set('running', true);
+
+        $program = $compiler->compile(new MList([
+            new Symbol('while'),
+            new Symbol('running'),
+            new MList([new Symbol('def'), new Symbol('running'), false]),
+            42,
+        ]));
+
+        $this->assertSame(42, $executor->execute($program, $env));
+        $this->assertSame(false, $env->get('running'));
+    }
+
+    public function testWhileReturnsNullWhenItDoesNotRun(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([
+            new Symbol('while'),
+            false,
+            42,
+        ]));
+
+        $this->assertNull($executor->execute($program, $env));
+    }
+
     public function testCompilesAndAndOrWithShortCircuiting(): void
     {
         $compiler = new Compiler();
@@ -478,7 +526,7 @@ class CompilerTest extends TestCase
         $ast = new MList([
             new Symbol('let'),
             new MList([
-                new Symbol('x'), new MList([new Symbol('quote'), 1]),
+                new Symbol('x'), new MList([new Symbol('quasiquote'), 1]),
             ]),
             new Symbol('x'),
         ]);
@@ -565,7 +613,7 @@ class CompilerTest extends TestCase
         $env = new Env('root');
 
         $ast = new MList([
-            new Symbol('while'),
+            new Symbol('try'),
             true,
             1,
             2,
