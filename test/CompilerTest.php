@@ -200,6 +200,98 @@ class CompilerTest extends TestCase
         $compiler->compile($ast, $env);
     }
 
+    public function testCompilesSequentialLetBindings(): void
+    {
+        $compiler = new Compiler();
+        $env = new Env('root');
+        $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
+
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([
+                new Symbol('x'), 2,
+                new Symbol('y'), new MList([new Symbol('+'), new Symbol('x'), 1]),
+            ]),
+            new MList([new Symbol('+'), new Symbol('y'), 3]),
+        ]);
+
+        $program = $compiler->compile($ast, $env);
+
+        $this->assertNotNull($program);
+        $this->assertSame([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::STORE_LOCAL, 0,
+            OpCode::LOAD_LOCAL, 0,
+            OpCode::LOAD_CONSTANT, 1,
+            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
+            OpCode::STORE_LOCAL, 1,
+            OpCode::LOAD_LOCAL, 1,
+            OpCode::LOAD_CONSTANT, 2,
+            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
+            OpCode::RETURN,
+        ], $program->getCode());
+        $this->assertSame([2, 1, 3], $program->getConstants());
+        $this->assertSame(2, $program->getLocalCount());
+    }
+
+    public function testCompilesLetBodyExpressionsWithPop(): void
+    {
+        $compiler = new Compiler();
+        $env = new Env('root');
+
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([new Symbol('x'), 2]),
+            new Symbol('x'),
+            3,
+        ]);
+
+        $program = $compiler->compile($ast, $env);
+
+        $this->assertNotNull($program);
+        $this->assertSame([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::STORE_LOCAL, 0,
+            OpCode::LOAD_LOCAL, 0,
+            OpCode::POP,
+            OpCode::LOAD_CONSTANT, 1,
+            OpCode::RETURN,
+        ], $program->getCode());
+    }
+
+    public function testRejectsMalformedLet(): void
+    {
+        $compiler = new Compiler();
+        $env = new Env('root');
+
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([new Symbol('x')]),
+            1,
+        ]);
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('uneven number of bindings for let');
+
+        $compiler->compile($ast, $env);
+    }
+
+    public function testUnsupportedExpressionInsideLetReturnsNull(): void
+    {
+        $compiler = new Compiler();
+        $env = new Env('root');
+
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([
+                new Symbol('x'), new MList([new Symbol('do'), 1, 2]),
+            ]),
+            new Symbol('x'),
+        ]);
+
+        $this->assertNull($compiler->compile($ast, $env));
+    }
+
     public function testUnsupportedSpecialFormReturnsNull(): void
     {
         $compiler = new Compiler();

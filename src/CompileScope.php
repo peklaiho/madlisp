@@ -25,10 +25,20 @@ class CompileScope
         return new CompileScope($this);
     }
 
+    public function allocate(): int
+    {
+        return $this->root->nextSlot++;
+    }
+
+    public function bind(string $name, int $slot): void
+    {
+        $this->locals[$name] = $slot;
+    }
+
     public function define(string $name): int
     {
-        $slot = $this->root->nextSlot++;
-        $this->locals[$name] = $slot;
+        $slot = $this->allocate();
+        $this->bind($name, $slot);
 
         return $slot;
     }

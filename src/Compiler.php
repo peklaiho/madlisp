@@ -72,6 +72,11 @@ class Compiler
             return $this->compileIf($data, $length, $code, $constants, $env, $scope);
         }
 
+        // Special form: let
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'let') {
+            return $this->compileLet($data, $length, $code, $constants, $env, $scope);
+        }
+
         // Other special forms: not supported yet
         if ($this->isSpecialForm($data[0])) {
             return false;
@@ -86,7 +91,7 @@ class Compiler
                 return false;
             }
 
-            if ($operator instanceof CoreFunc) {
+            if ($scope->resolve($operatorName) === null && $operator instanceof CoreFunc) {
                 $coreFuncMetadata = CoreFuncId::fromName($operatorName);
             }
         }
@@ -126,6 +131,58 @@ class Compiler
         $code[] = OpCode::CALL;
         $code[] = $length - 1;
         return true;
+    }
+
+    private function compileLet(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        Env $env,
+        CompileScope $scope
+    ): bool
+    {
+        if ($length < 3) {
+            throw new MadLispException('let requires at least 2 arguments');
+        }
+
+        if (!($data[1] instanceof Seq)) {
+            throw new MadLispException('first argument to let is not seq');
+        }
+
+        $bindings = $data[1]->getData();
+        if (count($bindings) % 2 == 1) {
+            throw new MadLispException('uneven number of bindings for let');
+        }
+
+        $bodyScope = $scope->child();
+
+        for ($i = 0; $i < count($bindings); $i += 2) {
+            if (!($bindings[$i] instanceof Symbol)) {
+                throw new MadLispException('binding key for let is not symbol');
+            }
+
+            $name = $bindings[$i]->getName();
+            $slot = $bodyScope->allocate();
+
+            if (!$this->compileExpression($bindings[$i + 1], $code, $constants, $env, $bodyScope)) {
+                return false;
+            }
+
+            $code[] = OpCode::STORE_LOCAL;
+            $code[] = $slot;
+            $bodyScope->bind($name, $slot);
+        }
+
+        for ($i = 2; $i < $length - 1; $i++) {
+            if (!$this->compileExpression($data[$i], $code, $constants, $env, $bodyScope)) {
+                return false;
+            }
+
+            $code[] = OpCode::POP;
+        }
+
+        return $this->compileExpression($data[$length - 1], $code, $constants, $env, $bodyScope);
     }
 
     private function compileIf(

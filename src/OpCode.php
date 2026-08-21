@@ -18,4 +18,5 @@ class OpCode
     public const int CALL_CORE = 7;
     public const int LOAD_LOCAL = 8;
     public const int STORE_LOCAL = 9;
+    public const int POP = 10;
 }

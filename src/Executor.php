@@ -56,6 +56,10 @@ class Executor
                     $frame->locals[$localSlot] = array_pop($stack);
                     break;
 
+                case OpCode::POP:
+                    array_pop($stack);
+                    break;
+
                 case OpCode::JUMP_IF_FALSE:
                     $target = $code[$pc++];
                     $condition = array_pop($stack);

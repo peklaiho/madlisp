@@ -110,6 +110,21 @@ class ExecutorTest extends TestCase
         $this->assertSame(42, $executor->execute($program, $env));
     }
 
+    public function testPopsIntermediateValue(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = new CompiledProgram([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::POP,
+            OpCode::LOAD_CONSTANT, 1,
+            OpCode::RETURN,
+        ], [1, 2], 0);
+
+        $this->assertSame(2, $executor->execute($program, $env));
+    }
+
     public function testRejectsInvalidLocalSlot(): void
     {
         $executor = new Executor();
