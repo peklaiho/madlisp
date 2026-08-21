@@ -231,6 +231,34 @@ class CompilerTest extends TestCase
         $this->assertSame(7, $executor->execute($or, $env));
     }
 
+    public function testCompilesDoInOrderAndReturnsLastValue(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([
+            new Symbol('do'),
+            new MList([new Symbol('def'), new Symbol('value'), 1]),
+            new MList([new Symbol('def'), new Symbol('value'), 2]),
+            new Symbol('value'),
+        ]));
+
+        $this->assertSame(2, $executor->execute($program, $env));
+        $this->assertSame(2, $env->get('value'));
+    }
+
+    public function testCompilesEmptyDoAsNull(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([new Symbol('do')]));
+
+        $this->assertNull($executor->execute($program, $env));
+    }
+
     public function testCompilesCall(): void
     {
         $compiler = new Compiler();
@@ -379,7 +407,7 @@ class CompilerTest extends TestCase
         $ast = new MList([
             new Symbol('let'),
             new MList([
-                new Symbol('x'), new MList([new Symbol('do'), 1, 2]),
+                new Symbol('x'), new MList([new Symbol('quote'), 1]),
             ]),
             new Symbol('x'),
         ]);
@@ -466,7 +494,8 @@ class CompilerTest extends TestCase
         $env = new Env('root');
 
         $ast = new MList([
-            new Symbol('do'),
+            new Symbol('while'),
+            true,
             1,
             2,
         ]);

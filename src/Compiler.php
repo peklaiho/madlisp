@@ -87,6 +87,11 @@ class Compiler
             return $this->compileOr($data, $length, $code, $constants, $scope);
         }
 
+        // Special form: do
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'do') {
+            return $this->compileDo($data, $length, $code, $constants, $scope);
+        }
+
         // Special form: let
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'let') {
             return $this->compileLet($data, $length, $code, $constants, $scope);
@@ -231,6 +236,32 @@ class Compiler
         }
 
         return true;
+    }
+
+    private function compileDo(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        CompileScope $scope
+    ): bool
+    {
+        if ($length == 1) {
+            $constants[] = null;
+            $code[] = OpCode::LOAD_CONSTANT;
+            $code[] = count($constants) - 1;
+            return true;
+        }
+
+        for ($i = 1; $i < $length - 1; $i++) {
+            if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
+                return false;
+            }
+
+            $code[] = OpCode::POP;
+        }
+
+        return $this->compileExpression($data[$length - 1], $code, $constants, $scope);
     }
 
     private function compileLet(
