@@ -168,6 +168,46 @@ class CompilerTest extends TestCase
         $this->assertNull($executor->execute($program, $env));
     }
 
+    public function testCompilesCaseAndCaseStrict(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $case = $compiler->compile(new MList([
+            new Symbol('case'),
+            1,
+            new MList([2, 'two']),
+            new MList([1, 'one']),
+            new MList([new Symbol('else'), 'other']),
+        ]));
+        $caseStrict = $compiler->compile(new MList([
+            new Symbol('case-strict'),
+            1,
+            new MList(['1', 'string']),
+            new MList([1, 'integer']),
+        ]));
+
+        $this->assertSame('one', $executor->execute($case, $env));
+        $this->assertSame('integer', $executor->execute($caseStrict, $env));
+    }
+
+    public function testCaseReturnsNullWhenNothingMatches(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([
+            new Symbol('case'),
+            3,
+            new MList([1, 'one']),
+            new MList([2, 'two']),
+        ]));
+
+        $this->assertNull($executor->execute($program, $env));
+    }
+
     public function testCompilesDef(): void
     {
         $compiler = new Compiler();

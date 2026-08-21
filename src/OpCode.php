@@ -24,4 +24,6 @@ class OpCode
     public const int STORE_GLOBAL = 13;
     public const int JUMP_IF_FALSE_KEEP = 14;
     public const int JUMP_IF_TRUE_KEEP = 15;
+    public const int CASE_COMPARE = 16;
+    public const int CASE_COMPARE_STRICT = 17;
 }

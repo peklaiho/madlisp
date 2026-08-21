@@ -101,6 +101,18 @@ class Executor
                     $pc = $code[$pc];
                     break;
 
+                case OpCode::CASE_COMPARE:
+                    $right = array_pop($stack);
+                    $left = array_pop($stack);
+                    $stack[] = Util::valueForCompare($left) == Util::valueForCompare($right);
+                    break;
+
+                case OpCode::CASE_COMPARE_STRICT:
+                    $right = array_pop($stack);
+                    $left = array_pop($stack);
+                    $stack[] = Util::valueForCompare($left) === Util::valueForCompare($right);
+                    break;
+
                 case OpCode::MAKE_FUNCTION:
                     $templateIndex = $code[$pc++];
                     $template = $constants[$templateIndex];
