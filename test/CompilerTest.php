@@ -137,6 +137,37 @@ class CompilerTest extends TestCase
         $this->assertSame([true, false, 1, 2, 3], $program->getConstants());
     }
 
+    public function testCompilesCondBranchesAndReturnsLastClauseValue(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([
+            new Symbol('cond'),
+            new MList([false, 1]),
+            new MList([true, 2, 3]),
+            new MList([new Symbol('else'), 4]),
+        ]));
+
+        $this->assertSame(3, $executor->execute($program, $env));
+    }
+
+    public function testCompilesCondWithNoMatchingClauseAsNull(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([
+            new Symbol('cond'),
+            new MList([false, 1]),
+            new MList([false, 2]),
+        ]));
+
+        $this->assertNull($executor->execute($program, $env));
+    }
+
     public function testCompilesDef(): void
     {
         $compiler = new Compiler();

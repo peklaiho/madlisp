@@ -102,6 +102,11 @@ class Compiler
             return $this->compileFn($data, $length, $code, $constants, $scope);
         }
 
+        // Special form: cond
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'cond') {
+            return $this->compileCond($data, $length, $code, $constants, $scope);
+        }
+
         // Special form: def
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'def') {
             return $this->compileDef($data, $length, $code, $constants, $scope);
@@ -313,6 +318,84 @@ class Compiler
         }
 
         return $this->compileExpression($data[$length - 1], $code, $constants, $bodyScope);
+    }
+
+    private function compileCond(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        CompileScope $scope
+    ): bool
+    {
+        if ($length < 2) {
+            throw new MadLispException('cond requires at least 1 argument');
+        }
+
+        $endJumps = [];
+        $pendingFalseJump = null;
+
+        for ($i = 1; $i < $length; $i++) {
+            if ($pendingFalseJump !== null) {
+                $code[$pendingFalseJump + 1] = count($code);
+                $pendingFalseJump = null;
+            }
+
+            if (!($data[$i] instanceof Seq)) {
+                throw new MadLispException('argument to cond is not seq');
+            }
+
+            $clause = $data[$i]->getData();
+            if (count($clause) < 2) {
+                throw new MadLispException('clause for cond requires at least 2 arguments');
+            }
+
+            $isElse = $clause[0] instanceof Symbol && $clause[0]->getName() == 'else';
+            if (!$isElse) {
+                if (!$this->compileExpression($clause[0], $code, $constants, $scope)) {
+                    return false;
+                }
+
+                $pendingFalseJump = count($code);
+                $code[] = OpCode::JUMP_IF_FALSE;
+                $code[] = 0;
+            }
+
+            for ($j = 1; $j < count($clause) - 1; $j++) {
+                if (!$this->compileExpression($clause[$j], $code, $constants, $scope)) {
+                    return false;
+                }
+
+                $code[] = OpCode::POP;
+            }
+
+            if (!$this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope)) {
+                return false;
+            }
+
+            $endJumps[] = count($code);
+            $code[] = OpCode::JUMP;
+            $code[] = 0;
+
+            if ($isElse) {
+                break;
+            }
+        }
+
+        $constants[] = null;
+        $code[] = OpCode::LOAD_CONSTANT;
+        $code[] = count($constants) - 1;
+
+        if ($pendingFalseJump !== null) {
+            $code[$pendingFalseJump + 1] = count($code) - 2;
+        }
+
+        $end = count($code);
+        foreach ($endJumps as $jump) {
+            $code[$jump + 1] = $end;
+        }
+
+        return true;
     }
 
     private function compileDef(
