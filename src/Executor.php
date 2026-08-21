@@ -65,6 +65,11 @@ class Executor
                     $frame->locals[$localSlot] = array_pop($stack);
                     break;
 
+                case OpCode::STORE_GLOBAL:
+                    $nameIndex = $code[$pc++];
+                    $stack[] = $env->set($constants[$nameIndex], array_pop($stack));
+                    break;
+
                 case OpCode::POP:
                     array_pop($stack);
                     break;

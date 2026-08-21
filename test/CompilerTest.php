@@ -137,6 +137,45 @@ class CompilerTest extends TestCase
         $this->assertSame([true, false, 1, 2, 3], $program->getConstants());
     }
 
+    public function testCompilesDef(): void
+    {
+        $compiler = new Compiler();
+
+        $ast = new MList([
+            new Symbol('def'),
+            new Symbol('value'),
+            new MList([new Symbol('+'), 1, 2]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertNotNull($program);
+        $this->assertSame([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::LOAD_CONSTANT, 1,
+            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
+            OpCode::STORE_GLOBAL, 2,
+            OpCode::RETURN,
+        ], $program->getCode());
+        $this->assertSame([1, 2, 'value'], $program->getConstants());
+    }
+
+    public function testExecutesDefInRuntimeEnvironment(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([
+            new Symbol('def'),
+            new Symbol('value'),
+            42,
+        ]));
+
+        $this->assertSame(42, $executor->execute($program, $env));
+        $this->assertSame(42, $env->get('value'));
+    }
+
     public function testCompilesCall(): void
     {
         $compiler = new Compiler();

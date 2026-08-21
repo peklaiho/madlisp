@@ -88,6 +88,11 @@ class Compiler
             return $this->compileFn($data, $length, $code, $constants, $scope);
         }
 
+        // Special form: def
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'def') {
+            return $this->compileDef($data, $length, $code, $constants, $scope);
+        }
+
         // Other special forms: not supported yet
         if ($this->isSpecialForm($data[0])) {
             return false;
@@ -190,6 +195,42 @@ class Compiler
         }
 
         return $this->compileExpression($data[$length - 1], $code, $constants, $bodyScope);
+    }
+
+    private function compileDef(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        CompileScope $scope
+    ): bool
+    {
+        if ($length != 3) {
+            throw new MadLispException('def requires exactly 2 arguments');
+        }
+
+        if (!($data[1] instanceof Symbol)) {
+            throw new MadLispException('first argument to def is not symbol');
+        }
+
+        $name = $data[1]->getName();
+        if (in_array($name, ['__FILE__', '__DIR__'], true)) {
+            throw new MadLispException("attempt to def reserved symbol $name");
+        }
+
+        if (CoreFuncId::fromName($name) !== null) {
+            throw new MadLispException("attempt to def core function $name");
+        }
+
+        if (!$this->compileExpression($data[2], $code, $constants, $scope)) {
+            return false;
+        }
+
+        $constants[] = $name;
+        $code[] = OpCode::STORE_GLOBAL;
+        $code[] = count($constants) - 1;
+
+        return true;
     }
 
     private function compileFn(
