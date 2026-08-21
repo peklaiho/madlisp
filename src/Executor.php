@@ -144,7 +144,9 @@ class Executor
                     $stack[] = new CompiledFunc($template->program, $env, $template->arity, $captures);
                     break;
 
+                case OpCode::TAIL_CALL:
                 case OpCode::CALL:
+                    $tailCall = $opcode == OpCode::TAIL_CALL;
                     $arity = $code[$pc++];
                     $args = $arity == 0 ? [] : array_splice($stack, -$arity);
                     $func = array_pop($stack);
@@ -165,6 +167,10 @@ class Executor
                         $callerBase = count($stack);
                         $thisFrame = $frame;
                         $thisFrame->pc = $pc;
+                        if ($tailCall) {
+                            array_pop($frames);
+                            $callerBase = $thisFrame->stackBase;
+                        }
                         $callee = new ExecutionFrame(
                             $func->getProgram(),
                             $func->getEnv(),

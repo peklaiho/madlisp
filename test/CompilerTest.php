@@ -247,6 +247,41 @@ class CompilerTest extends TestCase
         $this->assertSame(42, $env->get('value'));
     }
 
+    public function testCompilesAndExecutesDeepTailRecursiveFunction(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([
+            new Symbol('do'),
+            new MList([
+                new Symbol('def'),
+                new Symbol('countdown'),
+                new MList([
+                    new Symbol('fn'),
+                    new MList([new Symbol('n')]),
+                    new MList([
+                        new Symbol('if'),
+                        new Symbol('n'),
+                        new MList([new Symbol('countdown'), new MList([new Symbol('dec'), new Symbol('n')])]),
+                        0,
+                    ]),
+                ]),
+            ]),
+            new MList([new Symbol('countdown'), 10000]),
+        ]));
+
+        $templates = array_values(array_filter(
+            $program->getConstants(),
+            fn ($constant) => $constant instanceof CompiledFuncTemplate
+        ));
+
+        $this->assertCount(1, $templates);
+        $this->assertContains(OpCode::TAIL_CALL, $templates[0]->program->getCode());
+        $this->assertSame(0, $executor->execute($program, $env));
+    }
+
     public function testCompilesQuote(): void
     {
         $compiler = new Compiler();

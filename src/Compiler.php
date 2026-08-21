@@ -28,7 +28,8 @@ class Compiler
         $ast,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        CompileScope $scope,
+        bool $tailPosition = false
     ): bool
     {
         // Symbol is a load from Env
@@ -75,7 +76,7 @@ class Compiler
 
         // Special form: if
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'if') {
-            return $this->compileIf($data, $length, $code, $constants, $scope);
+            return $this->compileIf($data, $length, $code, $constants, $scope, $tailPosition);
         }
 
         // Special form: quote
@@ -90,21 +91,21 @@ class Compiler
 
         // Special forms: and/or
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'and') {
-            return $this->compileAnd($data, $length, $code, $constants, $scope);
+            return $this->compileAnd($data, $length, $code, $constants, $scope, $tailPosition);
         }
 
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'or') {
-            return $this->compileOr($data, $length, $code, $constants, $scope);
+            return $this->compileOr($data, $length, $code, $constants, $scope, $tailPosition);
         }
 
         // Special form: do
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'do') {
-            return $this->compileDo($data, $length, $code, $constants, $scope);
+            return $this->compileDo($data, $length, $code, $constants, $scope, $tailPosition);
         }
 
         // Special form: let
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'let') {
-            return $this->compileLet($data, $length, $code, $constants, $scope);
+            return $this->compileLet($data, $length, $code, $constants, $scope, $tailPosition);
         }
 
         // Special form: fn
@@ -116,12 +117,12 @@ class Compiler
         if ($data[0] instanceof Symbol
             && ($data[0]->getName() == 'case' || $data[0]->getName() == 'case-strict')
         ) {
-            return $this->compileCase($data, $length, $code, $constants, $scope);
+            return $this->compileCase($data, $length, $code, $constants, $scope, $tailPosition);
         }
 
         // Special form: cond
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'cond') {
-            return $this->compileCond($data, $length, $code, $constants, $scope);
+            return $this->compileCond($data, $length, $code, $constants, $scope, $tailPosition);
         }
 
         // Special form: def
@@ -177,7 +178,7 @@ class Compiler
             }
         }
 
-        $code[] = OpCode::CALL;
+        $code[] = $tailPosition ? OpCode::TAIL_CALL : OpCode::CALL;
         $code[] = $length - 1;
         return true;
     }
@@ -253,7 +254,8 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        CompileScope $scope,
+        bool $tailPosition
     ): bool
     {
         if ($length == 1) {
@@ -275,7 +277,7 @@ class Compiler
             $code[] = OpCode::POP;
         }
 
-        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope)) {
+        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition)) {
             return false;
         }
 
@@ -292,7 +294,8 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        CompileScope $scope,
+        bool $tailPosition
     ): bool
     {
         if ($length == 1) {
@@ -314,7 +317,7 @@ class Compiler
             $code[] = OpCode::POP;
         }
 
-        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope)) {
+        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition)) {
             return false;
         }
 
@@ -331,7 +334,8 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        CompileScope $scope,
+        bool $tailPosition
     ): bool
     {
         if ($length == 1) {
@@ -349,7 +353,7 @@ class Compiler
             $code[] = OpCode::POP;
         }
 
-        return $this->compileExpression($data[$length - 1], $code, $constants, $scope);
+        return $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
     }
 
     private function compileLet(
@@ -357,7 +361,8 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        CompileScope $scope,
+        bool $tailPosition
     ): bool
     {
         if ($length < 3) {
@@ -400,7 +405,7 @@ class Compiler
             $code[] = OpCode::POP;
         }
 
-        return $this->compileExpression($data[$length - 1], $code, $constants, $bodyScope);
+        return $this->compileExpression($data[$length - 1], $code, $constants, $bodyScope, $tailPosition);
     }
 
     private function compileCase(
@@ -408,7 +413,8 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        CompileScope $scope,
+        bool $tailPosition
     ): bool
     {
         if ($length < 3) {
@@ -464,7 +470,7 @@ class Compiler
                 $code[] = OpCode::POP;
             }
 
-            if (!$this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope)) {
+            if (!$this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope, $tailPosition)) {
                 return false;
             }
 
@@ -498,7 +504,8 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        CompileScope $scope,
+        bool $tailPosition
     ): bool
     {
         if ($length < 2) {
@@ -542,7 +549,7 @@ class Compiler
                 $code[] = OpCode::POP;
             }
 
-            if (!$this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope)) {
+            if (!$this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope, $tailPosition)) {
                 return false;
             }
 
@@ -652,7 +659,8 @@ class Compiler
             $data[2],
             $functionCode,
             $functionConstants,
-            $functionScope
+            $functionScope,
+            true
         )) {
             return false;
         }
@@ -680,7 +688,8 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        CompileScope $scope,
+        bool $tailPosition
     ): bool
     {
         if ($length < 3 || $length > 4) {
@@ -695,7 +704,7 @@ class Compiler
         $code[] = OpCode::JUMP_IF_FALSE;
         $code[] = 0;
 
-        if (!$this->compileExpression($data[2], $code, $constants, $scope)) {
+        if (!$this->compileExpression($data[2], $code, $constants, $scope, $tailPosition)) {
             return false;
         }
 
@@ -707,7 +716,7 @@ class Compiler
         $code[$jumpIfFalse + 1] = $elseAddress;
 
         if ($length == 4) {
-            if (!$this->compileExpression($data[3], $code, $constants, $scope)) {
+            if (!$this->compileExpression($data[3], $code, $constants, $scope, $tailPosition)) {
                 return false;
             }
         } else {

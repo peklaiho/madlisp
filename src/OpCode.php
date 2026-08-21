@@ -26,4 +26,5 @@ class OpCode
     public const int JUMP_IF_TRUE_KEEP = 15;
     public const int CASE_COMPARE = 16;
     public const int CASE_COMPARE_STRICT = 17;
+    public const int TAIL_CALL = 18;
 }
