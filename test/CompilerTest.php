@@ -25,7 +25,7 @@ class CompilerTest extends TestCase
         $compiler = new Compiler();
         $env = new Env('root');
 
-        $program = $compiler->compile(42, $env);
+        $program = $compiler->compile(42);
 
         $this->assertNotNull($program);
         $this->assertSame([
@@ -41,7 +41,7 @@ class CompilerTest extends TestCase
         $compiler = new Compiler();
         $env = new Env('root');
 
-        $program = $compiler->compile(new Symbol('value'), $env);
+        $program = $compiler->compile(new Symbol('value'));
 
         $this->assertNotNull($program);
         $this->assertSame([
@@ -63,7 +63,7 @@ class CompilerTest extends TestCase
             2,
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertNotNull($program);
         $this->assertSame([
@@ -88,7 +88,7 @@ class CompilerTest extends TestCase
             1,
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertNotNull($program);
         $this->assertSame([
@@ -119,7 +119,7 @@ class CompilerTest extends TestCase
             3,
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertNotNull($program);
         $this->assertSame([
@@ -148,17 +148,16 @@ class CompilerTest extends TestCase
             2,
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_GLOBAL, 0,
+            OpCode::LOAD_CONSTANT, 0,
             OpCode::LOAD_CONSTANT, 1,
-            OpCode::LOAD_CONSTANT, 2,
-            OpCode::CALL, 2,
+            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
             OpCode::RETURN,
         ], $program->getCode());
-        $this->assertSame(['+', 1, 2], $program->getConstants());
+        $this->assertSame([1, 2], $program->getConstants());
     }
 
     public function testCompilesSupportedCoreCall(): void
@@ -173,7 +172,7 @@ class CompilerTest extends TestCase
             2,
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertNotNull($program);
         $this->assertSame([
@@ -199,7 +198,7 @@ class CompilerTest extends TestCase
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('* requires at least 2 arguments');
 
-        $compiler->compile($ast, $env);
+        $compiler->compile($ast);
     }
 
     public function testCompilesSequentialLetBindings(): void
@@ -217,7 +216,7 @@ class CompilerTest extends TestCase
             new MList([new Symbol('+'), new Symbol('y'), 3]),
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertNotNull($program);
         $this->assertSame([
@@ -248,7 +247,7 @@ class CompilerTest extends TestCase
             3,
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertNotNull($program);
         $this->assertSame([
@@ -275,7 +274,7 @@ class CompilerTest extends TestCase
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('uneven number of bindings for let');
 
-        $compiler->compile($ast, $env);
+        $compiler->compile($ast);
     }
 
     public function testUnsupportedExpressionInsideLetReturnsNull(): void
@@ -291,7 +290,7 @@ class CompilerTest extends TestCase
             new Symbol('x'),
         ]);
 
-        $this->assertNull($compiler->compile($ast, $env));
+        $this->assertNull($compiler->compile($ast));
     }
 
     public function testCompilesNonCapturingFn(): void
@@ -306,7 +305,7 @@ class CompilerTest extends TestCase
             new MList([new Symbol('+'), new Symbol('x'), 1]),
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
         $template = $program->getConstants()[0];
 
         $this->assertNotNull($program);
@@ -337,7 +336,7 @@ class CompilerTest extends TestCase
             4,
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertSame(5, $executor->execute($program, $env));
     }
@@ -362,7 +361,7 @@ class CompilerTest extends TestCase
             ]),
         ]);
 
-        $program = $compiler->compile($ast, $env);
+        $program = $compiler->compile($ast);
 
         $this->assertSame(15, $executor->execute($program, $env));
     }
@@ -378,6 +377,6 @@ class CompilerTest extends TestCase
             2,
         ]);
 
-        $this->assertNull($compiler->compile($ast, $env));
+        $this->assertNull($compiler->compile($ast));
     }
 }

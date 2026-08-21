@@ -51,7 +51,7 @@ class Lisp
 
         $expr = $this->reader->read($tokens);
 
-        $program = $this->compiler->compile($expr, $customEnv ? $customEnv : $this->env);
+        $program = $this->compiler->compile($expr);
 
         if ($program) {
             return $this->executor->execute($program, $customEnv ? $customEnv : $this->env);

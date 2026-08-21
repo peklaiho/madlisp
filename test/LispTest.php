@@ -118,7 +118,7 @@ class LispTest extends TestCase
 
         $compiler->expects($this->once())
             ->method('compile')
-            ->with('ast', $env)
+            ->with('ast')
             ->willReturn($program);
 
         $executor->expects($this->once())
@@ -155,7 +155,7 @@ class LispTest extends TestCase
 
         $compiler->expects($this->once())
             ->method('compile')
-            ->with('ast', $env)
+            ->with('ast')
             ->willReturn(null);
 
         $executor->expects($this->never())

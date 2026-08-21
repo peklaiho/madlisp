@@ -9,13 +9,13 @@ namespace MadLisp;
 
 class Compiler
 {
-    public function compile($ast, Env $env): ?CompiledProgram
+    public function compile($ast): ?CompiledProgram
     {
         $code = [];
         $constants = [];
         $scope = new CompileScope();
 
-        if (!$this->compileExpression($ast, $code, $constants, $env, $scope)) {
+        if (!$this->compileExpression($ast, $code, $constants, $scope)) {
             return null;
         }
 
@@ -28,7 +28,6 @@ class Compiler
         $ast,
         array &$code,
         array &$constants,
-        Env $env,
         CompileScope $scope
     ): bool
     {
@@ -76,17 +75,17 @@ class Compiler
 
         // Special form: if
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'if') {
-            return $this->compileIf($data, $length, $code, $constants, $env, $scope);
+            return $this->compileIf($data, $length, $code, $constants, $scope);
         }
 
         // Special form: let
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'let') {
-            return $this->compileLet($data, $length, $code, $constants, $env, $scope);
+            return $this->compileLet($data, $length, $code, $constants, $scope);
         }
 
         // Special form: fn
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'fn') {
-            return $this->compileFn($data, $length, $code, $constants, $env, $scope);
+            return $this->compileFn($data, $length, $code, $constants, $scope);
         }
 
         // Other special forms: not supported yet
@@ -98,12 +97,9 @@ class Compiler
         $coreFuncMetadata = null;
         if ($data[0] instanceof Symbol) {
             $operatorName = $data[0]->getName();
-            $operator = $env->get($operatorName, false);
-            if ($operator instanceof Func && $operator->isMacro()) {
-                return false;
-            }
-
-            if ($scope->resolve($operatorName) === null && $operator instanceof CoreFunc) {
+            if ($scope->resolve($operatorName) === null
+                && $scope->resolveCapture($operatorName) === null
+            ) {
                 $coreFuncMetadata = CoreFuncId::fromName($operatorName);
             }
         }
@@ -122,7 +118,7 @@ class Compiler
             }
 
             for ($i = 1; $i < $length; $i++) {
-                if (!$this->compileExpression($data[$i], $code, $constants, $env, $scope)) {
+                if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
                     return false;
                 }
             }
@@ -135,7 +131,7 @@ class Compiler
 
         // Handle as normal function call
         foreach ($data as $item) {
-            if (!$this->compileExpression($item, $code, $constants, $env, $scope)) {
+            if (!$this->compileExpression($item, $code, $constants, $scope)) {
                 return false;
             }
         }
@@ -150,7 +146,6 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        Env $env,
         CompileScope $scope
     ): bool
     {
@@ -177,7 +172,7 @@ class Compiler
             $name = $bindings[$i]->getName();
             $slot = $bodyScope->allocate();
 
-            if (!$this->compileExpression($bindings[$i + 1], $code, $constants, $env, $bodyScope)) {
+            if (!$this->compileExpression($bindings[$i + 1], $code, $constants, $bodyScope)) {
                 return false;
             }
 
@@ -187,14 +182,14 @@ class Compiler
         }
 
         for ($i = 2; $i < $length - 1; $i++) {
-            if (!$this->compileExpression($data[$i], $code, $constants, $env, $bodyScope)) {
+            if (!$this->compileExpression($data[$i], $code, $constants, $bodyScope)) {
                 return false;
             }
 
             $code[] = OpCode::POP;
         }
 
-        return $this->compileExpression($data[$length - 1], $code, $constants, $env, $bodyScope);
+        return $this->compileExpression($data[$length - 1], $code, $constants, $bodyScope);
     }
 
     private function compileFn(
@@ -202,7 +197,6 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        Env $env,
         CompileScope $scope
     ): bool
     {
@@ -243,7 +237,6 @@ class Compiler
             $data[2],
             $functionCode,
             $functionConstants,
-            $env,
             $functionScope
         )) {
             return false;
@@ -272,7 +265,6 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        Env $env,
         CompileScope $scope
     ): bool
     {
@@ -280,7 +272,7 @@ class Compiler
             return false;
         }
 
-        if (!$this->compileExpression($data[1], $code, $constants, $env, $scope)) {
+        if (!$this->compileExpression($data[1], $code, $constants, $scope)) {
             return false;
         }
 
@@ -288,7 +280,7 @@ class Compiler
         $code[] = OpCode::JUMP_IF_FALSE;
         $code[] = 0;
 
-        if (!$this->compileExpression($data[2], $code, $constants, $env, $scope)) {
+        if (!$this->compileExpression($data[2], $code, $constants, $scope)) {
             return false;
         }
 
@@ -300,7 +292,7 @@ class Compiler
         $code[$jumpIfFalse + 1] = $elseAddress;
 
         if ($length == 4) {
-            if (!$this->compileExpression($data[3], $code, $constants, $env, $scope)) {
+            if (!$this->compileExpression($data[3], $code, $constants, $scope)) {
                 return false;
             }
         } else {
