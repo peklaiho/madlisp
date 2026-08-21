@@ -22,4 +22,6 @@ class OpCode
     public const int MAKE_FUNCTION = 11;
     public const int LOAD_CAPTURE = 12;
     public const int STORE_GLOBAL = 13;
+    public const int JUMP_IF_FALSE_KEEP = 14;
+    public const int JUMP_IF_TRUE_KEEP = 15;
 }

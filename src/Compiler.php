@@ -78,6 +78,15 @@ class Compiler
             return $this->compileIf($data, $length, $code, $constants, $scope);
         }
 
+        // Special forms: and/or
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'and') {
+            return $this->compileAnd($data, $length, $code, $constants, $scope);
+        }
+
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'or') {
+            return $this->compileOr($data, $length, $code, $constants, $scope);
+        }
+
         // Special form: let
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'let') {
             return $this->compileLet($data, $length, $code, $constants, $scope);
@@ -143,6 +152,84 @@ class Compiler
 
         $code[] = OpCode::CALL;
         $code[] = $length - 1;
+        return true;
+    }
+
+    private function compileAnd(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        CompileScope $scope
+    ): bool
+    {
+        if ($length == 1) {
+            $constants[] = true;
+            $code[] = OpCode::LOAD_CONSTANT;
+            $code[] = count($constants) - 1;
+            return true;
+        }
+
+        $jumps = [];
+        for ($i = 1; $i < $length - 1; $i++) {
+            if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
+                return false;
+            }
+
+            $jumps[] = count($code);
+            $code[] = OpCode::JUMP_IF_FALSE_KEEP;
+            $code[] = 0;
+            $code[] = OpCode::POP;
+        }
+
+        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope)) {
+            return false;
+        }
+
+        $end = count($code);
+        foreach ($jumps as $jump) {
+            $code[$jump + 1] = $end;
+        }
+
+        return true;
+    }
+
+    private function compileOr(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        CompileScope $scope
+    ): bool
+    {
+        if ($length == 1) {
+            $constants[] = false;
+            $code[] = OpCode::LOAD_CONSTANT;
+            $code[] = count($constants) - 1;
+            return true;
+        }
+
+        $jumps = [];
+        for ($i = 1; $i < $length - 1; $i++) {
+            if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
+                return false;
+            }
+
+            $jumps[] = count($code);
+            $code[] = OpCode::JUMP_IF_TRUE_KEEP;
+            $code[] = 0;
+            $code[] = OpCode::POP;
+        }
+
+        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope)) {
+            return false;
+        }
+
+        $end = count($code);
+        foreach ($jumps as $jump) {
+            $code[$jump + 1] = $end;
+        }
+
         return true;
     }
 

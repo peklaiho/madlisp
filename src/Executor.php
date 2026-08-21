@@ -83,6 +83,20 @@ class Executor
                     }
                     break;
 
+                case OpCode::JUMP_IF_FALSE_KEEP:
+                    $target = $code[$pc++];
+                    if ($stack[count($stack) - 1] != true) {
+                        $pc = $target;
+                    }
+                    break;
+
+                case OpCode::JUMP_IF_TRUE_KEEP:
+                    $target = $code[$pc++];
+                    if ($stack[count($stack) - 1] == true) {
+                        $pc = $target;
+                    }
+                    break;
+
                 case OpCode::JUMP:
                     $pc = $code[$pc];
                     break;

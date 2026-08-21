@@ -176,6 +176,61 @@ class CompilerTest extends TestCase
         $this->assertSame(42, $env->get('value'));
     }
 
+    public function testCompilesAndAndOrWithShortCircuiting(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $and = $compiler->compile(new MList([
+            new Symbol('and'),
+            false,
+            new Symbol('missing'),
+        ]));
+        $or = $compiler->compile(new MList([
+            new Symbol('or'),
+            true,
+            new Symbol('missing'),
+        ]));
+
+        $this->assertSame(false, $executor->execute($and, $env));
+        $this->assertSame(true, $executor->execute($or, $env));
+    }
+
+    public function testCompilesEmptyAndAndOr(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $and = $compiler->compile(new MList([new Symbol('and')]));
+        $or = $compiler->compile(new MList([new Symbol('or')]));
+
+        $this->assertTrue($executor->execute($and, $env));
+        $this->assertFalse($executor->execute($or, $env));
+    }
+
+    public function testAndAndOrReturnOperandValues(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $and = $compiler->compile(new MList([
+            new Symbol('and'),
+            1,
+            2,
+        ]));
+        $or = $compiler->compile(new MList([
+            new Symbol('or'),
+            false,
+            7,
+        ]));
+
+        $this->assertSame(2, $executor->execute($and, $env));
+        $this->assertSame(7, $executor->execute($or, $env));
+    }
+
     public function testCompilesCall(): void
     {
         $compiler = new Compiler();
