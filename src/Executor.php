@@ -11,13 +11,20 @@ class Executor
 {
     public function execute(CompiledProgram $ir, Env $env)
     {
-        $code = $ir->getCode();
-        $constants = $ir->getConstants();
         $stack = [];
-        $pc = 0;
-        $codeLength = count($code);
+        $frames = [new ExecutionFrame($ir, $env)];
 
-        while ($pc < $codeLength) {
+        while ($frames) {
+            $frame = $frames[array_key_last($frames)];
+            $code = $frame->program->getCode();
+            $constants = $frame->program->getConstants();
+            $pc = $frame->pc;
+            $env = $frame->env;
+
+            if ($pc >= count($code)) {
+                throw new MadLispException('exec: frame ended without returning');
+            }
+
             $opcode = $code[$pc++];
 
             switch ($opcode) {
@@ -132,8 +139,14 @@ class Executor
                     break;
 
                 case OpCode::RETURN:
+                    if (count($stack) - $frame->stackBase !== 1) {
+                        throw new MadLispException('exec: frame must return exactly one value');
+                    }
+
                     return array_pop($stack);
             }
+
+            $frame->pc = $pc;
         }
     }
 }
