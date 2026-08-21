@@ -34,6 +34,10 @@ class Compiler
     {
         // Symbol is a load from Env
         if ($ast instanceof Symbol) {
+            if ($scope->isCapture($ast->getName())) {
+                return false;
+            }
+
             $localSlot = $scope->resolve($ast->getName());
             if ($localSlot !== null) {
                 $code[] = OpCode::LOAD_LOCAL;
@@ -75,6 +79,11 @@ class Compiler
         // Special form: let
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'let') {
             return $this->compileLet($data, $length, $code, $constants, $env, $scope);
+        }
+
+        // Special form: fn
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'fn') {
+            return $this->compileFn($data, $length, $code, $constants, $env, $scope);
         }
 
         // Other special forms: not supported yet
@@ -183,6 +192,72 @@ class Compiler
         }
 
         return $this->compileExpression($data[$length - 1], $code, $constants, $env, $bodyScope);
+    }
+
+    private function compileFn(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        Env $env,
+        CompileScope $scope
+    ): bool
+    {
+        if ($length != 3) {
+            throw new MadLispException('fn requires exactly 2 arguments');
+        }
+
+        if (!($data[1] instanceof Seq)) {
+            throw new MadLispException('first argument to fn is not seq');
+        }
+
+        $functionScope = $scope->functionChild();
+        $parameters = $data[1]->getData();
+        $parameterCount = count($parameters);
+        $seen = [];
+
+        foreach ($parameters as $parameter) {
+            if (!($parameter instanceof Symbol)) {
+                throw new MadLispException('binding key for fn is not symbol');
+            }
+
+            $name = $parameter->getName();
+            if ($name == '&') {
+                throw new MadLispException('variadic parameters are not supported for compiled fn');
+            }
+
+            if (isset($seen[$name])) {
+                throw new MadLispException("duplicate parameter $name for fn");
+            }
+
+            $seen[$name] = true;
+            $functionScope->define($name);
+        }
+
+        $functionCode = [];
+        $functionConstants = [];
+        if (!$this->compileExpression(
+            $data[2],
+            $functionCode,
+            $functionConstants,
+            $env,
+            $functionScope
+        )) {
+            return false;
+        }
+
+        $functionCode[] = OpCode::RETURN;
+        $functionProgram = new CompiledProgram(
+            $functionCode,
+            $functionConstants,
+            $functionScope->getLocalCount()
+        );
+
+        $constants[] = new CompiledFuncTemplate($functionProgram, $parameterCount);
+        $code[] = OpCode::MAKE_FUNCTION;
+        $code[] = count($constants) - 1;
+
+        return true;
     }
 
     private function compileIf(

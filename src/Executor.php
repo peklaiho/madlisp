@@ -73,6 +73,16 @@ class Executor
                     $pc = $code[$pc];
                     break;
 
+                case OpCode::MAKE_FUNCTION:
+                    $templateIndex = $code[$pc++];
+                    $template = $constants[$templateIndex];
+                    if (!($template instanceof CompiledFuncTemplate)) {
+                        throw new MadLispException('exec: invalid compiled function template');
+                    }
+
+                    $stack[] = new CompiledFunc($template->program, $env, $template->arity);
+                    break;
+
                 case OpCode::CALL:
                     $arity = $code[$pc++];
                     $args = $arity == 0 ? [] : array_splice($stack, -$arity);
@@ -80,6 +90,31 @@ class Executor
 
                     if (!($func instanceof Func)) {
                         throw new MadLispException('exec: first item of list is not function');
+                    }
+
+                    if ($func instanceof CompiledFunc) {
+                        if ($arity != $func->getArity()) {
+                            throw new MadLispException(sprintf(
+                                'compiled function requires exactly %d argument%s',
+                                $func->getArity(),
+                                $func->getArity() == 1 ? '' : 's'
+                            ));
+                        }
+
+                        $callerBase = count($stack);
+                        $thisFrame = $frame;
+                        $thisFrame->pc = $pc;
+                        $callee = new ExecutionFrame(
+                            $func->getProgram(),
+                            $func->getEnv(),
+                            $callerBase
+                        );
+                        foreach ($args as $index => $arg) {
+                            $callee->locals[$index] = $arg;
+                        }
+
+                        $frames[] = $callee;
+                        continue 2;
                     }
 
                     $stack[] = $func->call($args);
@@ -165,7 +200,14 @@ class Executor
                         throw new MadLispException('exec: frame must return exactly one value');
                     }
 
-                    return array_pop($stack);
+                    $result = array_pop($stack);
+                    array_pop($frames);
+                    if (!$frames) {
+                        return $result;
+                    }
+
+                    $stack[] = $result;
+                    break;
             }
 
             $frame->pc = $pc;

@@ -8,9 +8,11 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\Compiler;
+use MadLisp\CompiledFuncTemplate;
 use MadLisp\CoreFunc;
 use MadLisp\CoreFuncId;
 use MadLisp\Env;
+use MadLisp\Executor;
 use MadLisp\MList;
 use MadLisp\MadLispException;
 use MadLisp\OpCode;
@@ -287,6 +289,72 @@ class CompilerTest extends TestCase
                 new Symbol('x'), new MList([new Symbol('do'), 1, 2]),
             ]),
             new Symbol('x'),
+        ]);
+
+        $this->assertNull($compiler->compile($ast, $env));
+    }
+
+    public function testCompilesNonCapturingFn(): void
+    {
+        $compiler = new Compiler();
+        $env = new Env('root');
+        $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
+
+        $ast = new MList([
+            new Symbol('fn'),
+            new MList([new Symbol('x')]),
+            new MList([new Symbol('+'), new Symbol('x'), 1]),
+        ]);
+
+        $program = $compiler->compile($ast, $env);
+        $template = $program->getConstants()[0];
+
+        $this->assertNotNull($program);
+        $this->assertSame([OpCode::MAKE_FUNCTION, 0, OpCode::RETURN], $program->getCode());
+        $this->assertInstanceOf(CompiledFuncTemplate::class, $template);
+        $this->assertSame([
+            OpCode::LOAD_LOCAL, 0,
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
+            OpCode::RETURN,
+        ], $template->program->getCode());
+        $this->assertSame(1, $template->program->getLocalCount());
+    }
+
+    public function testExecutesCompiledFnCall(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+        $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
+
+        $ast = new MList([
+            new MList([
+                new Symbol('fn'),
+                new MList([new Symbol('x')]),
+                new MList([new Symbol('+'), new Symbol('x'), 1]),
+            ]),
+            4,
+        ]);
+
+        $program = $compiler->compile($ast, $env);
+
+        $this->assertSame(5, $executor->execute($program, $env));
+    }
+
+    public function testNonCapturingFnRejectsOuterLocalReference(): void
+    {
+        $compiler = new Compiler();
+        $env = new Env('root');
+
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([new Symbol('x'), 10]),
+            new MList([
+                new Symbol('fn'),
+                new MList([new Symbol('y')]),
+                new MList([new Symbol('+'), new Symbol('x'), new Symbol('y')]),
+            ]),
         ]);
 
         $this->assertNull($compiler->compile($ast, $env));
