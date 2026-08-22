@@ -9,15 +9,13 @@ namespace MadLisp;
 
 class Compiler
 {
-    public function compile($ast): ?CompiledProgram
+    public function compile($ast): CompiledProgram
     {
         $code = [];
         $constants = [];
         $scope = new CompileScope();
 
-        if (!$this->compileExpression($ast, $code, $constants, $scope)) {
-            return null;
-        }
+        $this->compileExpression($ast, $code, $constants, $scope);
 
         $code[] = OpCode::RETURN;
 
@@ -30,7 +28,7 @@ class Compiler
         array &$constants,
         CompileScope $scope,
         bool $tailPosition = false
-    ): bool
+    ): void
     {
         // Symbol is a load from Env
         if ($ast instanceof Symbol) {
@@ -38,20 +36,20 @@ class Compiler
             if ($captureIndex !== null) {
                 $code[] = OpCode::LOAD_CAPTURE;
                 $code[] = $captureIndex;
-                return true;
+                return;
             }
 
             $localSlot = $scope->resolve($ast->getName());
             if ($localSlot !== null) {
                 $code[] = OpCode::LOAD_LOCAL;
                 $code[] = $localSlot;
-                return true;
+                return;
             }
 
             $constants[] = $ast->getName();
             $code[] = OpCode::LOAD_GLOBAL;
             $code[] = count($constants) - 1;
-            return true;
+            return;
         }
 
         // Not a collection is a constant (like number or string)
@@ -59,95 +57,80 @@ class Compiler
             $constants[] = $ast;
             $code[] = OpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
-            return true;
+            return;
         }
 
         // Not a list: not supported yet
         if (!($ast instanceof MList)) {
-            return false;
+            throw new MadLispException('expression is not supported by compiler');
         }
 
         $data = $ast->getData();
         $length = count($data);
 
         if ($length == 0) {
-            return false;
+            throw new MadLispException('unquoted empty list');
         }
 
-        // Special form: if
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'if') {
-            return $this->compileIf($data, $length, $code, $constants, $scope, $tailPosition);
-        }
+        // Supported special forms
+        if ($data[0] instanceof Symbol) {
+            switch ($data[0]->getName()) {
+                case 'and':
+                    $this->compileAnd($data, $length, $code, $constants, $scope, $tailPosition);
+                    return;
 
-        // Special form: quote
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'quote') {
-            return $this->compileQuote($data, $length, $code, $constants);
-        }
+                case 'case':
+                case 'case-strict':
+                    $this->compileCase($data, $length, $code, $constants, $scope, $tailPosition);
+                    return;
 
-        // Special form: env
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'env') {
-            if ($length != 1) {
-                throw new MadLispException('env does not take arguments');
+                case 'cond':
+                    $this->compileCond($data, $length, $code, $constants, $scope, $tailPosition);
+                    return;
+
+                case 'def':
+                    $this->compileDef($data, $length, $code, $constants, $scope);
+                    return;
+
+                case 'do':
+                    $this->compileDo($data, $length, $code, $constants, $scope, $tailPosition);
+                    return;
+
+                case 'env':
+                    if ($length != 1) {
+                        throw new MadLispException('env does not take arguments');
+                    }
+                    $code[] = OpCode::LOAD_ENV;
+                    return;
+
+                case 'fn':
+                    $this->compileFn($data, $length, $code, $constants, $scope);
+                    return;
+
+                case 'if':
+                    $this->compileIf($data, $length, $code, $constants, $scope, $tailPosition);
+                    return;
+
+                case 'let':
+                    $this->compileLet($data, $length, $code, $constants, $scope, $tailPosition);
+                    return;
+
+                case 'or':
+                    $this->compileOr($data, $length, $code, $constants, $scope, $tailPosition);
+                    return;
+
+                case 'quote':
+                    $this->compileQuote($data, $length, $code, $constants);
+                    return;
+
+                case 'undef':
+                    $this->compileUndef($data, $length, $code, $constants);
+                    return;
+
+                case 'while':
+                    $this->compileWhile($data, $length, $code, $constants, $scope);
+                    return;
             }
-
-            $code[] = OpCode::LOAD_ENV;
-            return true;
-        }
-
-        // Special form: undef
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'undef') {
-            return $this->compileUndef($data, $length, $code, $constants);
-        }
-
-        // Special form: while
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'while') {
-            return $this->compileWhile($data, $length, $code, $constants, $scope);
-        }
-
-        // Special forms: and/or
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'and') {
-            return $this->compileAnd($data, $length, $code, $constants, $scope, $tailPosition);
-        }
-
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'or') {
-            return $this->compileOr($data, $length, $code, $constants, $scope, $tailPosition);
-        }
-
-        // Special form: do
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'do') {
-            return $this->compileDo($data, $length, $code, $constants, $scope, $tailPosition);
-        }
-
-        // Special form: let
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'let') {
-            return $this->compileLet($data, $length, $code, $constants, $scope, $tailPosition);
-        }
-
-        // Special form: fn
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'fn') {
-            return $this->compileFn($data, $length, $code, $constants, $scope);
-        }
-
-        // Special forms: case and case-strict
-        if ($data[0] instanceof Symbol
-            && ($data[0]->getName() == 'case' || $data[0]->getName() == 'case-strict')
-        ) {
-            return $this->compileCase($data, $length, $code, $constants, $scope, $tailPosition);
-        }
-
-        // Special form: cond
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'cond') {
-            return $this->compileCond($data, $length, $code, $constants, $scope, $tailPosition);
-        }
-
-        // Special form: def
-        if ($data[0] instanceof Symbol && $data[0]->getName() == 'def') {
-            return $this->compileDef($data, $length, $code, $constants, $scope);
-        }
-
-        // Other special forms: not supported yet
-        if ($this->isSpecialForm($data[0])) {
-            return false;
         }
 
         // Check for a supported core function
@@ -175,27 +158,22 @@ class Compiler
             }
 
             for ($i = 1; $i < $length; $i++) {
-                if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
-                    return false;
-                }
+                $this->compileExpression($data[$i], $code, $constants, $scope);
             }
 
             $code[] = OpCode::CALL_CORE;
             $code[] = $coreFuncMetadata[0];
             $code[] = $argumentCount;
-            return true;
+            return;
         }
 
         // Handle as normal function call
         foreach ($data as $item) {
-            if (!$this->compileExpression($item, $code, $constants, $scope)) {
-                return false;
-            }
+            $this->compileExpression($item, $code, $constants, $scope);
         }
 
         $code[] = $tailPosition ? OpCode::TAIL_CALL : OpCode::CALL;
         $code[] = $length - 1;
-        return true;
     }
 
     private function compileUndef(
@@ -203,7 +181,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants
-    ): bool
+    ): void
     {
         if ($length != 2) {
             throw new MadLispException('undef requires exactly 1 argument');
@@ -216,7 +194,6 @@ class Compiler
         $constants[] = $data[1]->getName();
         $code[] = OpCode::UNDEF;
         $code[] = count($constants) - 1;
-        return true;
     }
 
     private function compileQuote(
@@ -224,7 +201,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants
-    ): bool
+    ): void
     {
         if ($length != 2) {
             throw new MadLispException('quote requires exactly 1 argument');
@@ -233,7 +210,6 @@ class Compiler
         $constants[] = $data[1];
         $code[] = OpCode::LOAD_CONSTANT;
         $code[] = count($constants) - 1;
-        return true;
     }
 
     private function compileWhile(
@@ -242,7 +218,7 @@ class Compiler
         array &$code,
         array &$constants,
         CompileScope $scope
-    ): bool
+    ): void
     {
         if ($length < 3) {
             throw new MadLispException('while requires at least 2 arguments');
@@ -256,24 +232,18 @@ class Compiler
         $code[] = $resultSlot;
 
         $loopStart = count($code);
-        if (!$this->compileExpression($data[1], $code, $constants, $scope)) {
-            return false;
-        }
-
+        $this->compileExpression($data[1], $code, $constants, $scope);
         $code[] = OpCode::JUMP_IF_FALSE;
         $exitJump = count($code);
         $code[] = 0;
 
         for ($i = 2; $i < $length - 1; $i++) {
-            if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
-                return false;
-            }
+            $this->compileExpression($data[$i], $code, $constants, $scope);
             $code[] = OpCode::POP;
         }
 
-        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope)) {
-            return false;
-        }
+        $this->compileExpression($data[$length - 1], $code, $constants, $scope);
+
         $code[] = OpCode::STORE_LOCAL;
         $code[] = $resultSlot;
         $code[] = OpCode::JUMP;
@@ -282,7 +252,6 @@ class Compiler
         $code[$exitJump] = count($code);
         $code[] = OpCode::LOAD_LOCAL;
         $code[] = $resultSlot;
-        return true;
     }
 
     private function compileAnd(
@@ -292,37 +261,30 @@ class Compiler
         array &$constants,
         CompileScope $scope,
         bool $tailPosition
-    ): bool
+    ): void
     {
         if ($length == 1) {
             $constants[] = true;
             $code[] = OpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
-            return true;
+            return;
         }
 
         $jumps = [];
         for ($i = 1; $i < $length - 1; $i++) {
-            if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
-                return false;
-            }
-
+            $this->compileExpression($data[$i], $code, $constants, $scope);
             $jumps[] = count($code);
             $code[] = OpCode::JUMP_IF_FALSE_KEEP;
             $code[] = 0;
             $code[] = OpCode::POP;
         }
 
-        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition)) {
-            return false;
-        }
+        $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
 
         $end = count($code);
         foreach ($jumps as $jump) {
             $code[$jump + 1] = $end;
         }
-
-        return true;
     }
 
     private function compileOr(
@@ -332,37 +294,30 @@ class Compiler
         array &$constants,
         CompileScope $scope,
         bool $tailPosition
-    ): bool
+    ): void
     {
         if ($length == 1) {
             $constants[] = false;
             $code[] = OpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
-            return true;
+            return;
         }
 
         $jumps = [];
         for ($i = 1; $i < $length - 1; $i++) {
-            if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
-                return false;
-            }
-
+            $this->compileExpression($data[$i], $code, $constants, $scope);
             $jumps[] = count($code);
             $code[] = OpCode::JUMP_IF_TRUE_KEEP;
             $code[] = 0;
             $code[] = OpCode::POP;
         }
 
-        if (!$this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition)) {
-            return false;
-        }
+        $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
 
         $end = count($code);
         foreach ($jumps as $jump) {
             $code[$jump + 1] = $end;
         }
-
-        return true;
     }
 
     private function compileDo(
@@ -372,24 +327,21 @@ class Compiler
         array &$constants,
         CompileScope $scope,
         bool $tailPosition
-    ): bool
+    ): void
     {
         if ($length == 1) {
             $constants[] = null;
             $code[] = OpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
-            return true;
+            return;
         }
 
         for ($i = 1; $i < $length - 1; $i++) {
-            if (!$this->compileExpression($data[$i], $code, $constants, $scope)) {
-                return false;
-            }
-
+            $this->compileExpression($data[$i], $code, $constants, $scope);
             $code[] = OpCode::POP;
         }
 
-        return $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
+        $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
     }
 
     private function compileLet(
@@ -399,7 +351,7 @@ class Compiler
         array &$constants,
         CompileScope $scope,
         bool $tailPosition
-    ): bool
+    ): void
     {
         if ($length < 3) {
             throw new MadLispException('let requires at least 2 arguments');
@@ -423,25 +375,18 @@ class Compiler
 
             $name = $bindings[$i]->getName();
             $slot = $bodyScope->allocate();
-
-            if (!$this->compileExpression($bindings[$i + 1], $code, $constants, $bodyScope)) {
-                return false;
-            }
-
+            $this->compileExpression($bindings[$i + 1], $code, $constants, $bodyScope);
             $code[] = OpCode::STORE_LOCAL;
             $code[] = $slot;
             $bodyScope->bind($name, $slot);
         }
 
         for ($i = 2; $i < $length - 1; $i++) {
-            if (!$this->compileExpression($data[$i], $code, $constants, $bodyScope)) {
-                return false;
-            }
-
+            $this->compileExpression($data[$i], $code, $constants, $bodyScope);
             $code[] = OpCode::POP;
         }
 
-        return $this->compileExpression($data[$length - 1], $code, $constants, $bodyScope, $tailPosition);
+        $this->compileExpression($data[$length - 1], $code, $constants, $bodyScope, $tailPosition);
     }
 
     private function compileCase(
@@ -451,16 +396,14 @@ class Compiler
         array &$constants,
         CompileScope $scope,
         bool $tailPosition
-    ): bool
+    ): void
     {
         if ($length < 3) {
             throw new MadLispException('case requires at least 2 arguments');
         }
 
         $caseValueSlot = $scope->allocate();
-        if (!$this->compileExpression($data[1], $code, $constants, $scope)) {
-            return false;
-        }
+        $this->compileExpression($data[1], $code, $constants, $scope);
         $code[] = OpCode::STORE_LOCAL;
         $code[] = $caseValueSlot;
 
@@ -488,11 +431,7 @@ class Compiler
             if (!$isElse) {
                 $code[] = OpCode::LOAD_LOCAL;
                 $code[] = $caseValueSlot;
-
-                if (!$this->compileExpression($clause[0], $code, $constants, $scope)) {
-                    return false;
-                }
-
+                $this->compileExpression($clause[0], $code, $constants, $scope);
                 $code[] = $strict ? OpCode::CASE_COMPARE_STRICT : OpCode::CASE_COMPARE;
                 $pendingFalseJump = count($code);
                 $code[] = OpCode::JUMP_IF_FALSE;
@@ -500,15 +439,11 @@ class Compiler
             }
 
             for ($j = 1; $j < count($clause) - 1; $j++) {
-                if (!$this->compileExpression($clause[$j], $code, $constants, $scope)) {
-                    return false;
-                }
+                $this->compileExpression($clause[$j], $code, $constants, $scope);
                 $code[] = OpCode::POP;
             }
 
-            if (!$this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope, $tailPosition)) {
-                return false;
-            }
+            $this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope, $tailPosition);
 
             $endJumps[] = count($code);
             $code[] = OpCode::JUMP;
@@ -531,8 +466,6 @@ class Compiler
         foreach ($endJumps as $jump) {
             $code[$jump + 1] = $end;
         }
-
-        return true;
     }
 
     private function compileCond(
@@ -542,7 +475,7 @@ class Compiler
         array &$constants,
         CompileScope $scope,
         bool $tailPosition
-    ): bool
+    ): void
     {
         if ($length < 2) {
             throw new MadLispException('cond requires at least 1 argument');
@@ -568,26 +501,18 @@ class Compiler
 
             $isElse = $clause[0] instanceof Symbol && $clause[0]->getName() == 'else';
             if (!$isElse) {
-                if (!$this->compileExpression($clause[0], $code, $constants, $scope)) {
-                    return false;
-                }
-
+                $this->compileExpression($clause[0], $code, $constants, $scope);
                 $pendingFalseJump = count($code);
                 $code[] = OpCode::JUMP_IF_FALSE;
                 $code[] = 0;
             }
 
             for ($j = 1; $j < count($clause) - 1; $j++) {
-                if (!$this->compileExpression($clause[$j], $code, $constants, $scope)) {
-                    return false;
-                }
-
+                $this->compileExpression($clause[$j], $code, $constants, $scope);
                 $code[] = OpCode::POP;
             }
 
-            if (!$this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope, $tailPosition)) {
-                return false;
-            }
+            $this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope, $tailPosition);
 
             $endJumps[] = count($code);
             $code[] = OpCode::JUMP;
@@ -610,8 +535,6 @@ class Compiler
         foreach ($endJumps as $jump) {
             $code[$jump + 1] = $end;
         }
-
-        return true;
     }
 
     private function compileDef(
@@ -620,7 +543,7 @@ class Compiler
         array &$code,
         array &$constants,
         CompileScope $scope
-    ): bool
+    ): void
     {
         if ($length != 3) {
             throw new MadLispException('def requires exactly 2 arguments');
@@ -639,15 +562,11 @@ class Compiler
             throw new MadLispException("attempt to def core function $name");
         }
 
-        if (!$this->compileExpression($data[2], $code, $constants, $scope)) {
-            return false;
-        }
+        $this->compileExpression($data[2], $code, $constants, $scope);
 
         $constants[] = $name;
         $code[] = OpCode::STORE_GLOBAL;
         $code[] = count($constants) - 1;
-
-        return true;
     }
 
     private function compileFn(
@@ -656,7 +575,7 @@ class Compiler
         array &$code,
         array &$constants,
         CompileScope $scope
-    ): bool
+    ): void
     {
         if ($length != 3) {
             throw new MadLispException('fn requires exactly 2 arguments');
@@ -691,15 +610,13 @@ class Compiler
 
         $functionCode = [];
         $functionConstants = [];
-        if (!$this->compileExpression(
+        $this->compileExpression(
             $data[2],
             $functionCode,
             $functionConstants,
             $functionScope,
             true
-        )) {
-            return false;
-        }
+        );
 
         $functionCode[] = OpCode::RETURN;
         $functionProgram = new CompiledProgram(
@@ -715,8 +632,6 @@ class Compiler
         );
         $code[] = OpCode::MAKE_FUNCTION;
         $code[] = count($constants) - 1;
-
-        return true;
     }
 
     private function compileIf(
@@ -726,23 +641,19 @@ class Compiler
         array &$constants,
         CompileScope $scope,
         bool $tailPosition
-    ): bool
+    ): void
     {
         if ($length < 3 || $length > 4) {
-            return false;
+            throw new MadLispException('if requires 2 or 3 arguments');
         }
 
-        if (!$this->compileExpression($data[1], $code, $constants, $scope)) {
-            return false;
-        }
+        $this->compileExpression($data[1], $code, $constants, $scope);
 
         $jumpIfFalse = count($code);
         $code[] = OpCode::JUMP_IF_FALSE;
         $code[] = 0;
 
-        if (!$this->compileExpression($data[2], $code, $constants, $scope, $tailPosition)) {
-            return false;
-        }
+        $this->compileExpression($data[2], $code, $constants, $scope, $tailPosition);
 
         $jumpToEnd = count($code);
         $code[] = OpCode::JUMP;
@@ -752,9 +663,7 @@ class Compiler
         $code[$jumpIfFalse + 1] = $elseAddress;
 
         if ($length == 4) {
-            if (!$this->compileExpression($data[3], $code, $constants, $scope, $tailPosition)) {
-                return false;
-            }
+            $this->compileExpression($data[3], $code, $constants, $scope, $tailPosition);
         } else {
             $constants[] = null;
             $code[] = OpCode::LOAD_CONSTANT;
@@ -762,20 +671,5 @@ class Compiler
         }
 
         $code[$jumpToEnd + 1] = count($code);
-
-        return true;
-    }
-
-    private function isSpecialForm($operator): bool
-    {
-        if (!($operator instanceof Symbol)) {
-            return false;
-        }
-
-        return in_array($operator->getName(), [
-            'and', 'case', 'case-strict', 'cond', 'def', 'do', 'env', 'eval',
-            'fn', 'if', 'let', 'load', 'macro', 'macroexpand', 'meta', 'or',
-            'quote', 'quasiquote', 'quasiquote-expand', 'try', 'undef', 'while'
-        ], true);
     }
 }

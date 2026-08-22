@@ -553,22 +553,6 @@ class CompilerTest extends TestCase
         $compiler->compile($ast);
     }
 
-    public function testUnsupportedExpressionInsideLetReturnsNull(): void
-    {
-        $compiler = new Compiler();
-        $env = new Env('root');
-
-        $ast = new MList([
-            new Symbol('let'),
-            new MList([
-                new Symbol('x'), new MList([new Symbol('quasiquote'), 1]),
-            ]),
-            new Symbol('x'),
-        ]);
-
-        $this->assertNull($compiler->compile($ast));
-    }
-
     public function testCompilesNonCapturingFn(): void
     {
         $compiler = new Compiler();
@@ -681,20 +665,5 @@ class CompilerTest extends TestCase
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('env does not take arguments');
         $compiler->compile(new MList([new Symbol('env'), 1]));
-    }
-
-    public function testUnsupportedSpecialFormReturnsNull(): void
-    {
-        $compiler = new Compiler();
-        $env = new Env('root');
-
-        $ast = new MList([
-            new Symbol('try'),
-            true,
-            1,
-            2,
-        ]);
-
-        $this->assertNull($compiler->compile($ast));
     }
 }

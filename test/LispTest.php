@@ -12,6 +12,7 @@ use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Executor;
 use MadLisp\Lisp;
+use MadLisp\MadLispException;
 use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Tokenizer;
@@ -134,7 +135,7 @@ class LispTest extends TestCase
         $this->assertSame('compiled result', $lisp->readEvalCompiled('input'));
     }
 
-    public function testReadEvalCompiledFallsBackToEvaller(): void
+    public function testReadEvalCompiledPropagatesCompilationFailure(): void
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
@@ -156,19 +157,19 @@ class LispTest extends TestCase
         $compiler->expects($this->once())
             ->method('compile')
             ->with('ast')
-            ->willReturn(null);
+            ->willThrowException(new MadLispException('expression is not supported by compiler'));
 
         $executor->expects($this->never())
             ->method('execute');
 
-        $evaller->expects($this->once())
-            ->method('eval')
-            ->with('ast', $env)
-            ->willReturn('legacy result');
+        $evaller->expects($this->never())
+            ->method('eval');
 
         $lisp = new Lisp($tokenizer, $reader, $compiler, $executor, $evaller, new Printer(), $env);
 
-        $this->assertSame('legacy result', $lisp->readEvalCompiled('input'));
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('expression is not supported by compiler');
+        $lisp->readEvalCompiled('input');
     }
 
     public function testReadEvalCustomEnv()

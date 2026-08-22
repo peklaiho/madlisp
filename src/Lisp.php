@@ -53,11 +53,7 @@ class Lisp
 
         $program = $this->compiler->compile($expr);
 
-        if ($program) {
-            return $this->executor->execute($program, $customEnv ? $customEnv : $this->env);
-        }
-
-        return $this->eval->eval($expr, $customEnv ? $customEnv : $this->env);
+        return $this->executor->execute($program, $customEnv ? $customEnv : $this->env);
     }
 
     // read, eval, print
