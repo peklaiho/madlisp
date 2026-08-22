@@ -642,6 +642,47 @@ class CompilerTest extends TestCase
         $this->assertSame(15, $executor->execute($program, $env));
     }
 
+    public function testCompilesEnv(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([new Symbol('env')]));
+
+        $this->assertNotNull($program);
+        $this->assertSame([OpCode::LOAD_ENV, OpCode::RETURN], $program->getCode());
+        $this->assertSame($env, $executor->execute($program, $env));
+    }
+
+    public function testCompilesUndef(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+        $env->set('value', 42);
+
+        $program = $compiler->compile(new MList([
+            new Symbol('undef'),
+            new Symbol('value'),
+        ]));
+
+        $this->assertNotNull($program);
+        $this->assertSame([OpCode::UNDEF, 0, OpCode::RETURN], $program->getCode());
+        $this->assertSame(['value'], $program->getConstants());
+        $this->assertSame(42, $executor->execute($program, $env));
+        $this->assertNull($env->get('value', false));
+    }
+
+    public function testRejectsMalformedEnvAndUndef(): void
+    {
+        $compiler = new Compiler();
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('env does not take arguments');
+        $compiler->compile(new MList([new Symbol('env'), 1]));
+    }
+
     public function testUnsupportedSpecialFormReturnsNull(): void
     {
         $compiler = new Compiler();

@@ -27,4 +27,6 @@ class OpCode
     public const int CASE_COMPARE = 16;
     public const int CASE_COMPARE_STRICT = 17;
     public const int TAIL_CALL = 18;
+    public const int LOAD_ENV = 19;
+    public const int UNDEF = 20;
 }

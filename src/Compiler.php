@@ -84,6 +84,21 @@ class Compiler
             return $this->compileQuote($data, $length, $code, $constants);
         }
 
+        // Special form: env
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'env') {
+            if ($length != 1) {
+                throw new MadLispException('env does not take arguments');
+            }
+
+            $code[] = OpCode::LOAD_ENV;
+            return true;
+        }
+
+        // Special form: undef
+        if ($data[0] instanceof Symbol && $data[0]->getName() == 'undef') {
+            return $this->compileUndef($data, $length, $code, $constants);
+        }
+
         // Special form: while
         if ($data[0] instanceof Symbol && $data[0]->getName() == 'while') {
             return $this->compileWhile($data, $length, $code, $constants, $scope);
@@ -180,6 +195,27 @@ class Compiler
 
         $code[] = $tailPosition ? OpCode::TAIL_CALL : OpCode::CALL;
         $code[] = $length - 1;
+        return true;
+    }
+
+    private function compileUndef(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants
+    ): bool
+    {
+        if ($length != 2) {
+            throw new MadLispException('undef requires exactly 1 argument');
+        }
+
+        if (!($data[1] instanceof Symbol)) {
+            throw new MadLispException('first argument to undef is not symbol');
+        }
+
+        $constants[] = $data[1]->getName();
+        $code[] = OpCode::UNDEF;
+        $code[] = count($constants) - 1;
         return true;
     }
 

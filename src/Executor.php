@@ -28,6 +28,15 @@ class Executor
             $opcode = $code[$pc++];
 
             switch ($opcode) {
+                case OpCode::LOAD_ENV:
+                    $stack[] = $env;
+                    break;
+
+                case OpCode::UNDEF:
+                    $nameIndex = $code[$pc++];
+                    $stack[] = $env->unset($constants[$nameIndex]);
+                    break;
+
                 case OpCode::LOAD_CONSTANT:
                     $constantIndex = $code[$pc++];
                     $stack[] = $constants[$constantIndex];
@@ -158,7 +167,7 @@ class Executor
                     if ($func instanceof CompiledFunc) {
                         if ($arity != $func->getArity()) {
                             throw new MadLispException(sprintf(
-                                'compiled function requires exactly %d argument%s',
+                                'exec: compiled function requires exactly %d argument%s',
                                 $func->getArity(),
                                 $func->getArity() == 1 ? '' : 's'
                             ));
@@ -258,7 +267,7 @@ class Executor
                             break;
 
                         default:
-                            throw new MadLispException("unknown core function id $coreFuncId");
+                            throw new MadLispException("exec: unknown core function id $coreFuncId");
                     }
 
                     $stack[] = $result;
