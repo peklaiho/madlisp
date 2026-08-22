@@ -37,6 +37,28 @@ class Executor
                     $stack[] = $env->unset($constants[$nameIndex]);
                     break;
 
+                case OpCode::BUILD_VECTOR:
+                    $valueCount = $code[$pc++];
+                    $values = $valueCount == 0 ? [] : array_splice($stack, -$valueCount);
+                    $stack[] = new Vector($values);
+                    break;
+
+                case OpCode::BUILD_HASH:
+                    $keyIndex = $code[$pc++];
+                    $valueCount = $code[$pc++];
+                    $values = $valueCount == 0 ? [] : array_splice($stack, -$valueCount);
+                    $keys = $constants[$keyIndex];
+                    if (count($keys) != $valueCount) {
+                        throw new MadLispException('exec: invalid hash key count');
+                    }
+
+                    $data = [];
+                    foreach ($keys as $index => $key) {
+                        $data[$key] = $values[$index];
+                    }
+                    $stack[] = new Hash($data);
+                    break;
+
                 case OpCode::LOAD_CONSTANT:
                     $constantIndex = $code[$pc++];
                     $stack[] = $constants[$constantIndex];

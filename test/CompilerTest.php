@@ -12,14 +12,74 @@ use MadLisp\CompiledFuncTemplate;
 use MadLisp\CoreFunc;
 use MadLisp\CoreFuncId;
 use MadLisp\Env;
+use MadLisp\Hash;
 use MadLisp\Executor;
 use MadLisp\MList;
 use MadLisp\MadLispException;
 use MadLisp\OpCode;
 use MadLisp\Symbol;
+use MadLisp\Vector;
 
 class CompilerTest extends TestCase
 {
+    public function testCompilesVectorLiteral(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+        $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
+
+        $program = $compiler->compile(new Vector([
+            1,
+            new MList([new Symbol('+'), 2, 3]),
+        ]));
+
+        $this->assertSame([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::LOAD_CONSTANT, 1,
+            OpCode::LOAD_CONSTANT, 2,
+            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
+            OpCode::BUILD_VECTOR, 2,
+            OpCode::RETURN,
+        ], $program->getCode());
+        $this->assertEquals(new Vector([1, 5]), $executor->execute($program, $env));
+    }
+
+    public function testCompilesHashLiteral(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+        $env->set('value', 42);
+
+        $program = $compiler->compile(new Hash([
+            'first' => 1,
+            'second' => new Symbol('value'),
+        ]));
+
+        $this->assertSame([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::LOAD_GLOBAL, 1,
+            OpCode::BUILD_HASH, 2, 2,
+            OpCode::RETURN,
+        ], $program->getCode());
+        $this->assertSame(['first', 'second'], $program->getConstants()[2]);
+        $this->assertEquals(new Hash(['first' => 1, 'second' => 42]), $executor->execute($program, $env));
+    }
+
+    public function testCompilesEmptyVectorAndHashLiterals(): void
+    {
+        $compiler = new Compiler();
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $vector = $compiler->compile(new Vector());
+        $hash = $compiler->compile(new Hash());
+
+        $this->assertEquals(new Vector(), $executor->execute($vector, $env));
+        $this->assertEquals(new Hash(), $executor->execute($hash, $env));
+    }
+
     public function testCompilesLiteral(): void
     {
         $compiler = new Compiler();

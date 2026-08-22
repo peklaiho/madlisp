@@ -30,7 +30,7 @@ class Compiler
         bool $tailPosition = false
     ): void
     {
-        // Symbol is a load from Env
+        // Resolve symbols as captures, locals, or global environment values
         if ($ast instanceof Symbol) {
             $captureIndex = $scope->resolveCapture($ast->getName());
             if ($captureIndex !== null) {
@@ -60,19 +60,28 @@ class Compiler
             return;
         }
 
-        // Not a list: not supported yet
-        if (!($ast instanceof MList)) {
-            throw new MadLispException('expression is not supported by compiler');
+        // Compile Vector and Hash
+        if ($ast instanceof Vector) {
+            $this->compileVector($ast, $code, $constants, $scope);
+            return;
+        } elseif ($ast instanceof Hash) {
+            $this->compileHash($ast, $code, $constants, $scope);
+            return;
         }
+
+        // If we get here, $ast must be instance of MList!
+        // Therefore we are compiling either a special form
+        // or a function application.
 
         $data = $ast->getData();
         $length = count($data);
 
+        // Empty list in an error
         if ($length == 0) {
             throw new MadLispException('unquoted empty list');
         }
 
-        // Supported special forms
+        // Compile supported special forms
         if ($data[0] instanceof Symbol) {
             switch ($data[0]->getName()) {
                 case 'and':
@@ -194,6 +203,40 @@ class Compiler
         $constants[] = $data[1]->getName();
         $code[] = OpCode::UNDEF;
         $code[] = count($constants) - 1;
+    }
+
+    private function compileVector(
+        Vector $vector,
+        array &$code,
+        array &$constants,
+        CompileScope $scope
+    ): void
+    {
+        $values = $vector->getData();
+        foreach ($values as $value) {
+            $this->compileExpression($value, $code, $constants, $scope);
+        }
+
+        $code[] = OpCode::BUILD_VECTOR;
+        $code[] = count($values);
+    }
+
+    private function compileHash(
+        Hash $hash,
+        array &$code,
+        array &$constants,
+        CompileScope $scope
+    ): void
+    {
+        $values = $hash->getData();
+        foreach ($values as $value) {
+            $this->compileExpression($value, $code, $constants, $scope);
+        }
+
+        $constants[] = array_keys($values);
+        $code[] = OpCode::BUILD_HASH;
+        $code[] = count($constants) - 1;
+        $code[] = count($values);
     }
 
     private function compileQuote(

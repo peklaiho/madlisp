@@ -29,4 +29,6 @@ class OpCode
     public const int TAIL_CALL = 18;
     public const int LOAD_ENV = 19;
     public const int UNDEF = 20;
+    public const int BUILD_VECTOR = 21;
+    public const int BUILD_HASH = 22;
 }
