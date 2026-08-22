@@ -2,12 +2,13 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 namespace MadLisp\Lib;
 
 use MadLisp\Collection;
+use MadLisp\Compiler;
 use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Evaller;
@@ -23,19 +24,15 @@ use MadLisp\Vector;
 
 class Core implements ILib
 {
-    protected Tokenizer $tokenizer;
-    protected Reader $reader;
-    protected Printer $printer;
-    protected Evaller $evaller;
-    protected bool $safemode;
+    public function __construct(
+        protected Tokenizer $tokenizer,
+        protected Reader $reader,
+        protected Compiler $compiler,
+        protected Printer $printer,
+        protected Evaller $evaller,
+        protected bool $safemode
+    ) {
 
-    public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer, Evaller $evaller, bool $safemode)
-    {
-        $this->tokenizer = $tokenizer;
-        $this->reader = $reader;
-        $this->printer = $printer;
-        $this->evaller = $evaller;
-        $this->safemode = $safemode;
     }
 
     public function register(Env $env): void
@@ -45,6 +42,12 @@ class Core implements ILib
             $env->set('__FILE__', null);
             $env->set('__DIR__', null);
         }
+
+        $env->set('compile', new CoreFunc('compile', 'Compile Lisp code.', 1, 1,
+            function ($ast) {
+                return $this->compiler->compile($ast);
+            }
+        ));
 
         if (!$this->safemode) {
             $env->set('debug', new CoreFunc('debug', 'Toggle debug mode.', 0, 0,

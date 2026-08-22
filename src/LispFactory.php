@@ -22,7 +22,14 @@ class LispFactory
         $env = new Env('root');
 
         // Register core functions
-        (new Lib\Core($tokenizer, $reader, $printer, $eval, $safemode))->register($env);
+        (new Lib\Core(
+            $tokenizer,
+            $reader,
+            $compiler,
+            $printer,
+            $eval,
+            $safemode
+        ))->register($env);
 
         // Register core libraries
         (new Lib\Collections())->register($env);

@@ -37,6 +37,54 @@ class LispTest extends TestCase
         $this->assertSame($env, $lisp->getEnv());
     }
 
+    public function testCompile(): void
+    {
+        $compiler = $this->createMock(Compiler::class);
+        $program = new \MadLisp\CompiledProgram([], [], 0);
+        $ast = 'ast';
+
+        $compiler->expects($this->once())
+            ->method('compile')
+            ->with($ast)
+            ->willReturn($program);
+
+        $lisp = new Lisp(
+            $this->createMock(Tokenizer::class),
+            $this->createMock(Reader::class),
+            $compiler,
+            $this->createMock(Executor::class),
+            $this->createMock(Evaller::class),
+            $this->createMock(Printer::class),
+            new Env('env')
+        );
+
+        $this->assertSame($program, $lisp->compile($ast));
+    }
+
+    public function testExecute(): void
+    {
+        $executor = $this->createMock(Executor::class);
+        $program = new \MadLisp\CompiledProgram([], [], 0);
+        $env = new Env('env');
+
+        $executor->expects($this->once())
+            ->method('execute')
+            ->with($program, $env)
+            ->willReturn('result');
+
+        $lisp = new Lisp(
+            $this->createMock(Tokenizer::class),
+            $this->createMock(Reader::class),
+            $this->createMock(Compiler::class),
+            $executor,
+            $this->createMock(Evaller::class),
+            $this->createMock(Printer::class),
+            new Env('default')
+        );
+
+        $this->assertSame('result', $lisp->execute($program, $env));
+    }
+
     public function testPrint()
     {
         $tokenizer = $this->createMock(Tokenizer::class);

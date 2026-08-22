@@ -21,6 +21,16 @@ class Lisp
 
     }
 
+    public function compile($ast): CompiledProgram
+    {
+        return $this->compiler->compile($ast);
+    }
+
+    public function execute(CompiledProgram $program, ?Env $customEnv = null)
+    {
+        return $this->executor->execute($program, $customEnv ? $customEnv : $this->env);
+    }
+
     public function getEnv(): Env
     {
         return $this->env;

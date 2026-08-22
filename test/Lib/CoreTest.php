@@ -7,11 +7,15 @@
 
 use PHPUnit\Framework\TestCase;
 
+use MadLisp\Compiler;
+use MadLisp\CompiledProgram;
+use MadLisp\CoreFuncId;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Func;
 use MadLisp\MadLispUserException;
 use MadLisp\MList;
+use MadLisp\OpCode;
 use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Symbol;
@@ -27,6 +31,23 @@ class CoreTest extends TestCase
 
         $this->assertNull($env->get('__FILE__'));
         $this->assertNull($env->get('__DIR__'));
+    }
+
+    public function testCompile()
+    {
+        [$env] = $this->getEnv();
+        $ast = new MList([new Symbol('+'), 1, 2]);
+
+        $program = $env->get('compile')->call([$ast]);
+
+        $this->assertInstanceOf(CompiledProgram::class, $program);
+        $this->assertSame([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::LOAD_CONSTANT, 1,
+            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
+            OpCode::RETURN,
+        ], $program->getCode());
+        $this->assertSame([1, 2], $program->getConstants());
     }
 
     public function testDebug()
@@ -244,10 +265,18 @@ class CoreTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
+        $compiler = new Compiler();
         $printer = new Printer();
         $evaller = new Evaller($tokenizer, $reader, $printer, $safemode);
 
-        $core = new Core($tokenizer, $reader, $printer, $evaller, $safemode);
+        $core = new Core(
+            $tokenizer,
+            $reader,
+            $compiler,
+            $printer,
+            $evaller,
+            $safemode
+        );
 
         $env = new Env('test');
         $core->register($env);

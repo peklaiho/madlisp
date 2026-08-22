@@ -9,10 +9,10 @@ namespace MadLisp;
 
 class Executor
 {
-    public function execute(CompiledProgram $ir, Env $env)
+    public function execute(CompiledProgram $program, Env $env)
     {
         $stack = [];
-        $frames = [new ExecutionFrame($ir, $env)];
+        $frames = [new ExecutionFrame($program, $env)];
 
         while ($frames) {
             $frame = $frames[array_key_last($frames)];
