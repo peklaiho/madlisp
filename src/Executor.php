@@ -9,6 +9,12 @@ namespace MadLisp;
 
 class Executor
 {
+    public function __construct(
+        protected ?CompiledLoader $loader = null
+    ) {
+
+    }
+
     public function execute(CompiledProgram $program, Env $env)
     {
         $stack = [];
@@ -63,6 +69,30 @@ class Executor
                     $constantIndex = $code[$pc++];
                     $stack[] = $constants[$constantIndex];
                     break;
+
+                case OpCode::EXECUTE_PROGRAM:
+                    $childProgram = array_pop($stack);
+                    if (!($childProgram instanceof CompiledProgram)) {
+                        throw new MadLispException('exec: execute requires a CompiledProgram');
+                    }
+
+                    $frame->pc = $pc;
+                    $frames[] = new ExecutionFrame($childProgram, $env, count($stack));
+                    continue 2;
+
+                case OpCode::LOAD_FILE:
+                    $filename = array_pop($stack);
+                    if (!is_string($filename)) {
+                        throw new MadLispException('exec: load filename is not string');
+                    }
+                    if ($this->loader === null) {
+                        throw new MadLispException('exec: no compiled loader configured');
+                    }
+
+                    $childProgram = $this->loader->load($filename);
+                    $frame->pc = $pc;
+                    $frames[] = new ExecutionFrame($childProgram, $env, count($stack));
+                    continue 2;
 
                 case OpCode::LOAD_GLOBAL:
                     $nameIndex = $code[$pc++];

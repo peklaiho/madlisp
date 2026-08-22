@@ -112,6 +112,10 @@ class Compiler
                     $code[] = OpCode::LOAD_ENV;
                     return;
 
+                case 'execute':
+                    $this->compileExecutorOperation($data, $length, $code, $constants, $scope, OpCode::EXECUTE_PROGRAM);
+                    return;
+
                 case 'fn':
                     $this->compileFn($data, $length, $code, $constants, $scope);
                     return;
@@ -122,6 +126,10 @@ class Compiler
 
                 case 'let':
                     $this->compileLet($data, $length, $code, $constants, $scope, $tailPosition);
+                    return;
+
+                case 'load':
+                    $this->compileExecutorOperation($data, $length, $code, $constants, $scope, OpCode::LOAD_FILE);
                     return;
 
                 case 'or':
@@ -422,6 +430,24 @@ class Compiler
         }
 
         $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
+    }
+
+    private function compileExecutorOperation(
+        array $data,
+        int $length,
+        array &$code,
+        array &$constants,
+        CompileScope $scope,
+        int $opcode
+    ): void
+    {
+        if ($length != 2) {
+            $name = $data[0]->getName();
+            throw new MadLispException("$name requires exactly 1 argument");
+        }
+
+        $this->compileExpression($data[1], $code, $constants, $scope);
+        $code[] = $opcode;
     }
 
     private function compileFn(

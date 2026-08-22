@@ -7,13 +7,19 @@
 
 use PHPUnit\Framework\TestCase;
 
+use MadLisp\CompiledLoader;
 use MadLisp\CompiledProgram;
+use MadLisp\Compiler;
 use MadLisp\CoreFunc;
 use MadLisp\CoreFuncId;
 use MadLisp\Env;
 use MadLisp\Executor;
 use MadLisp\MadLispException;
+use MadLisp\MList;
 use MadLisp\OpCode;
+use MadLisp\Reader;
+use MadLisp\Symbol;
+use MadLisp\Tokenizer;
 
 class ExecutorTest extends TestCase
 {
@@ -28,6 +34,44 @@ class ExecutorTest extends TestCase
         ], [42], 0);
 
         $this->assertSame(42, $executor->execute($program, $env));
+    }
+
+    public function testExecutesProgramInChildFrame(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+        $child = new CompiledProgram([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::RETURN,
+        ], [42], 0);
+        $program = new CompiledProgram([
+            OpCode::LOAD_CONSTANT, 0,
+            OpCode::EXECUTE_PROGRAM,
+            OpCode::RETURN,
+        ], [$child], 0);
+
+        $this->assertSame(42, $executor->execute($program, $env));
+    }
+
+    public function testLoadsFileInChildFrame(): void
+    {
+        $filename = tempnam(sys_get_temp_dir(), 'madlisp-');
+        file_put_contents($filename, '42');
+
+        try {
+            $compiler = new Compiler();
+            $loader = new CompiledLoader(new Tokenizer(), new Reader(), $compiler);
+            $executor = new Executor($loader);
+            $env = new Env('root');
+            $program = $compiler->compile(new MList([
+                new Symbol('load'),
+                $filename,
+            ]));
+
+            $this->assertSame(42, $executor->execute($program, $env));
+        } finally {
+            unlink($filename);
+        }
     }
 
     public function testLoadsGlobal(): void

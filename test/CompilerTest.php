@@ -496,6 +496,22 @@ class CompilerTest extends TestCase
         $this->assertSame([1, 2], $program->getConstants());
     }
 
+    public function testCompilesExecuteAndLoad(): void
+    {
+        $compiler = new Compiler();
+
+        foreach (['execute' => OpCode::EXECUTE_PROGRAM, 'load' => OpCode::LOAD_FILE] as $name => $opcode) {
+            $program = $compiler->compile(new MList([new Symbol($name), 42]));
+
+            $this->assertSame([
+                OpCode::LOAD_CONSTANT, 0,
+                $opcode,
+                OpCode::RETURN,
+            ], $program->getCode());
+            $this->assertSame([42], $program->getConstants());
+        }
+    }
+
     public function testCompilesSupportedCoreCall(): void
     {
         $compiler = new Compiler();

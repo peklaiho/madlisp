@@ -31,4 +31,6 @@ class OpCode
     public const int UNDEF = 20;
     public const int BUILD_VECTOR = 21;
     public const int BUILD_HASH = 22;
+    public const int EXECUTE_PROGRAM = 23;
+    public const int LOAD_FILE = 24;
 }
