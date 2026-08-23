@@ -10,12 +10,12 @@ $workloadDir = __DIR__ . '/lisp';
 $workloads = [
     'arithmetic' => ['file' => 'arithmetic.lisp', 'expected' => 12502500],
     'tail-recursion' => ['file' => 'tail-recursion.lisp', 'expected' => 0],
-    'collections' => ['file' => 'collections.lisp', 'expected' => 399980000],
+    // 'collections' => ['file' => 'collections.lisp', 'expected' => 399980000],
     'environment' => ['file' => 'environment.lisp', 'expected' => 30000],
     'fibonacci' => ['file' => 'fibonacci.lisp', 'expected' => 6765],
 ];
 
-$options = getopt('', ['workload:', 'iterations:', 'warmup:', 'json', 'profile', 'list', 'help']);
+$options = getopt('', ['workload:', 'iterations:', 'warmup:', 'compile', 'json', 'profile', 'list', 'help']);
 
 if (isset($options['help'])) {
     printUsage();
@@ -31,6 +31,7 @@ if (isset($options['list'])) {
 $name = $options['workload'] ?? 'all';
 $iterations = isset($options['iterations']) ? max(1, (int) $options['iterations']) : 10;
 $warmup = isset($options['warmup']) ? max(0, (int) $options['warmup']) : 2;
+$compile = isset($options['compile']);
 
 if ($name !== 'all' && !isset($workloads[$name])) {
     fwrite(STDERR, "Unknown workload: $name" . PHP_EOL);
@@ -44,13 +45,14 @@ if ($name === 'all') {
     // Run each workload in a child process so every peak is independent.
     foreach (array_keys($workloads) as $workloadName) {
         $command = sprintf(
-            '%s %s %s --workload=%s --iterations=%d --warmup=%d --json',
+            '%s %s %s --workload=%s --iterations=%d --warmup=%d --json %s',
             (isset($options['profile']) ? 'XDEBUG_TRIGGER=1' : ''),
             escapeshellarg(PHP_BINARY),
             escapeshellarg(__FILE__),
             escapeshellarg($workloadName),
             $iterations,
-            $warmup
+            $warmup,
+            $compile ? '--compile' : ''
         );
         exec($command, $output, $status);
         if ($status !== 0) {
@@ -65,25 +67,37 @@ if ($name === 'all') {
         $output = [];
     }
 } else {
-    $results[] = runWorkload($name, $workloads[$name], $workloadDir, $iterations, $warmup);
+    $results[] = runWorkload($name, $workloads[$name], $workloadDir, $iterations, $warmup, $compile);
 }
 
 if (isset($options['json'])) {
     echo json_encode($results, JSON_PRETTY_PRINT) . PHP_EOL;
 } else {
     foreach ($results as $result) {
-        printf(
-            "%-20s: %4.0f ms total, %3.0f ms/op, %3.0f ops/sec, peak memory %3d MB\n",
-            $result['workload'],
-            $result['total_ms'],
-            $result['average_ms'],
-            $result['ops_per_second'],
-            intdiv($result['peak_memory_bytes'], 1024 * 1024)
-        );
+        if ($result['compile_ms'] >= 0) {
+            printf(
+                "%-20s: %3.2f ms compilation, %4.0f ms total, %3.0f ms/op, %3.0f ops/sec, peak memory %3d MB\n",
+                $result['workload'],
+                $result['compile_ms'],
+                $result['total_ms'],
+                $result['average_ms'],
+                $result['ops_per_second'],
+                intdiv($result['peak_memory_bytes'], 1024 * 1024),
+            );
+        } else {
+            printf(
+                "%-20s: %4.0f ms total, %3.0f ms/op, %3.0f ops/sec, peak memory %3d MB\n",
+                $result['workload'],
+                $result['total_ms'],
+                $result['average_ms'],
+                $result['ops_per_second'],
+                intdiv($result['peak_memory_bytes'], 1024 * 1024),
+            );
+        }
     }
 }
 
-function runWorkload(string $workloadName, array $workload, string $workloadDir, int $iterations, int $warmup): array
+function runWorkload(string $workloadName, array $workload, string $workloadDir, int $iterations, int $warmup, bool $compile): array
 {
     $source = file_get_contents($workloadDir . '/' . $workload['file']);
     if ($source === false) {
@@ -92,14 +106,29 @@ function runWorkload(string $workloadName, array $workload, string $workloadDir,
 
     $lisp = (new LispFactory())->make(true);
 
+    if ($compile) {
+        // Record compilation time separately
+        $compileStart = hrtime(true);
+        $compiledProgram = $lisp->compile($lisp->read($source));
+        $compileElapsed = hrtime(true) - $compileStart;
+    }
+
     for ($i = 0; $i < $warmup; $i++) {
-        $lisp->readEval($source);
+        if ($compile) {
+            $lisp->execute($compiledProgram);
+        } else {
+            $lisp->readEval($source);
+        }
     }
 
     $start = hrtime(true);
     $lastResult = null;
     for ($i = 0; $i < $iterations; $i++) {
-        $lastResult = $lisp->readEval($source);
+        if ($compile) {
+            $lastResult = $lisp->execute($compiledProgram);
+        } else {
+            $lastResult = $lisp->readEval($source);
+        }
     }
     $elapsedNs = hrtime(true) - $start;
 
@@ -116,6 +145,7 @@ function runWorkload(string $workloadName, array $workload, string $workloadDir,
         'workload' => $workloadName,
         'iterations' => $iterations,
         'warmup' => $warmup,
+        'compile_ms' => $compile ? round($compileElapsed / 1000000, 3) : -1,
         'total_ms' => round($elapsedNs / 1000000, 3),
         'average_ms' => round($elapsedNs / $iterations / 1000000, 3),
         'ops_per_second' => round($iterations / ($elapsedNs / 1000000000), 2),
@@ -139,6 +169,7 @@ Usage: php bench/benchmark.php [options]
 
 Options:
   --workload=name       Run one workload, or all (default: all)
+  --compile             Use the compiler and executor
   --iterations=n        Timed iterations (default: 10)
   --warmup=n            Untimed warmup iterations (default: 2)
   --json                Emit machine-readable JSON

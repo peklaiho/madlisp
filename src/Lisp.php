@@ -46,6 +46,11 @@ class Lisp
         return $this->printer->pstr($value, $printReadable);
     }
 
+    public function read(string $input)
+    {
+        return $this->reader->read($this->tokenizer->tokenize($input));
+    }
+
     public function readEval(string $input, ?Env $customEnv = null)
     {
         $tokens = $this->tokenizer->tokenize($input);
