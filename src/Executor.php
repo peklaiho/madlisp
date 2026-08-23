@@ -209,7 +209,10 @@ class Executor
                 case OpCode::CALL:
                     $tailCall = $opcode == OpCode::TAIL_CALL;
                     $arity = $code[$pc++];
-                    $args = $arity == 0 ? [] : array_splice($stack, -$arity);
+                    $args = $arity == 0 ? [] : array_fill(0, $arity, null);
+                    for ($index = $arity - 1; $index >= 0; $index--) {
+                        $args[$index] = array_pop($stack);
+                    }
                     $func = array_pop($stack);
 
                     if (!($func instanceof Func)) {
@@ -253,7 +256,10 @@ class Executor
                 case OpCode::CALL_CORE:
                     $coreFuncId = $code[$pc++];
                     $arity = $code[$pc++];
-                    $args = $arity == 0 ? [] : array_splice($stack, -$arity);
+                    $args = $arity == 0 ? [] : array_fill(0, $arity, null);
+                    for ($index = $arity - 1; $index >= 0; $index--) {
+                        $args[$index] = array_pop($stack);
+                    }
 
                     $continuationTypes = [
                         CoreFuncId::APPLY => 'apply',
