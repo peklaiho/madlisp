@@ -18,6 +18,7 @@ class Executor
     public function execute(CompiledProgram $program, Env $env)
     {
         $stack = [];
+        $stackPointer = 0;
         $frames = [new ExecutionFrame($program, $env)];
 
         while ($frames) {
@@ -35,24 +36,26 @@ class Executor
 
             switch ($opcode) {
                 case OpCode::LOAD_ENV:
-                    $stack[] = $env;
+                    $stack[$stackPointer++] = $env;
                     break;
 
                 case OpCode::UNDEF:
                     $nameIndex = $code[$pc++];
-                    $stack[] = $env->unset($constants[$nameIndex]);
+                    $stack[$stackPointer++] = $env->unset($constants[$nameIndex]);
                     break;
 
                 case OpCode::BUILD_VECTOR:
                     $valueCount = $code[$pc++];
-                    $values = $valueCount == 0 ? [] : array_splice($stack, -$valueCount);
-                    $stack[] = new Vector($values);
+                    $values = $valueCount == 0 ? [] : array_slice($stack, $stackPointer - $valueCount, $valueCount);
+                    $stackPointer -= $valueCount;
+                    $stack[$stackPointer++] = new Vector($values);
                     break;
 
                 case OpCode::BUILD_HASH:
                     $keyIndex = $code[$pc++];
                     $valueCount = $code[$pc++];
-                    $values = $valueCount == 0 ? [] : array_splice($stack, -$valueCount);
+                    $values = $valueCount == 0 ? [] : array_slice($stack, $stackPointer - $valueCount, $valueCount);
+                    $stackPointer -= $valueCount;
                     $keys = $constants[$keyIndex];
                     if (count($keys) != $valueCount) {
                         throw new MadLispException('exec: invalid hash key count');
@@ -62,26 +65,26 @@ class Executor
                     foreach ($keys as $index => $key) {
                         $data[$key] = $values[$index];
                     }
-                    $stack[] = new Hash($data);
+                    $stack[$stackPointer++] = new Hash($data);
                     break;
 
                 case OpCode::LOAD_CONSTANT:
                     $constantIndex = $code[$pc++];
-                    $stack[] = $constants[$constantIndex];
+                    $stack[$stackPointer++] = $constants[$constantIndex];
                     break;
 
                 case OpCode::EXECUTE_PROGRAM:
-                    $childProgram = array_pop($stack);
+                    $childProgram = $stack[--$stackPointer];
                     if (!($childProgram instanceof CompiledProgram)) {
                         throw new MadLispException('exec: execute requires a CompiledProgram');
                     }
 
                     $frame->pc = $pc;
-                    $frames[] = new ExecutionFrame($childProgram, $env, count($stack));
+                    $frames[] = new ExecutionFrame($childProgram, $env, $stackPointer);
                     continue 2;
 
                 case OpCode::LOAD_FILE:
-                    $filename = array_pop($stack);
+                    $filename = $stack[--$stackPointer];
                     if (!is_string($filename)) {
                         throw new MadLispException('exec: load filename is not string');
                     }
@@ -91,12 +94,12 @@ class Executor
 
                     $childProgram = $this->loader->load($filename);
                     $frame->pc = $pc;
-                    $frames[] = new ExecutionFrame($childProgram, $env, count($stack));
+                    $frames[] = new ExecutionFrame($childProgram, $env, $stackPointer);
                     continue 2;
 
                 case OpCode::LOAD_GLOBAL:
                     $nameIndex = $code[$pc++];
-                    $stack[] = $env->get($constants[$nameIndex]);
+                    $stack[$stackPointer++] = $env->get($constants[$nameIndex]);
                     break;
 
                 case OpCode::LOAD_LOCAL:
@@ -105,7 +108,7 @@ class Executor
                         throw new MadLispException("exec: invalid local slot $localSlot");
                     }
 
-                    $stack[] = $frame->locals[$localSlot];
+                    $stack[$stackPointer++] = $frame->locals[$localSlot];
                     break;
 
                 case OpCode::LOAD_CAPTURE:
@@ -114,7 +117,7 @@ class Executor
                         throw new MadLispException("exec: invalid capture slot $captureIndex");
                     }
 
-                    $stack[] = $frame->captures[$captureIndex];
+                    $stack[$stackPointer++] = $frame->captures[$captureIndex];
                     break;
 
                 case OpCode::STORE_LOCAL:
@@ -123,21 +126,22 @@ class Executor
                         throw new MadLispException("exec: invalid local slot $localSlot");
                     }
 
-                    $frame->locals[$localSlot] = array_pop($stack);
+                    $frame->locals[$localSlot] = $stack[--$stackPointer];
                     break;
 
                 case OpCode::STORE_GLOBAL:
                     $nameIndex = $code[$pc++];
-                    $stack[] = $env->set($constants[$nameIndex], array_pop($stack));
+                    $value = $stack[--$stackPointer];
+                    $stack[$stackPointer++] = $env->set($constants[$nameIndex], $value);
                     break;
 
                 case OpCode::POP:
-                    array_pop($stack);
+                    $stackPointer--;
                     break;
 
                 case OpCode::JUMP_IF_FALSE:
                     $target = $code[$pc++];
-                    $condition = array_pop($stack);
+                    $condition = $stack[--$stackPointer];
 
                     if ($condition != true) {
                         $pc = $target;
@@ -146,14 +150,14 @@ class Executor
 
                 case OpCode::JUMP_IF_FALSE_KEEP:
                     $target = $code[$pc++];
-                    if ($stack[count($stack) - 1] != true) {
+                    if ($stack[$stackPointer - 1] != true) {
                         $pc = $target;
                     }
                     break;
 
                 case OpCode::JUMP_IF_TRUE_KEEP:
                     $target = $code[$pc++];
-                    if ($stack[count($stack) - 1] == true) {
+                    if ($stack[$stackPointer - 1] == true) {
                         $pc = $target;
                     }
                     break;
@@ -163,15 +167,15 @@ class Executor
                     break;
 
                 case OpCode::CASE_COMPARE:
-                    $right = array_pop($stack);
-                    $left = array_pop($stack);
-                    $stack[] = Util::valueForCompare($left) == Util::valueForCompare($right);
+                    $right = $stack[--$stackPointer];
+                    $left = $stack[--$stackPointer];
+                    $stack[$stackPointer++] = Util::valueForCompare($left) == Util::valueForCompare($right);
                     break;
 
                 case OpCode::CASE_COMPARE_STRICT:
-                    $right = array_pop($stack);
-                    $left = array_pop($stack);
-                    $stack[] = Util::valueForCompare($left) === Util::valueForCompare($right);
+                    $right = $stack[--$stackPointer];
+                    $left = $stack[--$stackPointer];
+                    $stack[$stackPointer++] = Util::valueForCompare($left) === Util::valueForCompare($right);
                     break;
 
                 case OpCode::MAKE_FUNCTION:
@@ -202,18 +206,16 @@ class Executor
                         }
                     }
 
-                    $stack[] = new CompiledFunc($template->program, $env, $template->arity, $captures);
+                    $stack[$stackPointer++] = new CompiledFunc($template->program, $env, $template->arity, $captures);
                     break;
 
                 case OpCode::TAIL_CALL:
                 case OpCode::CALL:
                     $tailCall = $opcode == OpCode::TAIL_CALL;
                     $arity = $code[$pc++];
-                    $args = $arity == 0 ? [] : array_fill(0, $arity, null);
-                    for ($index = $arity - 1; $index >= 0; $index--) {
-                        $args[$index] = array_pop($stack);
-                    }
-                    $func = array_pop($stack);
+                    $args = $arity == 0 ? [] : array_slice($stack, $stackPointer - $arity, $arity);
+                    $stackPointer -= $arity;
+                    $func = $stack[--$stackPointer];
 
                     if (!($func instanceof Func)) {
                         throw new MadLispException('exec: first item of list is not function');
@@ -228,7 +230,7 @@ class Executor
                             ));
                         }
 
-                        $callerBase = count($stack);
+                        $callerBase = $stackPointer;
                         $thisFrame = $frame;
                         $thisFrame->pc = $pc;
                         if ($tailCall) {
@@ -250,16 +252,14 @@ class Executor
                         continue 2;
                     }
 
-                    $stack[] = $func->call($args);
+                    $stack[$stackPointer++] = $func->call($args);
                     break;
 
                 case OpCode::CALL_CORE:
                     $coreFuncId = $code[$pc++];
                     $arity = $code[$pc++];
-                    $args = $arity == 0 ? [] : array_fill(0, $arity, null);
-                    for ($index = $arity - 1; $index >= 0; $index--) {
-                        $args[$index] = array_pop($stack);
-                    }
+                    $args = $arity == 0 ? [] : array_slice($stack, $stackPointer - $arity, $arity);
+                    $stackPointer -= $arity;
 
                     $continuationTypes = [
                         CoreFuncId::APPLY => 'apply',
@@ -293,6 +293,7 @@ class Executor
                             $frame,
                             $frames,
                             $stack,
+                            $stackPointer,
                             $args[0],
                             $sequence,
                             $args
@@ -829,15 +830,15 @@ class Executor
                             throw new MadLispException("exec: unknown core function id $coreFuncId");
                     }
 
-                    $stack[] = $result;
+                    $stack[$stackPointer++] = $result;
                     break;
 
                 case OpCode::RETURN:
-                    if (count($stack) - $frame->stackBase !== 1) {
+                    if ($stackPointer - $frame->stackBase !== 1) {
                         throw new MadLispException('exec: frame must return exactly one value');
                     }
 
-                    $result = array_pop($stack);
+                    $result = $stack[--$stackPointer];
                     array_pop($frames);
                     if (!$frames) {
                         return $result;
@@ -845,11 +846,11 @@ class Executor
 
                     // A callback frame may return to a suspended higher-order
                     // collection operation instead of directly to its caller.
-                    if ($this->resumeContinuation($frames[array_key_last($frames)], $frames, $stack, $result)) {
+                    if ($this->resumeContinuation($frames[array_key_last($frames)], $frames, $stack, $stackPointer, $result)) {
                         continue 2;
                     }
 
-                    $stack[] = $result;
+                    $stack[$stackPointer++] = $result;
                     break;
             }
 
@@ -862,6 +863,7 @@ class Executor
         ExecutionFrame $caller,
         array &$frames,
         array &$stack,
+        int &$stackPointer,
         CompiledFunc $function,
         Collection $sequence,
         array $args
@@ -888,6 +890,7 @@ class Executor
             $this->pushCallbackFrame(
                 $frames,
                 $stack,
+                $stackPointer,
                 $function,
                 array_merge($caller->continuation['prefix'], $data)
             );
@@ -896,7 +899,7 @@ class Executor
 
         if ($index >= count($data)) {
             $caller->continuation = null;
-            $stack[] = match ($type) {
+            $stack[$stackPointer++] = match ($type) {
                 'reduce' => $carry,
                 'filterh' => new Hash([]),
                 default => $sequence::new([]),
@@ -904,7 +907,7 @@ class Executor
             return false;
         }
 
-        $this->pushCallbackFrame($frames, $stack, $function, $this->callbackArguments($caller->continuation, $index));
+        $this->pushCallbackFrame($frames, $stack, $stackPointer, $function, $this->callbackArguments($caller->continuation, $index));
         return true;
     }
 
@@ -912,6 +915,7 @@ class Executor
         ExecutionFrame $caller,
         array &$frames,
         array &$stack,
+        int &$stackPointer,
         $result
     ): bool {
         if ($caller->continuation === null) {
@@ -941,14 +945,14 @@ class Executor
                 break;
             case 'apply':
                 $caller->continuation = null;
-                $stack[] = $result;
+                $stack[$stackPointer++] = $result;
                 return true;
         }
         $index++;
         $state['index'] = $index;
 
         if ($index < count($state['data'])) {
-            $this->pushCallbackFrame($frames, $stack, $state['function'], $this->callbackArguments($state, $index));
+            $this->pushCallbackFrame($frames, $stack, $stackPointer, $state['function'], $this->callbackArguments($state, $index));
             return true;
         }
 
@@ -956,7 +960,7 @@ class Executor
             ? $state['carry']
             : ($state['type'] === 'filterh' ? new Hash($state['result']) : $state['sequence']::new($state['result']));
         $caller->continuation = null;
-        $stack[] = $final;
+        $stack[$stackPointer++] = $final;
         return true;
     }
 
@@ -974,13 +978,14 @@ class Executor
     private function pushCallbackFrame(
         array &$frames,
         array &$stack,
+        int &$stackPointer,
         CompiledFunc $function,
         array $args
     ): void {
         $frame = new ExecutionFrame(
             $function->getProgram(),
             $function->getEnv(),
-            count($stack),
+            $stackPointer,
             null,
             $function->getCaptures()
         );
