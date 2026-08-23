@@ -318,6 +318,38 @@ class Executor
                             $result = min(($args[0] instanceof Seq) ? $args[0]->getData() : $args);
                             break;
 
+                        case CoreFuncId::EQUAL:
+                            $result = Util::valueForCompare($args[0]) == Util::valueForCompare($args[1]);
+                            break;
+
+                        case CoreFuncId::STRICT_EQUAL:
+                            $result = Util::valueForCompare($args[0]) === Util::valueForCompare($args[1]);
+                            break;
+
+                        case CoreFuncId::NOT_EQUAL:
+                            $result = Util::valueForCompare($args[0]) != Util::valueForCompare($args[1]);
+                            break;
+
+                        case CoreFuncId::STRICT_NOT_EQUAL:
+                            $result = Util::valueForCompare($args[0]) !== Util::valueForCompare($args[1]);
+                            break;
+
+                        case CoreFuncId::LESS:
+                            $result = $args[0] < $args[1];
+                            break;
+
+                        case CoreFuncId::LESS_EQUAL:
+                            $result = $args[0] <= $args[1];
+                            break;
+
+                        case CoreFuncId::GREATER:
+                            $result = $args[0] > $args[1];
+                            break;
+
+                        case CoreFuncId::GREATER_EQUAL:
+                            $result = $args[0] >= $args[1];
+                            break;
+
                         default:
                             throw new MadLispException("exec: unknown core function id $coreFuncId");
                     }

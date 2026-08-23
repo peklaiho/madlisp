@@ -20,6 +20,7 @@ use MadLisp\OpCode;
 use MadLisp\Reader;
 use MadLisp\Symbol;
 use MadLisp\Tokenizer;
+use MadLisp\Vector;
 
 class ExecutorTest extends TestCase
 {
@@ -201,6 +202,41 @@ class ExecutorTest extends TestCase
             [CoreFuncId::DEC, [4], 3],
             [CoreFuncId::MAX, [2, 8, 3], 8],
             [CoreFuncId::MIN, [2, 8, 3], 2],
+        ];
+
+        foreach ($cases as [$coreFuncId, $args, $expected]) {
+            $code = [];
+            foreach ($args as $index => $arg) {
+                $code[] = OpCode::LOAD_CONSTANT;
+                $code[] = $index;
+            }
+            $code[] = OpCode::CALL_CORE;
+            $code[] = $coreFuncId;
+            $code[] = count($args);
+            $code[] = OpCode::RETURN;
+
+            $program = new CompiledProgram($code, $args, 0);
+
+            $this->assertSame($expected, $executor->execute($program, $env));
+        }
+    }
+
+    public function testCallsComparisonCoreFunctionsDirectly(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+
+        $cases = [
+            [CoreFuncId::EQUAL, [1, true], true],
+            [CoreFuncId::STRICT_EQUAL, [1, true], false],
+            [CoreFuncId::NOT_EQUAL, [1, true], false],
+            [CoreFuncId::STRICT_NOT_EQUAL, [1, true], true],
+            [CoreFuncId::LESS, [1, 2], true],
+            [CoreFuncId::LESS_EQUAL, [2, 2], true],
+            [CoreFuncId::GREATER, [2, 1], true],
+            [CoreFuncId::GREATER_EQUAL, [2, 2], true],
+            [CoreFuncId::EQUAL, [new MList([1, 2]), new Vector([1, 2])], true],
+            [CoreFuncId::STRICT_EQUAL, [new MList([1, 2]), new Vector([1, 2])], true],
         ];
 
         foreach ($cases as [$coreFuncId, $args, $expected]) {
