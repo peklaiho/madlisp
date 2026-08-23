@@ -9,6 +9,7 @@ namespace MadLisp;
 
 class CoreFuncId
 {
+    // Math functions
     public const int ADD = 1;
     public const int SUBTRACT = 2;
     public const int MULTIPLY = 3;
@@ -19,6 +20,8 @@ class CoreFuncId
     public const int DEC = 8;
     public const int MAX = 9;
     public const int MIN = 10;
+
+    // Comparison functions
     public const int EQUAL = 11;
     public const int STRICT_EQUAL = 12;
     public const int NOT_EQUAL = 13;
@@ -27,6 +30,8 @@ class CoreFuncId
     public const int LESS_EQUAL = 16;
     public const int GREATER = 17;
     public const int GREATER_EQUAL = 18;
+
+    // Collection functions
     public const int HASH = 19;
     public const int LIST = 20;
     public const int VECTOR = 21;
@@ -64,6 +69,8 @@ class CoreFuncId
     public const int VALUES = 53;
     public const int ZIP = 54;
     public const int SORT = 55;
+
+    // Type functions
     public const int BOOL = 56;
     public const int FLOAT = 57;
     public const int INT = 58;
@@ -91,6 +98,8 @@ class CoreFuncId
     public const int ONE = 80;
     public const int EVEN = 81;
     public const int ODD = 82;
+
+    // String functions
     public const int TRIM = 83;
     public const int LTRIM = 84;
     public const int RTRIM = 85;
@@ -113,6 +122,7 @@ class CoreFuncId
     public static function fromName(string $name): ?array
     {
         return match ($name) {
+            // Math functions
             '+' => [self::ADD, 1],
             '-' => [self::SUBTRACT, 1],
             '*' => [self::MULTIPLY, 2],
@@ -123,6 +133,8 @@ class CoreFuncId
             'dec' => [self::DEC, 1],
             'max' => [self::MAX, 1],
             'min' => [self::MIN, 1],
+
+            // Comparison functions
             '=' => [self::EQUAL, 2],
             '==' => [self::STRICT_EQUAL, 2],
             '!=' => [self::NOT_EQUAL, 2],
@@ -131,6 +143,8 @@ class CoreFuncId
             '<=' => [self::LESS_EQUAL, 2],
             '>' => [self::GREATER, 2],
             '>=' => [self::GREATER_EQUAL, 2],
+
+            // Collection functions
             'hash' => [self::HASH, 0],
             'list' => [self::LIST, 0],
             'vector' => [self::VECTOR, 0],
@@ -168,6 +182,8 @@ class CoreFuncId
             'values' => [self::VALUES, 1],
             'zip' => [self::ZIP, 2],
             'sort' => [self::SORT, 1],
+
+            // Type functions
             'bool' => [self::BOOL, 1],
             'float' => [self::FLOAT, 1],
             'int' => [self::INT, 1],
@@ -195,6 +211,8 @@ class CoreFuncId
             'one?' => [self::ONE, 1],
             'even?' => [self::EVEN, 1],
             'odd?' => [self::ODD, 1],
+
+            // String functions
             'trim' => [self::TRIM, 1],
             'ltrim' => [self::LTRIM, 1],
             'rtrim' => [self::RTRIM, 1],
@@ -213,6 +231,7 @@ class CoreFuncId
             'strcasecmp' => [self::STRCASECMP, 2],
             'strnatcmp' => [self::STRNATCMP, 2],
             'strnatcasecmp' => [self::STRNATCASECMP, 2],
+
             default => null,
         };
     }

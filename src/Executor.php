@@ -385,7 +385,7 @@ class Executor
                             } elseif (is_string($args[0])) {
                                 $result = $args[0] === '';
                             } else {
-                                throw new MadLispException('argument to empty? is not collection or string');
+                                throw new MadLispException('exec: argument to empty? is not collection or string');
                             }
                             break;
 
@@ -403,7 +403,7 @@ class Executor
                             } elseif (is_string($args[0])) {
                                 $result = strlen($args[0]);
                             } else {
-                                throw new MadLispException('argument to len is not collection or string');
+                                throw new MadLispException('exec: argument to len is not collection or string');
                             }
                             break;
 
@@ -433,9 +433,9 @@ class Executor
                             $func = $args[0];
                             $seq = $args[$arity - 1];
                             if (!($func instanceof Func)) {
-                                throw new MadLispException('first argument to apply is not function');
+                                throw new MadLispException('exec: first argument to apply is not function');
                             } elseif (!($seq instanceof Seq)) {
-                                throw new MadLispException('last argument to apply is not sequence');
+                                throw new MadLispException('exec: last argument to apply is not sequence');
                             }
                             $applyArgs = array_slice($args, 1, -1);
                             foreach ($seq->getData() as $arg) {
@@ -472,7 +472,7 @@ class Executor
                         case CoreFuncId::CONS:
                             $seq = $args[$arity - 1];
                             if (!($seq instanceof Seq)) {
-                                throw new MadLispException('last argument to cons is not sequence');
+                                throw new MadLispException('exec: last argument to cons is not sequence');
                             }
                             $data = array_slice($args, 0, -1);
                             $result = $seq::new(array_merge($data, $seq->getData()));
@@ -484,7 +484,7 @@ class Executor
 
                         case CoreFuncId::MAP2:
                             if ($args[1]->count() != $args[2]->count()) {
-                                throw new MadLispException('map2 requires equal number of elements in both sequences');
+                                throw new MadLispException('exec: map2 requires equal number of elements in both sequences');
                             }
                             $result = $args[1]::new(array_map($args[0]->getClosure(), $args[1]->getData(), $args[2]->getData()));
                             break;
@@ -507,7 +507,7 @@ class Executor
                             } elseif (is_string($args[0])) {
                                 $result = strrev($args[0]);
                             } else {
-                                throw new MadLispException('argument to reverse is not sequence or string');
+                                throw new MadLispException('exec: argument to reverse is not sequence or string');
                             }
                             break;
 
@@ -545,7 +545,7 @@ class Executor
 
                         case CoreFuncId::ZIP:
                             if ($args[0]->count() != $args[1]->count()) {
-                                throw new MadLispException('zip requires equal number of keys and values');
+                                throw new MadLispException('exec: zip requires equal number of keys and values');
                             }
                             $result = new Hash(array_combine($args[0]->getData(), $args[1]->getData()));
                             break;
