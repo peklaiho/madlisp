@@ -11,6 +11,7 @@ class ExecutionFrame
 {
     public int $pc = 0;
     public array $locals;
+    public ?array $continuation = null;
 
     public function __construct(
         public CompiledProgram $program,

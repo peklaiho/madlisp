@@ -332,6 +332,30 @@ class ExecutorTest extends TestCase
         $this->assertSame([1, 2, 3], $run(CoreFuncId::SORT, [new Vector([3, 1, 2])])->getData());
     }
 
+    public function testCollectionCoreFunctionsExecuteCompiledCallbacks(): void
+    {
+        $compiler = new Compiler();
+        $reader = new Reader();
+        $tokenizer = new Tokenizer();
+        $executor = new Executor();
+        $env = new Env('root');
+        $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
+        $env->set('*', new CoreFunc('*', '', 2, -1, fn (...$args) => array_product($args)));
+        $env->set('>', new CoreFunc('>', '', 2, 2, fn ($a, $b) => $a > $b));
+
+        $run = function (string $source) use ($compiler, $reader, $tokenizer, $executor, $env) {
+            $ast = $reader->read($tokenizer->tokenize($source));
+            return $executor->execute($compiler->compile($ast), $env);
+        };
+
+        $this->assertSame([2, 4, 6], $run('(map (fn (x) (* x 2)) [1 2 3])')->getData());
+        $this->assertSame([4, 6], $run('(map2 (fn (a b) (+ a b)) [1 2] [3 4])')->getData());
+        $this->assertSame(6, $run('(reduce (fn (a b) (+ a b)) [1 2 3])'));
+        $this->assertSame([2, 3], $run('(filter (fn (x) (> x 1)) [1 2 3])')->getData());
+        $this->assertSame(['b' => 2], $run('(filterh (fn (value key) (> value 1)) {"a" 1 "b" 2})')->getData());
+        $this->assertSame(6, $run('(apply (fn (a b c) (+ a (+ b c))) [1 2 3])'));
+    }
+
     public function testCallsTypeCoreFunctionsDirectly(): void
     {
         $executor = new Executor();

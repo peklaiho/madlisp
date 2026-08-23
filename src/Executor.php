@@ -255,6 +255,51 @@ class Executor
                     $arity = $code[$pc++];
                     $args = $arity == 0 ? [] : array_splice($stack, -$arity);
 
+                    $continuationTypes = [
+                        CoreFuncId::APPLY => 'apply',
+                        CoreFuncId::MAP => 'map',
+                        CoreFuncId::MAP2 => 'map2',
+                        CoreFuncId::REDUCE => 'reduce',
+                        CoreFuncId::FILTER => 'filter',
+                        CoreFuncId::FILTERH => 'filterh',
+                    ];
+
+                    // Higher-order collection functions need two execution paths.
+                    // A CompiledFunc cannot be passed to PHP array_* functions because
+                    // it has no PHP closure, so compiled callbacks are suspended into
+                    // the VM frame stack and resumed through a continuation below.
+                    // Closure-backed Func instances use the normal path below.
+                    if (isset($continuationTypes[$coreFuncId])
+                        && $args[0] instanceof CompiledFunc
+                    ) {
+                        $type = $continuationTypes[$coreFuncId];
+                        $sequence = $type === 'apply' ? $args[$arity - 1] : $args[1];
+                        if ($type === 'filterh' ? !($sequence instanceof Hash) : !($sequence instanceof Seq)) {
+                            throw new MadLispException('exec: argument to collection operation is not sequence');
+                        }
+                        if ($type === 'map2' && $sequence->count() != $args[2]->count()) {
+                            throw new MadLispException('exec: map2 requires equal number of elements in both sequences');
+                        }
+
+                        $frame->pc = $pc;
+                        if (!$this->startCollectionContinuation(
+                            $type,
+                            $frame,
+                            $frames,
+                            $stack,
+                            $args[0],
+                            $sequence,
+                            $args
+                        )) {
+                            break;
+                        }
+                        continue 2;
+                    }
+
+                    // This path handles ordinary core calls, including the
+                    // closure-backed implementations of map, map2, reduce, filter,
+                    // and filterh. CompiledFunc callbacks have already been handled
+                    // by the continuation path above.
                     switch ($coreFuncId) {
                         case CoreFuncId::ADD:
                             $result = 0;
@@ -792,11 +837,150 @@ class Executor
                         return $result;
                     }
 
+                    // A callback frame may return to a suspended higher-order
+                    // collection operation instead of directly to its caller.
+                    if ($this->resumeContinuation($frames[array_key_last($frames)], $frames, $stack, $result)) {
+                        continue 2;
+                    }
+
                     $stack[] = $result;
                     break;
             }
 
             $frame->pc = $pc;
         }
+    }
+
+    private function startCollectionContinuation(
+        string $type,
+        ExecutionFrame $caller,
+        array &$frames,
+        array &$stack,
+        CompiledFunc $function,
+        Collection $sequence,
+        array $args
+    ): bool {
+        $data = $sequence->getData();
+        $hasInitial = $type === 'reduce' && count($args) > 2;
+        $index = $type === 'reduce' && !$hasInitial ? 1 : 0;
+        $carry = $type === 'reduce' && !$hasInitial ? $data[0] : ($args[2] ?? null);
+        $caller->continuation = [
+            'type' => $type,
+            'function' => $function,
+            'sequence' => $sequence,
+            'data' => $data,
+            'values' => array_values($data),
+            'index' => $index,
+            'result' => [],
+            'carry' => $carry,
+            'prefix' => $type === 'apply' ? array_slice($args, 1, -1) : [],
+            'secondData' => $type === 'map2' ? array_values($args[2]->getData()) : [],
+            'keys' => $type === 'filterh' ? array_keys($data) : [],
+        ];
+
+        if ($type === 'apply') {
+            $this->pushCallbackFrame(
+                $frames,
+                $stack,
+                $function,
+                array_merge($caller->continuation['prefix'], $data)
+            );
+            return true;
+        }
+
+        if ($index >= count($data)) {
+            $caller->continuation = null;
+            $stack[] = match ($type) {
+                'reduce' => $carry,
+                'filterh' => new Hash([]),
+                default => $sequence::new([]),
+            };
+            return false;
+        }
+
+        $this->pushCallbackFrame($frames, $stack, $function, $this->callbackArguments($caller->continuation, $index));
+        return true;
+    }
+
+    private function resumeContinuation(
+        ExecutionFrame $caller,
+        array &$frames,
+        array &$stack,
+        $result
+    ): bool {
+        if ($caller->continuation === null) {
+            return false;
+        }
+
+        $state =& $caller->continuation;
+        $index = $state['index'];
+        switch ($state['type']) {
+            case 'map':
+            case 'map2':
+                $state['result'][] = $result;
+                break;
+            case 'filter':
+                if ($result) {
+                    $state['result'][] = $state['data'][$index];
+                }
+                break;
+            case 'filterh':
+                if ($result) {
+                    $key = $state['keys'][$index];
+                    $state['result'][$key] = $state['values'][$index];
+                }
+                break;
+            case 'reduce':
+                $state['carry'] = $result;
+                break;
+            case 'apply':
+                $caller->continuation = null;
+                $stack[] = $result;
+                return true;
+        }
+        $index++;
+        $state['index'] = $index;
+
+        if ($index < count($state['data'])) {
+            $this->pushCallbackFrame($frames, $stack, $state['function'], $this->callbackArguments($state, $index));
+            return true;
+        }
+
+        $final = $state['type'] === 'reduce'
+            ? $state['carry']
+            : ($state['type'] === 'filterh' ? new Hash($state['result']) : $state['sequence']::new($state['result']));
+        $caller->continuation = null;
+        $stack[] = $final;
+        return true;
+    }
+
+    private function callbackArguments(array $state, int $index): array
+    {
+        return match ($state['type']) {
+            'map', 'filter' => [$state['data'][$index]],
+            'map2' => [$state['data'][$index], $state['secondData'][$index]],
+            'reduce' => [$state['carry'], $state['data'][$index]],
+            'filterh' => [$state['values'][$index], $state['keys'][$index]],
+            'apply' => array_merge($state['prefix'], [$state['data'][$index]]),
+        };
+    }
+
+    private function pushCallbackFrame(
+        array &$frames,
+        array &$stack,
+        CompiledFunc $function,
+        array $args
+    ): void {
+        $frame = new ExecutionFrame(
+            $function->getProgram(),
+            $function->getEnv(),
+            count($stack),
+            null,
+            $function->getCaptures()
+        );
+        foreach ($args as $index => $arg) {
+            $frame->locals[$index] = $arg;
+        }
+        $frames[] = $frame;
     }
 }
