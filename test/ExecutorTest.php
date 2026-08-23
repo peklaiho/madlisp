@@ -256,6 +256,81 @@ class ExecutorTest extends TestCase
         }
     }
 
+    public function testCallsCollectionCoreFunctionsDirectly(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+        $run = function (int $coreFuncId, array $args) use ($executor, $env) {
+            $code = [];
+            foreach ($args as $index => $arg) {
+                $code[] = OpCode::LOAD_CONSTANT;
+                $code[] = $index;
+            }
+            $code[] = OpCode::CALL_CORE;
+            $code[] = $coreFuncId;
+            $code[] = count($args);
+            $code[] = OpCode::RETURN;
+
+            return $executor->execute(new CompiledProgram($code, $args, 0), $env);
+        };
+
+        $hash = $run(CoreFuncId::HASH, ['a', 1]);
+        $this->assertSame(['a' => 1], $hash->getData());
+        $this->assertSame([1, 2], $run(CoreFuncId::LIST, [1, 2])->getData());
+        $this->assertSame([1, 2], $run(CoreFuncId::VECTOR, [1, 2])->getData());
+        $this->assertSame([0, 1, 2], $run(CoreFuncId::RANGE, [3])->getData());
+        $this->assertSame([1, 2], $run(CoreFuncId::LTOV, [new MList([1, 2])])->getData());
+        $this->assertSame([1, 2], $run(CoreFuncId::VTOL, [new Vector([1, 2])])->getData());
+        $this->assertTrue($run(CoreFuncId::EMPTY, [new Vector()]));
+        $this->assertTrue($run(CoreFuncId::CONTAINS, [new Vector([1, 2]), 2]));
+        $this->assertSame(2, $run(CoreFuncId::GET, [new Vector([1, 2, 3]), 1]));
+        $this->assertSame(3, $run(CoreFuncId::LEN, ['abc']));
+
+        $sequence = new Vector([1, 2, 3]);
+        $this->assertSame(1, $run(CoreFuncId::CAR, [$sequence]));
+        $this->assertSame(1, $run(CoreFuncId::FIRST, [$sequence]));
+        $this->assertSame(3, $run(CoreFuncId::LAST, [$sequence]));
+        $this->assertSame([1, 2], $run(CoreFuncId::HEAD, [$sequence])->getData());
+        $this->assertSame([2, 3], $run(CoreFuncId::CDR, [$sequence])->getData());
+        $this->assertSame([2, 3], $run(CoreFuncId::TAIL, [$sequence])->getData());
+        $this->assertSame([2], $run(CoreFuncId::SLICE, [$sequence, 1, 1])->getData());
+
+        $add = new CoreFunc('add', '', 2, 2, fn ($a, $b) => $a + $b);
+        $double = new CoreFunc('double', '', 1, 1, fn ($a) => $a * 2);
+        $isEven = new CoreFunc('even?', '', 1, 1, fn ($a) => $a % 2 == 0);
+        $this->assertSame(3, $run(CoreFuncId::APPLY, [$add, new Vector([1, 2])]));
+        $this->assertSame([[1, 2], [3, 4]], array_map(
+            fn ($chunk) => $chunk->getData(),
+            $run(CoreFuncId::CHUNK, [new Vector([1, 2, 3, 4]), 2])->getData()
+        ));
+        $this->assertSame([1, 2, 3, 4], $run(CoreFuncId::CONCAT, [new MList([1, 2]), new MList([3, 4])])->getData());
+        $this->assertSame([1, 2, 3], $run(CoreFuncId::PUSH, [new Vector([1]), 2, 3])->getData());
+        $this->assertSame([1, 2, 3], $run(CoreFuncId::CONS, [1, 2, new Vector([3])])->getData());
+        $this->assertSame([2, 4], $run(CoreFuncId::MAP, [$double, new Vector([1, 2])])->getData());
+        $this->assertSame([3, 5], $run(CoreFuncId::MAP2, [$add, new Vector([1, 2]), new Vector([2, 3])])->getData());
+        $this->assertSame(6, $run(CoreFuncId::REDUCE, [$add, new Vector([1, 2, 3])]));
+        $this->assertSame([2, 4], $run(CoreFuncId::FILTER, [$isEven, new Vector([1, 2, 3, 4])])->getData());
+
+        $isValueOne = new CoreFunc('value-one?', '', 2, 2, fn ($value, $key) => $value == 1);
+        $filteredHash = $run(CoreFuncId::FILTERH, [$isValueOne, $hash]);
+        $this->assertSame(['a' => 1], $filteredHash->getData());
+        $this->assertSame([3, 2, 1], $run(CoreFuncId::REVERSE, [$sequence])->getData());
+        $this->assertTrue($run(CoreFuncId::KEY, [$hash, 'a']));
+
+        $updated = $run(CoreFuncId::SET, [$hash, 'b', 2]);
+        $this->assertSame(['a' => 1, 'b' => 2], $updated->getData());
+        $this->assertSame(3, $run(CoreFuncId::SET_MUTATE, [$hash, 'c', 3]));
+        $this->assertSame(3, $hash->get('c'));
+        $withoutB = $run(CoreFuncId::UNSET, [$updated, 'b']);
+        $this->assertSame(['a' => 1], $withoutB->getData());
+        $this->assertSame(3, $run(CoreFuncId::UNSET_MUTATE, [$hash, 'c']));
+        $this->assertSame(['a' => 1], $hash->getData());
+        $this->assertSame(['a'], $run(CoreFuncId::KEYS, [$hash])->getData());
+        $this->assertSame([1], $run(CoreFuncId::VALUES, [$hash])->getData());
+        $this->assertSame(['a' => 1, 'b' => 2], $run(CoreFuncId::ZIP, [new Vector(['a', 'b']), new Vector([1, 2])])->getData());
+        $this->assertSame([1, 2, 3], $run(CoreFuncId::SORT, [new Vector([3, 1, 2])])->getData());
+    }
+
     public function testCallsFunction(): void
     {
         $executor = new Executor();

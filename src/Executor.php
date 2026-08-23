@@ -350,6 +350,212 @@ class Executor
                             $result = $args[0] >= $args[1];
                             break;
 
+                        case CoreFuncId::HASH:
+                            $result = Util::makeHash($args);
+                            break;
+
+                        case CoreFuncId::LIST:
+                            $result = new MList($args);
+                            break;
+
+                        case CoreFuncId::VECTOR:
+                            $result = new Vector($args);
+                            break;
+
+                        case CoreFuncId::RANGE:
+                            if ($arity == 1) {
+                                $data = range(0, $args[0] - 1);
+                            } else {
+                                $data = range($args[0], $args[1] - 1, $args[2] ?? 1);
+                            }
+                            $result = new Vector($data);
+                            break;
+
+                        case CoreFuncId::LTOV:
+                            $result = new Vector($args[0]->getData());
+                            break;
+
+                        case CoreFuncId::VTOL:
+                            $result = new MList($args[0]->getData());
+                            break;
+
+                        case CoreFuncId::EMPTY:
+                            if ($args[0] instanceof Collection) {
+                                $result = $args[0]->count() === 0;
+                            } elseif (is_string($args[0])) {
+                                $result = $args[0] === '';
+                            } else {
+                                throw new MadLispException('argument to empty? is not collection or string');
+                            }
+                            break;
+
+                        case CoreFuncId::CONTAINS:
+                            $result = in_array($args[1], $args[0]->getData(), $args[2] ?? false);
+                            break;
+
+                        case CoreFuncId::GET:
+                            $result = $args[0]->get($args[1]);
+                            break;
+
+                        case CoreFuncId::LEN:
+                            if ($args[0] instanceof Collection) {
+                                $result = $args[0]->count();
+                            } elseif (is_string($args[0])) {
+                                $result = strlen($args[0]);
+                            } else {
+                                throw new MadLispException('argument to len is not collection or string');
+                            }
+                            break;
+
+                        case CoreFuncId::CAR:
+                        case CoreFuncId::FIRST:
+                            $result = $args[0]->getData()[0] ?? null;
+                            break;
+
+                        case CoreFuncId::LAST:
+                            $result = $args[0]->getData()[$args[0]->count() - 1] ?? null;
+                            break;
+
+                        case CoreFuncId::HEAD:
+                            $result = $args[0]::new(array_slice($args[0]->getData(), 0, $args[0]->count() - 1));
+                            break;
+
+                        case CoreFuncId::CDR:
+                        case CoreFuncId::TAIL:
+                            $result = $args[0]::new(array_slice($args[0]->getData(), 1));
+                            break;
+
+                        case CoreFuncId::SLICE:
+                            $result = $args[0]::new(array_slice($args[0]->getData(), $args[1], $args[2] ?? null));
+                            break;
+
+                        case CoreFuncId::APPLY:
+                            $func = $args[0];
+                            $seq = $args[$arity - 1];
+                            if (!($func instanceof Func)) {
+                                throw new MadLispException('first argument to apply is not function');
+                            } elseif (!($seq instanceof Seq)) {
+                                throw new MadLispException('last argument to apply is not sequence');
+                            }
+                            $applyArgs = array_slice($args, 1, -1);
+                            foreach ($seq->getData() as $arg) {
+                                $applyArgs[] = $arg;
+                            }
+                            $result = $func->call($applyArgs);
+                            break;
+
+                        case CoreFuncId::CHUNK:
+                            $chunks = array_chunk($args[0]->getData(), $args[1]);
+                            $data = [];
+                            foreach ($chunks as $chunk) {
+                                $data[] = $args[0]::new($chunk);
+                            }
+                            $result = $args[0]::new($data);
+                            break;
+
+                        case CoreFuncId::CONCAT:
+                            $data = [];
+                            foreach ($args as $arg) {
+                                $data[] = $arg->getData();
+                            }
+                            $result = new MList(array_merge(...$data));
+                            break;
+
+                        case CoreFuncId::PUSH:
+                            $data = $args[0]->getData();
+                            for ($i = 1; $i < $arity; $i++) {
+                                $data[] = $args[$i];
+                            }
+                            $result = $args[0]::new($data);
+                            break;
+
+                        case CoreFuncId::CONS:
+                            $seq = $args[$arity - 1];
+                            if (!($seq instanceof Seq)) {
+                                throw new MadLispException('last argument to cons is not sequence');
+                            }
+                            $data = array_slice($args, 0, -1);
+                            $result = $seq::new(array_merge($data, $seq->getData()));
+                            break;
+
+                        case CoreFuncId::MAP:
+                            $result = $args[1]::new(array_map($args[0]->getClosure(), $args[1]->getData()));
+                            break;
+
+                        case CoreFuncId::MAP2:
+                            if ($args[1]->count() != $args[2]->count()) {
+                                throw new MadLispException('map2 requires equal number of elements in both sequences');
+                            }
+                            $result = $args[1]::new(array_map($args[0]->getClosure(), $args[1]->getData(), $args[2]->getData()));
+                            break;
+
+                        case CoreFuncId::REDUCE:
+                            $result = array_reduce($args[1]->getData(), $args[0]->getClosure(), $args[2] ?? null);
+                            break;
+
+                        case CoreFuncId::FILTER:
+                            $result = $args[1]::new(array_values(array_filter($args[1]->getData(), $args[0]->getClosure())));
+                            break;
+
+                        case CoreFuncId::FILTERH:
+                            $result = new Hash(array_filter($args[1]->getData(), $args[0]->getClosure(), ARRAY_FILTER_USE_BOTH));
+                            break;
+
+                        case CoreFuncId::REVERSE:
+                            if ($args[0] instanceof Seq) {
+                                $result = $args[0]::new(array_reverse($args[0]->getData()));
+                            } elseif (is_string($args[0])) {
+                                $result = strrev($args[0]);
+                            } else {
+                                throw new MadLispException('argument to reverse is not sequence or string');
+                            }
+                            break;
+
+                        case CoreFuncId::KEY:
+                            $result = $args[0]->has($args[1]);
+                            break;
+
+                        case CoreFuncId::SET:
+                            $hash = new Hash($args[0]->getData());
+                            $hash->set($args[1], $args[2]);
+                            $result = $hash;
+                            break;
+
+                        case CoreFuncId::SET_MUTATE:
+                            $result = $args[0]->set($args[1], $args[2]);
+                            break;
+
+                        case CoreFuncId::UNSET:
+                            $data = $args[0]->getData();
+                            unset($data[$args[1]]);
+                            $result = new Hash($data);
+                            break;
+
+                        case CoreFuncId::UNSET_MUTATE:
+                            $result = $args[0]->unset($args[1]);
+                            break;
+
+                        case CoreFuncId::KEYS:
+                            $result = new MList(array_keys($args[0]->getData()));
+                            break;
+
+                        case CoreFuncId::VALUES:
+                            $result = new MList(array_values($args[0]->getData()));
+                            break;
+
+                        case CoreFuncId::ZIP:
+                            if ($args[0]->count() != $args[1]->count()) {
+                                throw new MadLispException('zip requires equal number of keys and values');
+                            }
+                            $result = new Hash(array_combine($args[0]->getData(), $args[1]->getData()));
+                            break;
+
+                        case CoreFuncId::SORT:
+                            $data = $args[0]->getData();
+                            sort($data);
+                            $result = $args[0]::new($data);
+                            break;
+
                         default:
                             throw new MadLispException("exec: unknown core function id $coreFuncId");
                     }

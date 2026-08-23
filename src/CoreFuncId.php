@@ -27,6 +27,43 @@ class CoreFuncId
     public const int LESS_EQUAL = 16;
     public const int GREATER = 17;
     public const int GREATER_EQUAL = 18;
+    public const int HASH = 19;
+    public const int LIST = 20;
+    public const int VECTOR = 21;
+    public const int RANGE = 22;
+    public const int LTOV = 23;
+    public const int VTOL = 24;
+    public const int EMPTY = 25;
+    public const int CONTAINS = 26;
+    public const int GET = 27;
+    public const int LEN = 28;
+    public const int CAR = 29;
+    public const int FIRST = 30;
+    public const int LAST = 31;
+    public const int HEAD = 32;
+    public const int CDR = 33;
+    public const int TAIL = 34;
+    public const int SLICE = 35;
+    public const int APPLY = 36;
+    public const int CHUNK = 37;
+    public const int CONCAT = 38;
+    public const int PUSH = 39;
+    public const int CONS = 40;
+    public const int MAP = 41;
+    public const int MAP2 = 42;
+    public const int REDUCE = 43;
+    public const int FILTER = 44;
+    public const int FILTERH = 45;
+    public const int REVERSE = 46;
+    public const int KEY = 47;
+    public const int SET = 48;
+    public const int SET_MUTATE = 49;
+    public const int UNSET = 50;
+    public const int UNSET_MUTATE = 51;
+    public const int KEYS = 52;
+    public const int VALUES = 53;
+    public const int ZIP = 54;
+    public const int SORT = 55;
 
     public static function fromName(string $name): ?array
     {
@@ -49,6 +86,43 @@ class CoreFuncId
             '<=' => [self::LESS_EQUAL, 2],
             '>' => [self::GREATER, 2],
             '>=' => [self::GREATER_EQUAL, 2],
+            'hash' => [self::HASH, 0],
+            'list' => [self::LIST, 0],
+            'vector' => [self::VECTOR, 0],
+            'range' => [self::RANGE, 1],
+            'ltov' => [self::LTOV, 1],
+            'vtol' => [self::VTOL, 1],
+            'empty?' => [self::EMPTY, 1],
+            'contains?' => [self::CONTAINS, 2],
+            'get' => [self::GET, 2],
+            'len' => [self::LEN, 1],
+            'car' => [self::CAR, 1],
+            'first' => [self::FIRST, 1],
+            'last' => [self::LAST, 1],
+            'head' => [self::HEAD, 1],
+            'cdr' => [self::CDR, 1],
+            'tail' => [self::TAIL, 1],
+            'slice' => [self::SLICE, 2],
+            'apply' => [self::APPLY, 2],
+            'chunk' => [self::CHUNK, 2],
+            'concat' => [self::CONCAT, 1],
+            'push' => [self::PUSH, 2],
+            'cons' => [self::CONS, 2],
+            'map' => [self::MAP, 2],
+            'map2' => [self::MAP2, 3],
+            'reduce' => [self::REDUCE, 2],
+            'filter' => [self::FILTER, 2],
+            'filterh' => [self::FILTERH, 2],
+            'reverse' => [self::REVERSE, 1],
+            'key?' => [self::KEY, 2],
+            'set' => [self::SET, 3],
+            'set!' => [self::SET_MUTATE, 3],
+            'unset' => [self::UNSET, 2],
+            'unset!' => [self::UNSET_MUTATE, 2],
+            'keys' => [self::KEYS, 1],
+            'values' => [self::VALUES, 1],
+            'zip' => [self::ZIP, 2],
+            'sort' => [self::SORT, 1],
             default => null,
         };
     }
