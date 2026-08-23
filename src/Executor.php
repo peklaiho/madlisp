@@ -556,6 +556,145 @@ class Executor
                             $result = $args[0]::new($data);
                             break;
 
+                        case CoreFuncId::BOOL:
+                            $result = boolval($args[0]);
+                            break;
+
+                        case CoreFuncId::FLOAT:
+                            $result = floatval($args[0]);
+                            break;
+
+                        case CoreFuncId::INT:
+                            $result = intval($args[0]);
+                            break;
+
+                        case CoreFuncId::STR:
+                            $data = [];
+                            foreach ($args as $arg) {
+                                $data[] = $arg instanceof Symbol ? $arg->getName() : strval($arg);
+                            }
+                            $result = implode('', $data);
+                            break;
+
+                        case CoreFuncId::SYMBOL:
+                            $result = new Symbol($args[0]);
+                            break;
+
+                        case CoreFuncId::NOT:
+                            $result = !$args[0];
+                            break;
+
+                        case CoreFuncId::TYPE:
+                            $value = $args[0];
+                            if ($value instanceof Func) {
+                                $result = $value->isMacro() ? 'macro' : 'function';
+                            } elseif ($value instanceof MList) {
+                                $result = 'list';
+                            } elseif ($value instanceof Vector) {
+                                $result = 'vector';
+                            } elseif ($value instanceof Hash) {
+                                $result = 'hash';
+                            } elseif ($value instanceof Symbol) {
+                                $result = 'symbol';
+                            } elseif (is_object($value)) {
+                                $result = 'object';
+                            } elseif (is_resource($value)) {
+                                $result = 'resource';
+                            } elseif ($value === true || $value === false) {
+                                $result = 'bool';
+                            } elseif ($value === null) {
+                                $result = 'null';
+                            } elseif (is_int($value)) {
+                                $result = 'int';
+                            } elseif (is_float($value)) {
+                                $result = 'float';
+                            } else {
+                                $result = 'string';
+                            }
+                            break;
+
+                        case CoreFuncId::FUNCTION:
+                            $result = $args[0] instanceof Func;
+                            break;
+
+                        case CoreFuncId::MACRO:
+                            $result = $args[0] instanceof Func && $args[0]->isMacro();
+                            break;
+
+                        case CoreFuncId::LIST_TYPE:
+                            $result = $args[0] instanceof MList;
+                            break;
+
+                        case CoreFuncId::VECTOR_TYPE:
+                            $result = $args[0] instanceof Vector;
+                            break;
+
+                        case CoreFuncId::SEQ_TYPE:
+                            $result = $args[0] instanceof Seq;
+                            break;
+
+                        case CoreFuncId::HASH_TYPE:
+                            $result = $args[0] instanceof Hash;
+                            break;
+
+                        case CoreFuncId::SYMBOL_TYPE:
+                            $result = $args[0] instanceof Symbol;
+                            break;
+
+                        case CoreFuncId::OBJECT_TYPE:
+                            $value = $args[0];
+                            $result = !($value instanceof Func || $value instanceof Collection || $value instanceof Symbol)
+                                && is_object($value);
+                            break;
+
+                        case CoreFuncId::RESOURCE_TYPE:
+                            $result = is_resource($args[0]);
+                            break;
+
+                        case CoreFuncId::BOOL_TYPE:
+                            $result = $args[0] === true || $args[0] === false;
+                            break;
+
+                        case CoreFuncId::TRUE:
+                            $result = $args[0] == true;
+                            break;
+
+                        case CoreFuncId::FALSE:
+                            $result = $args[0] == false;
+                            break;
+
+                        case CoreFuncId::NULL_TYPE:
+                            $result = $args[0] === null;
+                            break;
+
+                        case CoreFuncId::INT_TYPE:
+                            $result = is_int($args[0]);
+                            break;
+
+                        case CoreFuncId::FLOAT_TYPE:
+                            $result = is_float($args[0]);
+                            break;
+
+                        case CoreFuncId::STR_TYPE:
+                            $result = is_string($args[0]);
+                            break;
+
+                        case CoreFuncId::ZERO:
+                            $result = $args[0] === 0;
+                            break;
+
+                        case CoreFuncId::ONE:
+                            $result = $args[0] === 1;
+                            break;
+
+                        case CoreFuncId::EVEN:
+                            $result = $args[0] % 2 === 0;
+                            break;
+
+                        case CoreFuncId::ODD:
+                            $result = $args[0] % 2 !== 0;
+                            break;
+
                         default:
                             throw new MadLispException("exec: unknown core function id $coreFuncId");
                     }

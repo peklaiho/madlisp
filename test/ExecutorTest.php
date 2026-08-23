@@ -14,6 +14,7 @@ use MadLisp\CoreFunc;
 use MadLisp\CoreFuncId;
 use MadLisp\Env;
 use MadLisp\Executor;
+use MadLisp\Hash;
 use MadLisp\MadLispException;
 use MadLisp\MList;
 use MadLisp\OpCode;
@@ -329,6 +330,63 @@ class ExecutorTest extends TestCase
         $this->assertSame([1], $run(CoreFuncId::VALUES, [$hash])->getData());
         $this->assertSame(['a' => 1, 'b' => 2], $run(CoreFuncId::ZIP, [new Vector(['a', 'b']), new Vector([1, 2])])->getData());
         $this->assertSame([1, 2, 3], $run(CoreFuncId::SORT, [new Vector([3, 1, 2])])->getData());
+    }
+
+    public function testCallsTypeCoreFunctionsDirectly(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+        $run = function (int $coreFuncId, array $args) use ($executor, $env) {
+            $code = [];
+            foreach ($args as $index => $arg) {
+                $code[] = OpCode::LOAD_CONSTANT;
+                $code[] = $index;
+            }
+            $code[] = OpCode::CALL_CORE;
+            $code[] = $coreFuncId;
+            $code[] = count($args);
+            $code[] = OpCode::RETURN;
+
+            return $executor->execute(new CompiledProgram($code, $args, 0), $env);
+        };
+
+        $function = new CoreFunc('function', '', 0, 0, fn () => null);
+        $list = new MList([1]);
+        $vector = new Vector([1]);
+        $hash = new Hash(['a' => 1]);
+        $symbol = new Symbol('value');
+
+        $this->assertTrue($run(CoreFuncId::BOOL, [1]));
+        $this->assertSame(1.5, $run(CoreFuncId::FLOAT, ['1.5']));
+        $this->assertSame(3, $run(CoreFuncId::INT, ['3']));
+        $this->assertSame('value12', $run(CoreFuncId::STR, [$symbol, 1, 2]));
+        $this->assertSame('value', $run(CoreFuncId::SYMBOL, ['value'])->getName());
+        $this->assertTrue($run(CoreFuncId::NOT, [false]));
+        $this->assertSame('function', $run(CoreFuncId::TYPE, [$function]));
+        $this->assertTrue($run(CoreFuncId::FUNCTION, [$function]));
+        $this->assertFalse($run(CoreFuncId::MACRO, [$function]));
+        $this->assertTrue($run(CoreFuncId::LIST_TYPE, [$list]));
+        $this->assertTrue($run(CoreFuncId::VECTOR_TYPE, [$vector]));
+        $this->assertTrue($run(CoreFuncId::SEQ_TYPE, [$vector]));
+        $this->assertTrue($run(CoreFuncId::HASH_TYPE, [$hash]));
+        $this->assertTrue($run(CoreFuncId::SYMBOL_TYPE, [$symbol]));
+        $this->assertTrue($run(CoreFuncId::OBJECT_TYPE, [new \stdClass()]));
+
+        $resource = fopen('php://memory', 'r');
+        $this->assertTrue($run(CoreFuncId::RESOURCE_TYPE, [$resource]));
+        fclose($resource);
+
+        $this->assertTrue($run(CoreFuncId::BOOL_TYPE, [false]));
+        $this->assertTrue($run(CoreFuncId::TRUE, [1]));
+        $this->assertTrue($run(CoreFuncId::FALSE, [null]));
+        $this->assertTrue($run(CoreFuncId::NULL_TYPE, [null]));
+        $this->assertTrue($run(CoreFuncId::INT_TYPE, [1]));
+        $this->assertTrue($run(CoreFuncId::FLOAT_TYPE, [1.0]));
+        $this->assertTrue($run(CoreFuncId::STR_TYPE, ['value']));
+        $this->assertTrue($run(CoreFuncId::ZERO, [0]));
+        $this->assertTrue($run(CoreFuncId::ONE, [1]));
+        $this->assertTrue($run(CoreFuncId::EVEN, [4]));
+        $this->assertTrue($run(CoreFuncId::ODD, [3]));
     }
 
     public function testCallsFunction(): void

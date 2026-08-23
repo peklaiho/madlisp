@@ -64,6 +64,33 @@ class CoreFuncId
     public const int VALUES = 53;
     public const int ZIP = 54;
     public const int SORT = 55;
+    public const int BOOL = 56;
+    public const int FLOAT = 57;
+    public const int INT = 58;
+    public const int STR = 59;
+    public const int SYMBOL = 60;
+    public const int NOT = 61;
+    public const int TYPE = 62;
+    public const int FUNCTION = 63;
+    public const int MACRO = 64;
+    public const int LIST_TYPE = 65;
+    public const int VECTOR_TYPE = 66;
+    public const int SEQ_TYPE = 67;
+    public const int HASH_TYPE = 68;
+    public const int SYMBOL_TYPE = 69;
+    public const int OBJECT_TYPE = 70;
+    public const int RESOURCE_TYPE = 71;
+    public const int BOOL_TYPE = 72;
+    public const int TRUE = 73;
+    public const int FALSE = 74;
+    public const int NULL_TYPE = 75;
+    public const int INT_TYPE = 76;
+    public const int FLOAT_TYPE = 77;
+    public const int STR_TYPE = 78;
+    public const int ZERO = 79;
+    public const int ONE = 80;
+    public const int EVEN = 81;
+    public const int ODD = 82;
 
     public static function fromName(string $name): ?array
     {
@@ -123,6 +150,33 @@ class CoreFuncId
             'values' => [self::VALUES, 1],
             'zip' => [self::ZIP, 2],
             'sort' => [self::SORT, 1],
+            'bool' => [self::BOOL, 1],
+            'float' => [self::FLOAT, 1],
+            'int' => [self::INT, 1],
+            'str' => [self::STR, 0],
+            'symbol' => [self::SYMBOL, 1],
+            'not' => [self::NOT, 1],
+            'type' => [self::TYPE, 1],
+            'fn?' => [self::FUNCTION, 1],
+            'macro?' => [self::MACRO, 1],
+            'list?' => [self::LIST_TYPE, 1],
+            'vector?' => [self::VECTOR_TYPE, 1],
+            'seq?' => [self::SEQ_TYPE, 1],
+            'hash?' => [self::HASH_TYPE, 1],
+            'symbol?' => [self::SYMBOL_TYPE, 1],
+            'object?' => [self::OBJECT_TYPE, 1],
+            'resource?' => [self::RESOURCE_TYPE, 1],
+            'bool?' => [self::BOOL_TYPE, 1],
+            'true?' => [self::TRUE, 1],
+            'false?' => [self::FALSE, 1],
+            'null?' => [self::NULL_TYPE, 1],
+            'int?' => [self::INT_TYPE, 1],
+            'float?' => [self::FLOAT_TYPE, 1],
+            'str?' => [self::STR_TYPE, 1],
+            'zero?' => [self::ZERO, 1],
+            'one?' => [self::ONE, 1],
+            'even?' => [self::EVEN, 1],
+            'odd?' => [self::ODD, 1],
             default => null,
         };
     }
