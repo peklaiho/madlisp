@@ -389,6 +389,44 @@ class ExecutorTest extends TestCase
         $this->assertTrue($run(CoreFuncId::ODD, [3]));
     }
 
+    public function testCallsStringCoreFunctionsDirectly(): void
+    {
+        $executor = new Executor();
+        $env = new Env('root');
+        $run = function (int $coreFuncId, array $args) use ($executor, $env) {
+            $code = [];
+            foreach ($args as $index => $arg) {
+                $code[] = OpCode::LOAD_CONSTANT;
+                $code[] = $index;
+            }
+            $code[] = OpCode::CALL_CORE;
+            $code[] = $coreFuncId;
+            $code[] = count($args);
+            $code[] = OpCode::RETURN;
+
+            return $executor->execute(new CompiledProgram($code, $args, 0), $env);
+        };
+
+        $this->assertSame('hello', $run(CoreFuncId::TRIM, ['  hello  ']));
+        $this->assertSame('hello  ', $run(CoreFuncId::LTRIM, ['  hello  ']));
+        $this->assertSame('  hello', $run(CoreFuncId::RTRIM, ['  hello  ']));
+        $this->assertSame('HELLO', $run(CoreFuncId::UPCASE, ['hello']));
+        $this->assertSame('hello', $run(CoreFuncId::LOWCASE, ['HELLO']));
+        $this->assertSame(2, $run(CoreFuncId::STRPOS, ['hello', 'l']));
+        $this->assertSame(3, $run(CoreFuncId::STRIPOS, ['Hello', 'L', 3]));
+        $this->assertSame('ell', $run(CoreFuncId::SUBSTR, ['hello', 1, 3]));
+        $this->assertSame('hello world', $run(CoreFuncId::REPLACE, ['hello there', 'there', 'world']));
+        $this->assertSame(['a', 'b', 'c'], $run(CoreFuncId::SPLIT, [',', 'a,b,c'])->getData());
+        $this->assertSame('a, b, c', $run(CoreFuncId::JOIN, [', ', 'a', 'b', 'c']));
+        $this->assertSame('Hello, World!', $run(CoreFuncId::FORMAT, ['%s, %s!', 'Hello', 'World']));
+        $this->assertTrue($run(CoreFuncId::PREFIX, ['hello', 'he']));
+        $this->assertTrue($run(CoreFuncId::SUFFIX, ['hello', 'lo']));
+        $this->assertSame(-1, $run(CoreFuncId::STRCMP, ['a', 'b']));
+        $this->assertSame(0, $run(CoreFuncId::STRCASECMP, ['Hello', 'hello']));
+        $this->assertSame(-1, $run(CoreFuncId::STRNATCMP, ['file2', 'file10']));
+        $this->assertSame(0, $run(CoreFuncId::STRNATCASECMP, ['File2', 'file2']));
+    }
+
     public function testCallsFunction(): void
     {
         $executor = new Executor();

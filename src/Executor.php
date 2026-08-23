@@ -695,6 +695,85 @@ class Executor
                             $result = $args[0] % 2 !== 0;
                             break;
 
+                        case CoreFuncId::TRIM:
+                            $result = $arity == 1 ? trim($args[0]) : trim($args[0], $args[1]);
+                            break;
+
+                        case CoreFuncId::LTRIM:
+                            $result = $arity == 1 ? ltrim($args[0]) : ltrim($args[0], $args[1]);
+                            break;
+
+                        case CoreFuncId::RTRIM:
+                            $result = $arity == 1 ? rtrim($args[0]) : rtrim($args[0], $args[1]);
+                            break;
+
+                        case CoreFuncId::UPCASE:
+                            $result = strtoupper($args[0]);
+                            break;
+
+                        case CoreFuncId::LOWCASE:
+                            $result = strtolower($args[0]);
+                            break;
+
+                        case CoreFuncId::STRPOS:
+                            $result = $arity == 2
+                                ? strpos($args[0], $args[1])
+                                : strpos($args[0], $args[1], $args[2]);
+                            break;
+
+                        case CoreFuncId::STRIPOS:
+                            $result = $arity == 2
+                                ? stripos($args[0], $args[1])
+                                : stripos($args[0], $args[1], $args[2]);
+                            break;
+
+                        case CoreFuncId::SUBSTR:
+                            $result = $arity == 2
+                                ? substr($args[0], $args[1])
+                                : substr($args[0], $args[1], $args[2]);
+                            break;
+
+                        case CoreFuncId::REPLACE:
+                            $result = str_replace($args[1], $args[2], $args[0]);
+                            break;
+
+                        case CoreFuncId::SPLIT:
+                            $result = new Vector(explode($args[0], $args[1]));
+                            break;
+
+                        case CoreFuncId::JOIN:
+                            $result = implode($args[0], array_slice($args, 1));
+                            break;
+
+                        case CoreFuncId::FORMAT:
+                            $formatArgs = array_slice($args, 1);
+                            $result = sprintf($args[0], ...$formatArgs);
+                            break;
+
+                        case CoreFuncId::PREFIX:
+                            $result = substr($args[0], 0, strlen($args[1])) === $args[1];
+                            break;
+
+                        case CoreFuncId::SUFFIX:
+                            $result = substr($args[0], strlen($args[0]) - strlen($args[1])) === $args[1];
+                            break;
+
+                        case CoreFuncId::STRCMP:
+                            $result = strcmp($args[0], $args[1]);
+                            break;
+
+                        case CoreFuncId::STRCASECMP:
+                            $result = strcasecmp($args[0], $args[1]);
+                            break;
+
+                        case CoreFuncId::STRNATCMP:
+                            $result = strnatcmp($args[0], $args[1]);
+                            break;
+
+                        case CoreFuncId::STRNATCASECMP:
+                            $result = strnatcasecmp($args[0], $args[1]);
+                            break;
+
                         default:
                             throw new MadLispException("exec: unknown core function id $coreFuncId");
                     }

@@ -91,6 +91,24 @@ class CoreFuncId
     public const int ONE = 80;
     public const int EVEN = 81;
     public const int ODD = 82;
+    public const int TRIM = 83;
+    public const int LTRIM = 84;
+    public const int RTRIM = 85;
+    public const int UPCASE = 86;
+    public const int LOWCASE = 87;
+    public const int STRPOS = 88;
+    public const int STRIPOS = 89;
+    public const int SUBSTR = 90;
+    public const int REPLACE = 91;
+    public const int SPLIT = 92;
+    public const int JOIN = 93;
+    public const int FORMAT = 94;
+    public const int PREFIX = 95;
+    public const int SUFFIX = 96;
+    public const int STRCMP = 97;
+    public const int STRCASECMP = 98;
+    public const int STRNATCMP = 99;
+    public const int STRNATCASECMP = 100;
 
     public static function fromName(string $name): ?array
     {
@@ -177,6 +195,24 @@ class CoreFuncId
             'one?' => [self::ONE, 1],
             'even?' => [self::EVEN, 1],
             'odd?' => [self::ODD, 1],
+            'trim' => [self::TRIM, 1],
+            'ltrim' => [self::LTRIM, 1],
+            'rtrim' => [self::RTRIM, 1],
+            'upcase' => [self::UPCASE, 1],
+            'lowcase' => [self::LOWCASE, 1],
+            'strpos' => [self::STRPOS, 2],
+            'stripos' => [self::STRIPOS, 2],
+            'substr' => [self::SUBSTR, 2],
+            'replace' => [self::REPLACE, 3],
+            'split' => [self::SPLIT, 2],
+            'join' => [self::JOIN, 1],
+            'format' => [self::FORMAT, 1],
+            'prefix?' => [self::PREFIX, 2],
+            'suffix?' => [self::SUFFIX, 2],
+            'strcmp' => [self::STRCMP, 2],
+            'strcasecmp' => [self::STRCASECMP, 2],
+            'strnatcmp' => [self::STRNATCMP, 2],
+            'strnatcasecmp' => [self::STRNATCASECMP, 2],
             default => null,
         };
     }
