@@ -33,4 +33,6 @@ class OpCode
     public const int BUILD_HASH = 22;
     public const int EXECUTE_PROGRAM = 23;
     public const int LOAD_FILE = 24;
+    public const int MAP = 25;
+    public const int REDUCE = 26;
 }

@@ -255,6 +255,51 @@ class Executor
                     $stack[$stackPointer++] = $func->call($args);
                     break;
 
+                case OpCode::MAP:
+                case OpCode::REDUCE:
+                    $arity = $code[$pc++];
+                    $args = $arity == 0 ? [] : array_slice($stack, $stackPointer - $arity, $arity);
+                    $stackPointer -= $arity;
+                    $function = $args[0] ?? null;
+                    $sequence = $args[1] ?? null;
+
+                    if ($function instanceof CompiledFunc) {
+                        $frame->pc = $pc;
+                        if ($this->startCompiledCollectionOperation(
+                            $opcode,
+                            $frame,
+                            $frames,
+                            $stack,
+                            $stackPointer,
+                            $function,
+                            $sequence,
+                            $args
+                        )) {
+                            continue 2;
+                        }
+                        break;
+                    }
+
+                    if (!($function instanceof Func)) {
+                        throw new MadLispException('exec: first argument of collection operation is not function');
+                    }
+                    if (!($sequence instanceof Seq)) {
+                        throw new MadLispException('exec: argument to collection operation is not sequence');
+                    }
+
+                    if ($opcode === OpCode::MAP) {
+                        $stack[$stackPointer++] = $sequence::new(
+                            array_map($function->getClosure(), $sequence->getData())
+                        );
+                    } else {
+                        $stack[$stackPointer++] = array_reduce(
+                            $sequence->getData(),
+                            $function->getClosure(),
+                            $args[2] ?? null
+                        );
+                    }
+                    break;
+
                 case OpCode::CALL_CORE:
                     $coreFuncId = $code[$pc++];
                     $arity = $code[$pc++];
@@ -263,9 +308,7 @@ class Executor
 
                     $continuationTypes = [
                         CoreFuncId::APPLY => 'apply',
-                        CoreFuncId::MAP => 'map',
                         CoreFuncId::MAP2 => 'map2',
-                        CoreFuncId::REDUCE => 'reduce',
                         CoreFuncId::FILTER => 'filter',
                         CoreFuncId::FILTERH => 'filterh',
                     ];
@@ -844,9 +887,23 @@ class Executor
                         return $result;
                     }
 
-                    // A callback frame may return to a suspended higher-order
+                    // A callback frame may return to a dedicated compiled
                     // collection operation instead of directly to its caller.
-                    if ($this->resumeContinuation($frames[array_key_last($frames)], $frames, $stack, $stackPointer, $result)) {
+                    $caller = $frames[array_key_last($frames)];
+                    if ($this->resumeCompiledCollectionOperation(
+                        $caller,
+                        $frame,
+                        $frames,
+                        $stack,
+                        $stackPointer,
+                        $result
+                    )) {
+                        continue 2;
+                    }
+
+                    // The remaining continuation path handles collection
+                    // operations that still require suspended VM frames.
+                    if ($this->resumeContinuation($caller, $frames, $stack, $stackPointer, $result)) {
                         continue 2;
                     }
 
@@ -856,6 +913,138 @@ class Executor
 
             $frame->pc = $pc;
         }
+    }
+
+    private function startCompiledCollectionOperation(
+        int $opcode,
+        ExecutionFrame $caller,
+        array &$frames,
+        array &$stack,
+        int &$stackPointer,
+        CompiledFunc $function,
+        $sequence,
+        array $args
+    ): bool {
+        if (!($sequence instanceof Seq)) {
+            throw new MadLispException('exec: argument to collection operation is not sequence');
+        }
+        if ($opcode === OpCode::MAP && count($args) !== 2) {
+            throw new MadLispException('exec: map requires exactly 2 arguments');
+        }
+        if ($opcode === OpCode::REDUCE && (count($args) < 2 || count($args) > 3)) {
+            throw new MadLispException('exec: reduce requires 1 or 2 arguments');
+        }
+
+        $arity = $opcode === OpCode::MAP ? 1 : 2;
+        if ($function->getArity() !== $arity) {
+            throw new MadLispException(sprintf(
+                'exec: compiled function requires exactly %d argument%s',
+                $arity,
+                $arity === 1 ? '' : 's'
+            ));
+        }
+
+        $values = array_values($sequence->getData());
+        $hasInitial = $opcode === OpCode::REDUCE && count($args) === 3;
+        $index = $opcode === OpCode::REDUCE && !$hasInitial ? 1 : 0;
+        $carry = $opcode === OpCode::REDUCE
+            ? ($hasInitial ? $args[2] : ($values[0] ?? null))
+            : null;
+
+        $caller->collectionOperation = [
+            'opcode' => $opcode,
+            'function' => $function,
+            'sequence' => $sequence,
+            'values' => $values,
+            'count' => count($values),
+            'index' => $index,
+            'result' => [],
+            'carry' => $carry,
+        ];
+
+        if ($index >= count($values)) {
+            $result = $opcode === OpCode::REDUCE ? $carry : $sequence::new([]);
+            $caller->collectionOperation = null;
+            $stack[$stackPointer++] = $result;
+            return false;
+        }
+
+        $callbackFrame = new ExecutionFrame(
+            $function->getProgram(),
+            $function->getEnv(),
+            $stackPointer,
+            null,
+            $function->getCaptures()
+        );
+        $this->bindCompiledCollectionCallback($callbackFrame, $caller->collectionOperation);
+        $frames[] = $callbackFrame;
+        return true;
+    }
+
+    private function resumeCompiledCollectionOperation(
+        ExecutionFrame $caller,
+        ExecutionFrame $returnedFrame,
+        array &$frames,
+        array &$stack,
+        int &$stackPointer,
+        $result
+    ): bool {
+        if ($caller->collectionOperation === null) {
+            return false;
+        }
+
+        $state =& $caller->collectionOperation;
+        $index = $state['index'];
+        if ($state['opcode'] === OpCode::MAP) {
+            $state['result'][] = $result;
+        } else {
+            $state['carry'] = $result;
+        }
+
+        $state['index'] = ++$index;
+        if ($index >= $state['count']) {
+            $final = $state['opcode'] === OpCode::REDUCE
+                ? $state['carry']
+                : $state['sequence']::new($state['result']);
+            $caller->collectionOperation = null;
+            $stack[$stackPointer++] = $final;
+            return true;
+        }
+
+        $this->resetCompiledCollectionCallback($returnedFrame, $state, $stackPointer);
+        $frames[] = $returnedFrame;
+        return true;
+    }
+
+    private function bindCompiledCollectionCallback(ExecutionFrame $frame, array $state): void
+    {
+        $frame->locals[0] = $state['opcode'] === OpCode::REDUCE
+            ? $state['carry']
+            : $state['values'][$state['index']];
+        if ($state['opcode'] === OpCode::REDUCE) {
+            $frame->locals[1] = $state['values'][$state['index']];
+        }
+    }
+
+    private function resetCompiledCollectionCallback(
+        ExecutionFrame $frame,
+        array $state,
+        int $stackPointer
+    ): void {
+        $function = $state['function'];
+        $frame->program = $function->getProgram();
+        $frame->env = $function->getEnv();
+        $frame->pc = 0;
+        $frame->stackBase = $stackPointer;
+        $frame->returnPc = null;
+        $frame->captures = $function->getCaptures();
+        $frame->continuation = null;
+
+        $localCount = $frame->program->getLocalCount();
+        if (count($frame->locals) !== $localCount) {
+            $frame->locals = array_fill(0, $localCount, null);
+        }
+        $this->bindCompiledCollectionCallback($frame, $state);
     }
 
     private function startCollectionContinuation(
@@ -869,9 +1058,7 @@ class Executor
         array $args
     ): bool {
         $data = $sequence->getData();
-        $hasInitial = $type === 'reduce' && count($args) > 2;
-        $index = $type === 'reduce' && !$hasInitial ? 1 : 0;
-        $carry = $type === 'reduce' && !$hasInitial ? $data[0] : ($args[2] ?? null);
+        $index = 0;
         $caller->continuation = [
             'type' => $type,
             'function' => $function,
@@ -880,7 +1067,6 @@ class Executor
             'values' => array_values($data),
             'index' => $index,
             'result' => [],
-            'carry' => $carry,
             'prefix' => $type === 'apply' ? array_slice($args, 1, -1) : [],
             'secondData' => $type === 'map2' ? array_values($args[2]->getData()) : [],
             'keys' => $type === 'filterh' ? array_keys($data) : [],
@@ -899,11 +1085,9 @@ class Executor
 
         if ($index >= count($data)) {
             $caller->continuation = null;
-            $stack[$stackPointer++] = match ($type) {
-                'reduce' => $carry,
-                'filterh' => new Hash([]),
-                default => $sequence::new([]),
-            };
+            $stack[$stackPointer++] = $type === 'filterh'
+                ? new Hash([])
+                : $sequence::new([]);
             return false;
         }
 
@@ -925,7 +1109,6 @@ class Executor
         $state =& $caller->continuation;
         $index = $state['index'];
         switch ($state['type']) {
-            case 'map':
             case 'map2':
                 $state['result'][] = $result;
                 break;
@@ -940,9 +1123,6 @@ class Executor
                     $state['result'][$key] = $state['values'][$index];
                 }
                 break;
-            case 'reduce':
-                $state['carry'] = $result;
-                break;
             case 'apply':
                 $caller->continuation = null;
                 $stack[$stackPointer++] = $result;
@@ -956,9 +1136,9 @@ class Executor
             return true;
         }
 
-        $final = $state['type'] === 'reduce'
-            ? $state['carry']
-            : ($state['type'] === 'filterh' ? new Hash($state['result']) : $state['sequence']::new($state['result']));
+        $final = $state['type'] === 'filterh'
+            ? new Hash($state['result'])
+            : $state['sequence']::new($state['result']);
         $caller->continuation = null;
         $stack[$stackPointer++] = $final;
         return true;
@@ -967,9 +1147,8 @@ class Executor
     private function callbackArguments(array $state, int $index): array
     {
         return match ($state['type']) {
-            'map', 'filter' => [$state['data'][$index]],
             'map2' => [$state['data'][$index], $state['secondData'][$index]],
-            'reduce' => [$state['carry'], $state['data'][$index]],
+            'filter' => [$state['data'][$index]],
             'filterh' => [$state['values'][$index], $state['keys'][$index]],
             'apply' => array_merge($state['prefix'], [$state['data'][$index]]),
         };

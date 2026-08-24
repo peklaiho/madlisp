@@ -178,9 +178,17 @@ class Compiler
                 $this->compileExpression($data[$i], $code, $constants, $scope);
             }
 
-            $code[] = OpCode::CALL_CORE;
-            $code[] = $coreFuncMetadata[0];
-            $code[] = $argumentCount;
+            if ($coreFuncMetadata[0] === CoreFuncId::MAP) {
+                $code[] = OpCode::MAP;
+                $code[] = $argumentCount;
+            } elseif ($coreFuncMetadata[0] === CoreFuncId::REDUCE) {
+                $code[] = OpCode::REDUCE;
+                $code[] = $argumentCount;
+            } else {
+                $code[] = OpCode::CALL_CORE;
+                $code[] = $coreFuncMetadata[0];
+                $code[] = $argumentCount;
+            }
             return;
         }
 
