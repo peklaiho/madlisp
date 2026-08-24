@@ -356,6 +356,28 @@ class ExecutorTest extends TestCase
         $this->assertSame(6, $run('(apply (fn (a b c) (+ a (+ b c))) [1 2 3])'));
     }
 
+    public function testNestedCompiledCollectionOperationsKeepIndependentState(): void
+    {
+        $compiler = new Compiler();
+        $reader = new Reader();
+        $tokenizer = new Tokenizer();
+        $executor = new Executor();
+        $env = new Env('root');
+        $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
+        $env->set('*', new CoreFunc('*', '', 2, -1, fn (...$args) => array_product($args)));
+
+        $run = function (string $source) use ($compiler, $reader, $tokenizer, $executor, $env) {
+            $ast = $reader->read($tokenizer->tokenize($source));
+            return $executor->execute($compiler->compile($ast), $env);
+        };
+
+        $nestedReduce = $run('(map (fn (x) (reduce (fn (a b) (+ a b)) [x 2])) [1 3])');
+        $this->assertSame([3, 5], $nestedReduce->getData());
+
+        $nestedMap = $run('(reduce (fn (a b) (first (map (fn (x) (+ x b)) [a]))) [1 2 3])');
+        $this->assertSame(6, $nestedMap);
+    }
+
     public function testCallsTypeCoreFunctionsDirectly(): void
     {
         $executor = new Executor();
