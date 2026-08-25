@@ -890,14 +890,47 @@ class Executor
                     // A callback frame may return to a dedicated compiled
                     // collection operation instead of directly to its caller.
                     $caller = $frames[array_key_last($frames)];
-                    if ($this->resumeCompiledCollectionOperation(
-                        $caller,
-                        $frame,
-                        $frames,
-                        $stack,
-                        $stackPointer,
-                        $result
-                    )) {
+                    if ($caller->collectionOperation !== null) {
+                        $state =& $caller->collectionOperation;
+                        $index = $state['index'];
+                        if ($state['opcode'] === OpCode::MAP) {
+                            $state['result'][] = $result;
+                        } else {
+                            $state['carry'] = $result;
+                        }
+
+                        $index++;
+                        $state['index'] = $index;
+                        if ($index >= $state['count']) {
+                            $final = $state['opcode'] === OpCode::REDUCE
+                                ? $state['carry']
+                                : $state['sequence']::new($state['result']);
+                            $caller->collectionOperation = null;
+                            $stack[$stackPointer++] = $final;
+                            continue 2;
+                        }
+
+                        $function = $state['function'];
+                        $frame->program = $function->getProgram();
+                        $frame->env = $function->getEnv();
+                        $frame->pc = 0;
+                        $frame->stackBase = $stackPointer;
+                        $frame->returnPc = null;
+                        $frame->captures = $function->getCaptures();
+                        $frame->continuation = null;
+
+                        $localCount = $frame->program->getLocalCount();
+                        if (count($frame->locals) !== $localCount) {
+                            $frame->locals = array_fill(0, $localCount, null);
+                        }
+                        $frame->locals[0] = $state['opcode'] === OpCode::REDUCE
+                            ? $state['carry']
+                            : $state['values'][$index];
+                        if ($state['opcode'] === OpCode::REDUCE) {
+                            $frame->locals[1] = $state['values'][$index];
+                        }
+
+                        $frames[] = $frame;
                         continue 2;
                     }
 
@@ -981,41 +1014,6 @@ class Executor
         return true;
     }
 
-    private function resumeCompiledCollectionOperation(
-        ExecutionFrame $caller,
-        ExecutionFrame $returnedFrame,
-        array &$frames,
-        array &$stack,
-        int &$stackPointer,
-        $result
-    ): bool {
-        if ($caller->collectionOperation === null) {
-            return false;
-        }
-
-        $state =& $caller->collectionOperation;
-        $index = $state['index'];
-        if ($state['opcode'] === OpCode::MAP) {
-            $state['result'][] = $result;
-        } else {
-            $state['carry'] = $result;
-        }
-
-        $state['index'] = ++$index;
-        if ($index >= $state['count']) {
-            $final = $state['opcode'] === OpCode::REDUCE
-                ? $state['carry']
-                : $state['sequence']::new($state['result']);
-            $caller->collectionOperation = null;
-            $stack[$stackPointer++] = $final;
-            return true;
-        }
-
-        $this->resetCompiledCollectionCallback($returnedFrame, $state, $stackPointer);
-        $frames[] = $returnedFrame;
-        return true;
-    }
-
     private function bindCompiledCollectionCallback(ExecutionFrame $frame, array $state): void
     {
         $frame->locals[0] = $state['opcode'] === OpCode::REDUCE
@@ -1024,27 +1022,6 @@ class Executor
         if ($state['opcode'] === OpCode::REDUCE) {
             $frame->locals[1] = $state['values'][$state['index']];
         }
-    }
-
-    private function resetCompiledCollectionCallback(
-        ExecutionFrame $frame,
-        array $state,
-        int $stackPointer
-    ): void {
-        $function = $state['function'];
-        $frame->program = $function->getProgram();
-        $frame->env = $function->getEnv();
-        $frame->pc = 0;
-        $frame->stackBase = $stackPointer;
-        $frame->returnPc = null;
-        $frame->captures = $function->getCaptures();
-        $frame->continuation = null;
-
-        $localCount = $frame->program->getLocalCount();
-        if (count($frame->locals) !== $localCount) {
-            $frame->locals = array_fill(0, $localCount, null);
-        }
-        $this->bindCompiledCollectionCallback($frame, $state);
     }
 
     private function startCollectionContinuation(
