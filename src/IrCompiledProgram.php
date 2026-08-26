@@ -7,7 +7,7 @@
 
 namespace MadLisp;
 
-class CompiledProgram
+class IrCompiledProgram
 {
     public function __construct(
         protected array $code,

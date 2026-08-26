@@ -7,7 +7,7 @@
 
 namespace MadLisp;
 
-class CoreFuncId
+class IrCoreFuncId
 {
     // Math functions
     public const int ADD = 1;

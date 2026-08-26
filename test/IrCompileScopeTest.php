@@ -7,13 +7,13 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\CompileScope;
+use MadLisp\IrCompileScope;
 
-class CompileScopeTest extends TestCase
+class IrCompileScopeTest extends TestCase
 {
     public function testAllocatesAndResolvesBindings(): void
     {
-        $scope = new CompileScope();
+        $scope = new IrCompileScope();
 
         $this->assertSame(0, $scope->allocate());
         $scope->bind('bound', 3);
@@ -26,7 +26,7 @@ class CompileScopeTest extends TestCase
 
     public function testChildScopeResolvesParentBindingsAndSharesSlots(): void
     {
-        $parent = new CompileScope();
+        $parent = new IrCompileScope();
         $parent->define('value');
         $child = $parent->child();
 
@@ -42,7 +42,7 @@ class CompileScopeTest extends TestCase
 
     public function testFunctionChildUsesIsolatedSlots(): void
     {
-        $parent = new CompileScope();
+        $parent = new IrCompileScope();
         $parent->define('parentValue');
         $function = $parent->functionChild();
 
@@ -54,7 +54,7 @@ class CompileScopeTest extends TestCase
 
     public function testResolvesCapturesFromEnclosingFunction(): void
     {
-        $root = new CompileScope();
+        $root = new IrCompileScope();
         $root->define('value');
         $function = $root->functionChild();
         $body = $function->child();
@@ -69,7 +69,7 @@ class CompileScopeTest extends TestCase
 
     public function testNestedFunctionCapturesThroughOuterFunction(): void
     {
-        $root = new CompileScope();
+        $root = new IrCompileScope();
         $root->define('value');
         $outer = $root->functionChild();
         $inner = $outer->functionChild();
@@ -85,7 +85,7 @@ class CompileScopeTest extends TestCase
 
     public function testLocalBindingPreventsCapture(): void
     {
-        $root = new CompileScope();
+        $root = new IrCompileScope();
         $root->define('value');
         $function = $root->functionChild();
         $body = $function->child();

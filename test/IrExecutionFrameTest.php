@@ -7,17 +7,17 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\CompiledProgram;
+use MadLisp\IrCompiledProgram;
 use MadLisp\Env;
-use MadLisp\ExecutionFrame;
+use MadLisp\IrExecutionFrame;
 
-class ExecutionFrameTest extends TestCase
+class IrExecutionFrameTest extends TestCase
 {
     public function testInitializesFrameStateFromProgram(): void
     {
-        $program = new CompiledProgram([], [], 2);
+        $program = new IrCompiledProgram([], [], 2);
         $env = new Env('root');
-        $frame = new ExecutionFrame($program, $env);
+        $frame = new IrExecutionFrame($program, $env);
 
         $this->assertSame($program, $frame->program);
         $this->assertSame($env, $frame->env);
@@ -30,9 +30,9 @@ class ExecutionFrameTest extends TestCase
 
     public function testAcceptsStackReturnAndCaptureState(): void
     {
-        $program = new CompiledProgram([], [], 1);
+        $program = new IrCompiledProgram([], [], 1);
         $env = new Env('root');
-        $frame = new ExecutionFrame($program, $env, 4, 12, ['captured']);
+        $frame = new IrExecutionFrame($program, $env, 4, 12, ['captured']);
 
         $this->assertSame(4, $frame->stackBase);
         $this->assertSame(12, $frame->returnPc);

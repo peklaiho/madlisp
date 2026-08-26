@@ -7,25 +7,25 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\Compiler;
-use MadLisp\CompiledFuncTemplate;
+use MadLisp\IrCompiler;
+use MadLisp\IrCompiledFuncTemplate;
 use MadLisp\CoreFunc;
-use MadLisp\CoreFuncId;
+use MadLisp\IrCoreFuncId;
 use MadLisp\Env;
 use MadLisp\Hash;
-use MadLisp\Executor;
+use MadLisp\IrExecutor;
 use MadLisp\MList;
 use MadLisp\MadLispException;
-use MadLisp\OpCode;
+use MadLisp\IrOpCode;
 use MadLisp\Symbol;
 use MadLisp\Vector;
 
-class CompilerTest extends TestCase
+class IrCompilerTest extends TestCase
 {
     public function testCompilesVectorLiteral(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
         $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
 
@@ -35,20 +35,20 @@ class CompilerTest extends TestCase
         ]));
 
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::LOAD_CONSTANT, 2,
-            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-            OpCode::BUILD_VECTOR, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::LOAD_CONSTANT, 2,
+            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+            IrOpCode::BUILD_VECTOR, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertEquals(new Vector([1, 5]), $executor->execute($program, $env));
     }
 
     public function testCompilesHashLiteral(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
         $env->set('value', 42);
 
@@ -58,10 +58,10 @@ class CompilerTest extends TestCase
         ]));
 
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::LOAD_GLOBAL, 1,
-            OpCode::BUILD_HASH, 2, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::LOAD_GLOBAL, 1,
+            IrOpCode::BUILD_HASH, 2, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame(['first', 'second'], $program->getConstants()[2]);
         $this->assertEquals(new Hash(['first' => 1, 'second' => 42]), $executor->execute($program, $env));
@@ -69,8 +69,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesEmptyVectorAndHashLiterals(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $vector = $compiler->compile(new Vector());
@@ -82,15 +82,15 @@ class CompilerTest extends TestCase
 
     public function testCompilesLiteral(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
 
         $program = $compiler->compile(42);
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([42], $program->getConstants());
         $this->assertSame(0, $program->getLocalCount());
@@ -98,22 +98,22 @@ class CompilerTest extends TestCase
 
     public function testCompilesGlobalSymbol(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
 
         $program = $compiler->compile(new Symbol('value'));
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_GLOBAL, 0,
-            OpCode::RETURN,
+            IrOpCode::LOAD_GLOBAL, 0,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame(['value'], $program->getConstants());
     }
 
     public function testCompilesIf(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
 
         $ast = new MList([
@@ -127,19 +127,19 @@ class CompilerTest extends TestCase
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::JUMP_IF_FALSE, 8,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::JUMP, 10,
-            OpCode::LOAD_CONSTANT, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::JUMP_IF_FALSE, 8,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::JUMP, 10,
+            IrOpCode::LOAD_CONSTANT, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([true, 1, 2], $program->getConstants());
     }
 
     public function testCompilesIfWithoutElse(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
 
         $ast = new MList([
@@ -152,19 +152,19 @@ class CompilerTest extends TestCase
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::JUMP_IF_FALSE, 8,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::JUMP, 10,
-            OpCode::LOAD_CONSTANT, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::JUMP_IF_FALSE, 8,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::JUMP, 10,
+            IrOpCode::LOAD_CONSTANT, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([false, 1, null], $program->getConstants());
     }
 
     public function testCompilesNestedIf(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
 
         $ast = new MList([
@@ -183,24 +183,24 @@ class CompilerTest extends TestCase
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::JUMP_IF_FALSE, 16,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::JUMP_IF_FALSE, 12,
-            OpCode::LOAD_CONSTANT, 2,
-            OpCode::JUMP, 14,
-            OpCode::LOAD_CONSTANT, 3,
-            OpCode::JUMP, 18,
-            OpCode::LOAD_CONSTANT, 4,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::JUMP_IF_FALSE, 16,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::JUMP_IF_FALSE, 12,
+            IrOpCode::LOAD_CONSTANT, 2,
+            IrOpCode::JUMP, 14,
+            IrOpCode::LOAD_CONSTANT, 3,
+            IrOpCode::JUMP, 18,
+            IrOpCode::LOAD_CONSTANT, 4,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([true, false, 1, 2, 3], $program->getConstants());
     }
 
     public function testCompilesCondBranchesAndReturnsLastClauseValue(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([
@@ -215,8 +215,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesCondWithNoMatchingClauseAsNull(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([
@@ -230,8 +230,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesCaseAndCaseStrict(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $case = $compiler->compile(new MList([
@@ -254,8 +254,8 @@ class CompilerTest extends TestCase
 
     public function testCaseReturnsNullWhenNothingMatches(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([
@@ -270,7 +270,7 @@ class CompilerTest extends TestCase
 
     public function testCompilesDef(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
 
         $ast = new MList([
             new Symbol('def'),
@@ -282,19 +282,19 @@ class CompilerTest extends TestCase
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-            OpCode::STORE_GLOBAL, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+            IrOpCode::STORE_GLOBAL, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([1, 2, 'value'], $program->getConstants());
     }
 
     public function testExecutesDefInRuntimeEnvironment(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([
@@ -309,8 +309,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesAndExecutesDeepTailRecursiveFunction(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([
@@ -334,18 +334,18 @@ class CompilerTest extends TestCase
 
         $templates = array_values(array_filter(
             $program->getConstants(),
-            fn ($constant) => $constant instanceof CompiledFuncTemplate
+            fn ($constant) => $constant instanceof IrCompiledFuncTemplate
         ));
 
         $this->assertCount(1, $templates);
-        $this->assertContains(OpCode::TAIL_CALL, $templates[0]->program->getCode());
+        $this->assertContains(IrOpCode::TAIL_CALL, $templates[0]->program->getCode());
         $this->assertSame(0, $executor->execute($program, $env));
     }
 
     public function testCompilesQuote(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
         $quoted = new MList([new Symbol('value'), 1]);
 
@@ -359,8 +359,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesWhileWithMultipleBodyExpressions(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
         $env->set('running', true);
 
@@ -377,8 +377,8 @@ class CompilerTest extends TestCase
 
     public function testWhileReturnsNullWhenItDoesNotRun(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([
@@ -392,8 +392,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesAndAndOrWithShortCircuiting(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $and = $compiler->compile(new MList([
@@ -413,8 +413,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesEmptyAndAndOr(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $and = $compiler->compile(new MList([new Symbol('and')]));
@@ -426,8 +426,8 @@ class CompilerTest extends TestCase
 
     public function testAndAndOrReturnOperandValues(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $and = $compiler->compile(new MList([
@@ -447,8 +447,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesDoInOrderAndReturnsLastValue(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([
@@ -464,8 +464,8 @@ class CompilerTest extends TestCase
 
     public function testCompilesEmptyDoAsNull(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([new Symbol('do')]));
@@ -475,7 +475,7 @@ class CompilerTest extends TestCase
 
     public function testCompilesCall(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
 
         $ast = new MList([
@@ -488,25 +488,25 @@ class CompilerTest extends TestCase
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([1, 2], $program->getConstants());
     }
 
     public function testCompilesExecuteAndLoad(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
 
-        foreach (['execute' => OpCode::EXECUTE_PROGRAM, 'load' => OpCode::LOAD_FILE] as $name => $opcode) {
+        foreach (['execute' => IrOpCode::EXECUTE_PROGRAM, 'load' => IrOpCode::LOAD_FILE] as $name => $opcode) {
             $program = $compiler->compile(new MList([new Symbol($name), 42]));
 
             $this->assertSame([
-                OpCode::LOAD_CONSTANT, 0,
+                IrOpCode::LOAD_CONSTANT, 0,
                 $opcode,
-                OpCode::RETURN,
+                IrOpCode::RETURN,
             ], $program->getCode());
             $this->assertSame([42], $program->getConstants());
         }
@@ -514,7 +514,7 @@ class CompilerTest extends TestCase
 
     public function testCompilesSupportedCoreCall(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
         $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
 
@@ -528,17 +528,17 @@ class CompilerTest extends TestCase
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([1, 2], $program->getConstants());
     }
 
     public function testRejectsCoreCallBelowMinimumArity(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
         $env->set('*', new CoreFunc('*', '', 2, -1, fn (...$args) => $args[0] * $args[1]));
 
@@ -555,7 +555,7 @@ class CompilerTest extends TestCase
 
     public function testCompilesSequentialLetBindings(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
         $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
 
@@ -572,16 +572,16 @@ class CompilerTest extends TestCase
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::STORE_LOCAL, 0,
-            OpCode::LOAD_LOCAL, 0,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-            OpCode::STORE_LOCAL, 1,
-            OpCode::LOAD_LOCAL, 1,
-            OpCode::LOAD_CONSTANT, 2,
-            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::STORE_LOCAL, 0,
+            IrOpCode::LOAD_LOCAL, 0,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+            IrOpCode::STORE_LOCAL, 1,
+            IrOpCode::LOAD_LOCAL, 1,
+            IrOpCode::LOAD_CONSTANT, 2,
+            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([2, 1, 3], $program->getConstants());
         $this->assertSame(2, $program->getLocalCount());
@@ -589,7 +589,7 @@ class CompilerTest extends TestCase
 
     public function testCompilesLetBodyExpressionsWithPop(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
 
         $ast = new MList([
@@ -603,18 +603,18 @@ class CompilerTest extends TestCase
 
         $this->assertNotNull($program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::STORE_LOCAL, 0,
-            OpCode::LOAD_LOCAL, 0,
-            OpCode::POP,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::STORE_LOCAL, 0,
+            IrOpCode::LOAD_LOCAL, 0,
+            IrOpCode::POP,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::RETURN,
         ], $program->getCode());
     }
 
     public function testRejectsMalformedLet(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
 
         $ast = new MList([
@@ -631,7 +631,7 @@ class CompilerTest extends TestCase
 
     public function testCompilesNonCapturingFn(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $env = new Env('root');
         $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
 
@@ -645,21 +645,21 @@ class CompilerTest extends TestCase
         $template = $program->getConstants()[0];
 
         $this->assertNotNull($program);
-        $this->assertSame([OpCode::MAKE_FUNCTION, 0, OpCode::RETURN], $program->getCode());
-        $this->assertInstanceOf(CompiledFuncTemplate::class, $template);
+        $this->assertSame([IrOpCode::MAKE_FUNCTION, 0, IrOpCode::RETURN], $program->getCode());
+        $this->assertInstanceOf(IrCompiledFuncTemplate::class, $template);
         $this->assertSame([
-            OpCode::LOAD_LOCAL, 0,
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_LOCAL, 0,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+            IrOpCode::RETURN,
         ], $template->program->getCode());
         $this->assertSame(1, $template->program->getLocalCount());
     }
 
     public function testExecutesCompiledFnCall(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
         $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
 
@@ -679,8 +679,8 @@ class CompilerTest extends TestCase
 
     public function testExecutesClosureWithCopiedCapture(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
         $env->set('+', new CoreFunc('+', '', 1, -1, fn (...$args) => array_sum($args)));
 
@@ -704,21 +704,21 @@ class CompilerTest extends TestCase
 
     public function testCompilesEnv(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([new Symbol('env')]));
 
         $this->assertNotNull($program);
-        $this->assertSame([OpCode::LOAD_ENV, OpCode::RETURN], $program->getCode());
+        $this->assertSame([IrOpCode::LOAD_ENV, IrOpCode::RETURN], $program->getCode());
         $this->assertSame($env, $executor->execute($program, $env));
     }
 
     public function testCompilesUndef(): void
     {
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $env = new Env('root');
         $env->set('value', 42);
 
@@ -728,7 +728,7 @@ class CompilerTest extends TestCase
         ]));
 
         $this->assertNotNull($program);
-        $this->assertSame([OpCode::UNDEF, 0, OpCode::RETURN], $program->getCode());
+        $this->assertSame([IrOpCode::UNDEF, 0, IrOpCode::RETURN], $program->getCode());
         $this->assertSame(['value'], $program->getConstants());
         $this->assertSame(42, $executor->execute($program, $env));
         $this->assertNull($env->get('value', false));
@@ -736,7 +736,7 @@ class CompilerTest extends TestCase
 
     public function testRejectsMalformedEnvAndUndef(): void
     {
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
 
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('env does not take arguments');

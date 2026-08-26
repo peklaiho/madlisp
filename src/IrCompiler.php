@@ -7,26 +7,26 @@
 
 namespace MadLisp;
 
-class Compiler
+class IrCompiler
 {
-    public function compile($ast): CompiledProgram
+    public function compile($ast): IrCompiledProgram
     {
         $code = [];
         $constants = [];
-        $scope = new CompileScope();
+        $scope = new IrCompileScope();
 
         $this->compileExpression($ast, $code, $constants, $scope);
 
-        $code[] = OpCode::RETURN;
+        $code[] = IrOpCode::RETURN;
 
-        return new CompiledProgram($code, $constants, $scope->getLocalCount());
+        return new IrCompiledProgram($code, $constants, $scope->getLocalCount());
     }
 
     private function compileExpression(
         $ast,
         array &$code,
         array &$constants,
-        CompileScope $scope,
+        IrCompileScope $scope,
         bool $tailPosition = false
     ): void
     {
@@ -34,20 +34,20 @@ class Compiler
         if ($ast instanceof Symbol) {
             $captureIndex = $scope->resolveCapture($ast->getName());
             if ($captureIndex !== null) {
-                $code[] = OpCode::LOAD_CAPTURE;
+                $code[] = IrOpCode::LOAD_CAPTURE;
                 $code[] = $captureIndex;
                 return;
             }
 
             $localSlot = $scope->resolve($ast->getName());
             if ($localSlot !== null) {
-                $code[] = OpCode::LOAD_LOCAL;
+                $code[] = IrOpCode::LOAD_LOCAL;
                 $code[] = $localSlot;
                 return;
             }
 
             $constants[] = $ast->getName();
-            $code[] = OpCode::LOAD_GLOBAL;
+            $code[] = IrOpCode::LOAD_GLOBAL;
             $code[] = count($constants) - 1;
             return;
         }
@@ -55,7 +55,7 @@ class Compiler
         // Not a collection is a constant (like number or string)
         if (!($ast instanceof Collection)) {
             $constants[] = $ast;
-            $code[] = OpCode::LOAD_CONSTANT;
+            $code[] = IrOpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
             return;
         }
@@ -109,11 +109,11 @@ class Compiler
                     if ($length != 1) {
                         throw new MadLispException('env does not take arguments');
                     }
-                    $code[] = OpCode::LOAD_ENV;
+                    $code[] = IrOpCode::LOAD_ENV;
                     return;
 
                 case 'execute':
-                    $this->compileExecutorOperation($data, $length, $code, $constants, $scope, OpCode::EXECUTE_PROGRAM);
+                    $this->compileExecutorOperation($data, $length, $code, $constants, $scope, IrOpCode::EXECUTE_PROGRAM);
                     return;
 
                 case 'fn':
@@ -129,7 +129,7 @@ class Compiler
                     return;
 
                 case 'load':
-                    $this->compileExecutorOperation($data, $length, $code, $constants, $scope, OpCode::LOAD_FILE);
+                    $this->compileExecutorOperation($data, $length, $code, $constants, $scope, IrOpCode::LOAD_FILE);
                     return;
 
                 case 'or':
@@ -157,7 +157,7 @@ class Compiler
             if ($scope->resolve($operatorName) === null
                 && $scope->resolveCapture($operatorName) === null
             ) {
-                $coreFuncMetadata = CoreFuncId::fromName($operatorName);
+                $coreFuncMetadata = IrCoreFuncId::fromName($operatorName);
             }
         }
 
@@ -178,14 +178,14 @@ class Compiler
                 $this->compileExpression($data[$i], $code, $constants, $scope);
             }
 
-            if ($coreFuncMetadata[0] === CoreFuncId::MAP) {
-                $code[] = OpCode::MAP;
+            if ($coreFuncMetadata[0] === IrCoreFuncId::MAP) {
+                $code[] = IrOpCode::MAP;
                 $code[] = $argumentCount;
-            } elseif ($coreFuncMetadata[0] === CoreFuncId::REDUCE) {
-                $code[] = OpCode::REDUCE;
+            } elseif ($coreFuncMetadata[0] === IrCoreFuncId::REDUCE) {
+                $code[] = IrOpCode::REDUCE;
                 $code[] = $argumentCount;
             } else {
-                $code[] = OpCode::CALL_CORE;
+                $code[] = IrOpCode::CALL_CORE;
                 $code[] = $coreFuncMetadata[0];
                 $code[] = $argumentCount;
             }
@@ -197,7 +197,7 @@ class Compiler
             $this->compileExpression($item, $code, $constants, $scope);
         }
 
-        $code[] = $tailPosition ? OpCode::TAIL_CALL : OpCode::CALL;
+        $code[] = $tailPosition ? IrOpCode::TAIL_CALL : IrOpCode::CALL;
         $code[] = $length - 1;
     }
 
@@ -208,13 +208,13 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope,
+        IrCompileScope $scope,
         bool $tailPosition
     ): void
     {
         if ($length == 1) {
             $constants[] = true;
-            $code[] = OpCode::LOAD_CONSTANT;
+            $code[] = IrOpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
             return;
         }
@@ -223,9 +223,9 @@ class Compiler
         for ($i = 1; $i < $length - 1; $i++) {
             $this->compileExpression($data[$i], $code, $constants, $scope);
             $jumps[] = count($code);
-            $code[] = OpCode::JUMP_IF_FALSE_KEEP;
+            $code[] = IrOpCode::JUMP_IF_FALSE_KEEP;
             $code[] = 0;
-            $code[] = OpCode::POP;
+            $code[] = IrOpCode::POP;
         }
 
         $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
@@ -241,7 +241,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope,
+        IrCompileScope $scope,
         bool $tailPosition
     ): void
     {
@@ -251,7 +251,7 @@ class Compiler
 
         $caseValueSlot = $scope->allocate();
         $this->compileExpression($data[1], $code, $constants, $scope);
-        $code[] = OpCode::STORE_LOCAL;
+        $code[] = IrOpCode::STORE_LOCAL;
         $code[] = $caseValueSlot;
 
         $endJumps = [];
@@ -276,24 +276,24 @@ class Compiler
 
             $isElse = $clause[0] instanceof Symbol && $clause[0]->getName() == 'else';
             if (!$isElse) {
-                $code[] = OpCode::LOAD_LOCAL;
+                $code[] = IrOpCode::LOAD_LOCAL;
                 $code[] = $caseValueSlot;
                 $this->compileExpression($clause[0], $code, $constants, $scope);
-                $code[] = $strict ? OpCode::CASE_COMPARE_STRICT : OpCode::CASE_COMPARE;
+                $code[] = $strict ? IrOpCode::CASE_COMPARE_STRICT : IrOpCode::CASE_COMPARE;
                 $pendingFalseJump = count($code);
-                $code[] = OpCode::JUMP_IF_FALSE;
+                $code[] = IrOpCode::JUMP_IF_FALSE;
                 $code[] = 0;
             }
 
             for ($j = 1; $j < count($clause) - 1; $j++) {
                 $this->compileExpression($clause[$j], $code, $constants, $scope);
-                $code[] = OpCode::POP;
+                $code[] = IrOpCode::POP;
             }
 
             $this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope, $tailPosition);
 
             $endJumps[] = count($code);
-            $code[] = OpCode::JUMP;
+            $code[] = IrOpCode::JUMP;
             $code[] = 0;
 
             if ($isElse) {
@@ -302,7 +302,7 @@ class Compiler
         }
 
         $constants[] = null;
-        $code[] = OpCode::LOAD_CONSTANT;
+        $code[] = IrOpCode::LOAD_CONSTANT;
         $code[] = count($constants) - 1;
 
         if ($pendingFalseJump !== null) {
@@ -320,7 +320,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope,
+        IrCompileScope $scope,
         bool $tailPosition
     ): void
     {
@@ -350,19 +350,19 @@ class Compiler
             if (!$isElse) {
                 $this->compileExpression($clause[0], $code, $constants, $scope);
                 $pendingFalseJump = count($code);
-                $code[] = OpCode::JUMP_IF_FALSE;
+                $code[] = IrOpCode::JUMP_IF_FALSE;
                 $code[] = 0;
             }
 
             for ($j = 1; $j < count($clause) - 1; $j++) {
                 $this->compileExpression($clause[$j], $code, $constants, $scope);
-                $code[] = OpCode::POP;
+                $code[] = IrOpCode::POP;
             }
 
             $this->compileExpression($clause[count($clause) - 1], $code, $constants, $scope, $tailPosition);
 
             $endJumps[] = count($code);
-            $code[] = OpCode::JUMP;
+            $code[] = IrOpCode::JUMP;
             $code[] = 0;
 
             if ($isElse) {
@@ -371,7 +371,7 @@ class Compiler
         }
 
         $constants[] = null;
-        $code[] = OpCode::LOAD_CONSTANT;
+        $code[] = IrOpCode::LOAD_CONSTANT;
         $code[] = count($constants) - 1;
 
         if ($pendingFalseJump !== null) {
@@ -389,7 +389,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        IrCompileScope $scope
     ): void
     {
         if ($length != 3) {
@@ -405,14 +405,14 @@ class Compiler
             throw new MadLispException("attempt to def reserved symbol $name");
         }
 
-        if (CoreFuncId::fromName($name) !== null) {
+        if (IrCoreFuncId::fromName($name) !== null) {
             throw new MadLispException("attempt to def core function $name");
         }
 
         $this->compileExpression($data[2], $code, $constants, $scope);
 
         $constants[] = $name;
-        $code[] = OpCode::STORE_GLOBAL;
+        $code[] = IrOpCode::STORE_GLOBAL;
         $code[] = count($constants) - 1;
     }
 
@@ -421,20 +421,20 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope,
+        IrCompileScope $scope,
         bool $tailPosition
     ): void
     {
         if ($length == 1) {
             $constants[] = null;
-            $code[] = OpCode::LOAD_CONSTANT;
+            $code[] = IrOpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
             return;
         }
 
         for ($i = 1; $i < $length - 1; $i++) {
             $this->compileExpression($data[$i], $code, $constants, $scope);
-            $code[] = OpCode::POP;
+            $code[] = IrOpCode::POP;
         }
 
         $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
@@ -445,8 +445,8 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope,
-        int $opcode
+        IrCompileScope $scope,
+        int $IrOpCode
     ): void
     {
         if ($length != 2) {
@@ -455,7 +455,7 @@ class Compiler
         }
 
         $this->compileExpression($data[1], $code, $constants, $scope);
-        $code[] = $opcode;
+        $code[] = $IrOpCode;
     }
 
     private function compileFn(
@@ -463,7 +463,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        IrCompileScope $scope
     ): void
     {
         if ($length != 3) {
@@ -507,19 +507,19 @@ class Compiler
             true
         );
 
-        $functionCode[] = OpCode::RETURN;
-        $functionProgram = new CompiledProgram(
+        $functionCode[] = IrOpCode::RETURN;
+        $functionProgram = new IrCompiledProgram(
             $functionCode,
             $functionConstants,
             $functionScope->getLocalCount()
         );
 
-        $constants[] = new CompiledFuncTemplate(
+        $constants[] = new IrCompiledFuncTemplate(
             $functionProgram,
             $parameterCount,
             $functionScope->getCaptureSources()
         );
-        $code[] = OpCode::MAKE_FUNCTION;
+        $code[] = IrOpCode::MAKE_FUNCTION;
         $code[] = count($constants) - 1;
     }
 
@@ -527,7 +527,7 @@ class Compiler
         Hash $hash,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        IrCompileScope $scope
     ): void
     {
         $values = $hash->getData();
@@ -536,7 +536,7 @@ class Compiler
         }
 
         $constants[] = array_keys($values);
-        $code[] = OpCode::BUILD_HASH;
+        $code[] = IrOpCode::BUILD_HASH;
         $code[] = count($constants) - 1;
         $code[] = count($values);
     }
@@ -546,7 +546,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope,
+        IrCompileScope $scope,
         bool $tailPosition
     ): void
     {
@@ -557,13 +557,13 @@ class Compiler
         $this->compileExpression($data[1], $code, $constants, $scope);
 
         $jumpIfFalse = count($code);
-        $code[] = OpCode::JUMP_IF_FALSE;
+        $code[] = IrOpCode::JUMP_IF_FALSE;
         $code[] = 0;
 
         $this->compileExpression($data[2], $code, $constants, $scope, $tailPosition);
 
         $jumpToEnd = count($code);
-        $code[] = OpCode::JUMP;
+        $code[] = IrOpCode::JUMP;
         $code[] = 0;
 
         $elseAddress = count($code);
@@ -573,7 +573,7 @@ class Compiler
             $this->compileExpression($data[3], $code, $constants, $scope, $tailPosition);
         } else {
             $constants[] = null;
-            $code[] = OpCode::LOAD_CONSTANT;
+            $code[] = IrOpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
         }
 
@@ -585,7 +585,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope,
+        IrCompileScope $scope,
         bool $tailPosition
     ): void
     {
@@ -612,14 +612,14 @@ class Compiler
             $name = $bindings[$i]->getName();
             $slot = $bodyScope->allocate();
             $this->compileExpression($bindings[$i + 1], $code, $constants, $bodyScope);
-            $code[] = OpCode::STORE_LOCAL;
+            $code[] = IrOpCode::STORE_LOCAL;
             $code[] = $slot;
             $bodyScope->bind($name, $slot);
         }
 
         for ($i = 2; $i < $length - 1; $i++) {
             $this->compileExpression($data[$i], $code, $constants, $bodyScope);
-            $code[] = OpCode::POP;
+            $code[] = IrOpCode::POP;
         }
 
         $this->compileExpression($data[$length - 1], $code, $constants, $bodyScope, $tailPosition);
@@ -630,13 +630,13 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope,
+        IrCompileScope $scope,
         bool $tailPosition
     ): void
     {
         if ($length == 1) {
             $constants[] = false;
-            $code[] = OpCode::LOAD_CONSTANT;
+            $code[] = IrOpCode::LOAD_CONSTANT;
             $code[] = count($constants) - 1;
             return;
         }
@@ -645,9 +645,9 @@ class Compiler
         for ($i = 1; $i < $length - 1; $i++) {
             $this->compileExpression($data[$i], $code, $constants, $scope);
             $jumps[] = count($code);
-            $code[] = OpCode::JUMP_IF_TRUE_KEEP;
+            $code[] = IrOpCode::JUMP_IF_TRUE_KEEP;
             $code[] = 0;
-            $code[] = OpCode::POP;
+            $code[] = IrOpCode::POP;
         }
 
         $this->compileExpression($data[$length - 1], $code, $constants, $scope, $tailPosition);
@@ -670,7 +670,7 @@ class Compiler
         }
 
         $constants[] = $data[1];
-        $code[] = OpCode::LOAD_CONSTANT;
+        $code[] = IrOpCode::LOAD_CONSTANT;
         $code[] = count($constants) - 1;
     }
 
@@ -690,7 +690,7 @@ class Compiler
         }
 
         $constants[] = $data[1]->getName();
-        $code[] = OpCode::UNDEF;
+        $code[] = IrOpCode::UNDEF;
         $code[] = count($constants) - 1;
     }
 
@@ -698,7 +698,7 @@ class Compiler
         Vector $vector,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        IrCompileScope $scope
     ): void
     {
         $values = $vector->getData();
@@ -706,7 +706,7 @@ class Compiler
             $this->compileExpression($value, $code, $constants, $scope);
         }
 
-        $code[] = OpCode::BUILD_VECTOR;
+        $code[] = IrOpCode::BUILD_VECTOR;
         $code[] = count($values);
     }
 
@@ -715,7 +715,7 @@ class Compiler
         int $length,
         array &$code,
         array &$constants,
-        CompileScope $scope
+        IrCompileScope $scope
     ): void
     {
         if ($length < 3) {
@@ -724,31 +724,31 @@ class Compiler
 
         $resultSlot = $scope->allocate();
         $constants[] = null;
-        $code[] = OpCode::LOAD_CONSTANT;
+        $code[] = IrOpCode::LOAD_CONSTANT;
         $code[] = count($constants) - 1;
-        $code[] = OpCode::STORE_LOCAL;
+        $code[] = IrOpCode::STORE_LOCAL;
         $code[] = $resultSlot;
 
         $loopStart = count($code);
         $this->compileExpression($data[1], $code, $constants, $scope);
-        $code[] = OpCode::JUMP_IF_FALSE;
+        $code[] = IrOpCode::JUMP_IF_FALSE;
         $exitJump = count($code);
         $code[] = 0;
 
         for ($i = 2; $i < $length - 1; $i++) {
             $this->compileExpression($data[$i], $code, $constants, $scope);
-            $code[] = OpCode::POP;
+            $code[] = IrOpCode::POP;
         }
 
         $this->compileExpression($data[$length - 1], $code, $constants, $scope);
 
-        $code[] = OpCode::STORE_LOCAL;
+        $code[] = IrOpCode::STORE_LOCAL;
         $code[] = $resultSlot;
-        $code[] = OpCode::JUMP;
+        $code[] = IrOpCode::JUMP;
         $code[] = $loopStart;
 
         $code[$exitJump] = count($code);
-        $code[] = OpCode::LOAD_LOCAL;
+        $code[] = IrOpCode::LOAD_LOCAL;
         $code[] = $resultSlot;
     }
 }

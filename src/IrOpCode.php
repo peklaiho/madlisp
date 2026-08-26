@@ -7,7 +7,7 @@
 
 namespace MadLisp;
 
-class OpCode
+class IrOpCode
 {
     public const int LOAD_CONSTANT = 1;
     public const int LOAD_GLOBAL = 2;

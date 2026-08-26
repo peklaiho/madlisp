@@ -8,7 +8,7 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\Collection;
-use MadLisp\Compiler;
+use MadLisp\IrCompiler;
 use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Evaller;
@@ -1808,7 +1808,7 @@ class EvallerTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $printer = new Printer();
 
         $evaller = new Evaller(

@@ -7,10 +7,10 @@
 
 namespace MadLisp;
 
-class CompiledFunc extends Func
+class IrCompiledFunc extends Func
 {
     public function __construct(
-        protected CompiledProgram $program,
+        protected IrCompiledProgram $program,
         protected Env $env,
         protected int $arity,
         protected array $captures = []
@@ -18,7 +18,7 @@ class CompiledFunc extends Func
         parent::__construct(fn () => null);
     }
 
-    public function getProgram(): CompiledProgram
+    public function getProgram(): IrCompiledProgram
     {
         return $this->program;
     }

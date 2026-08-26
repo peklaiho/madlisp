@@ -8,7 +8,7 @@
 namespace MadLisp\Lib;
 
 use MadLisp\Collection;
-use MadLisp\Compiler;
+use MadLisp\IrCompiler;
 use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Evaller;
@@ -27,7 +27,7 @@ class Core implements ILib
     public function __construct(
         protected Tokenizer $tokenizer,
         protected Reader $reader,
-        protected Compiler $compiler,
+        protected IrCompiler $compiler,
         protected Printer $printer,
         protected Evaller $evaller,
         protected bool $safemode

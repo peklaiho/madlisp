@@ -7,10 +7,10 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\Compiler;
+use MadLisp\IrCompiler;
 use MadLisp\Env;
 use MadLisp\Evaller;
-use MadLisp\Executor;
+use MadLisp\IrExecutor;
 use MadLisp\Lisp;
 use MadLisp\MadLispException;
 use MadLisp\Printer;
@@ -27,8 +27,8 @@ class LispTest extends TestCase
         $lisp = new Lisp(
             $this->createMock(Tokenizer::class),
             $this->createMock(Reader::class),
-            $this->createMock(Compiler::class),
-            $this->createMock(Executor::class),
+            $this->createMock(IrCompiler::class),
+            $this->createMock(IrExecutor::class),
             $this->createMock(Evaller::class),
             $this->createMock(Printer::class),
             $env
@@ -39,8 +39,8 @@ class LispTest extends TestCase
 
     public function testCompile(): void
     {
-        $compiler = $this->createMock(Compiler::class);
-        $program = new \MadLisp\CompiledProgram([], [], 0);
+        $compiler = $this->createMock(IrCompiler::class);
+        $program = new \MadLisp\IrCompiledProgram([], [], 0);
         $ast = 'ast';
 
         $compiler->expects($this->once())
@@ -52,7 +52,7 @@ class LispTest extends TestCase
             $this->createMock(Tokenizer::class),
             $this->createMock(Reader::class),
             $compiler,
-            $this->createMock(Executor::class),
+            $this->createMock(IrExecutor::class),
             $this->createMock(Evaller::class),
             $this->createMock(Printer::class),
             new Env('env')
@@ -63,8 +63,8 @@ class LispTest extends TestCase
 
     public function testExecute(): void
     {
-        $executor = $this->createMock(Executor::class);
-        $program = new \MadLisp\CompiledProgram([], [], 0);
+        $executor = $this->createMock(IrExecutor::class);
+        $program = new \MadLisp\IrCompiledProgram([], [], 0);
         $env = new Env('env');
 
         $executor->expects($this->once())
@@ -75,7 +75,7 @@ class LispTest extends TestCase
         $lisp = new Lisp(
             $this->createMock(Tokenizer::class),
             $this->createMock(Reader::class),
-            $this->createMock(Compiler::class),
+            $this->createMock(IrCompiler::class),
             $executor,
             $this->createMock(Evaller::class),
             $this->createMock(Printer::class),
@@ -89,8 +89,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $compiler = $this->createMock(Compiler::class);
-        $executor = $this->createMock(Executor::class);
+        $compiler = $this->createMock(IrCompiler::class);
+        $executor = $this->createMock(IrExecutor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -107,8 +107,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $compiler = $this->createMock(Compiler::class);
-        $executor = $this->createMock(Executor::class);
+        $compiler = $this->createMock(IrCompiler::class);
+        $executor = $this->createMock(IrExecutor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -126,8 +126,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $compiler = $this->createMock(Compiler::class);
-        $executor = $this->createMock(Executor::class);
+        $compiler = $this->createMock(IrCompiler::class);
+        $executor = $this->createMock(IrExecutor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -149,11 +149,11 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $compiler = $this->createMock(Compiler::class);
-        $executor = $this->createMock(Executor::class);
+        $compiler = $this->createMock(IrCompiler::class);
+        $executor = $this->createMock(IrExecutor::class);
         $evaller = $this->createMock(Evaller::class);
         $env = new Env('env');
-        $program = new \MadLisp\CompiledProgram([], [], 0);
+        $program = new \MadLisp\IrCompiledProgram([], [], 0);
 
         $tokenizer->expects($this->once())
             ->method('tokenize')
@@ -187,8 +187,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $compiler = $this->createMock(Compiler::class);
-        $executor = $this->createMock(Executor::class);
+        $compiler = $this->createMock(IrCompiler::class);
+        $executor = $this->createMock(IrExecutor::class);
         $evaller = $this->createMock(Evaller::class);
         $env = new Env('env');
 
@@ -224,8 +224,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $compiler = $this->createMock(Compiler::class);
-        $executor = $this->createMock(Executor::class);
+        $compiler = $this->createMock(IrCompiler::class);
+        $executor = $this->createMock(IrExecutor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -275,8 +275,8 @@ class LispTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
-        $compiler = new Compiler();
-        $executor = new Executor();
+        $compiler = new IrCompiler();
+        $executor = new IrExecutor();
         $printer = new Printer();
         $evaller = new Evaller($tokenizer, $reader, $printer, false);
 
@@ -299,8 +299,8 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $compiler = $this->createMock(Compiler::class);
-        $executor = $this->createMock(Executor::class);
+        $compiler = $this->createMock(IrCompiler::class);
+        $executor = $this->createMock(IrExecutor::class);
         $printer = $this->createMock(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
@@ -321,8 +321,8 @@ class LispTest extends TestCase
         $lisp = new Lisp(
             $this->createMock(Tokenizer::class),
             $this->createMock(Reader::class),
-            $this->createMock(Compiler::class),
-            $this->createMock(Executor::class),
+            $this->createMock(IrCompiler::class),
+            $this->createMock(IrExecutor::class),
             $this->createMock(Evaller::class),
             $this->createMock(Printer::class),
             $oldEnv
@@ -340,8 +340,8 @@ class LispTest extends TestCase
         $lisp = new Lisp(
             $this->createMock(Tokenizer::class),
             $this->createMock(Reader::class),
-            $this->createMock(Compiler::class),
-            $this->createMock(Executor::class),
+            $this->createMock(IrCompiler::class),
+            $this->createMock(IrExecutor::class),
             $this->createMock(Evaller::class),
             $this->createMock(Printer::class),
             $env

@@ -7,19 +7,19 @@
 
 namespace MadLisp;
 
-class Executor
+class IrExecutor
 {
     public function __construct(
-        protected ?CompiledLoader $loader = null
+        protected ?IrCompiledLoader $loader = null
     ) {
 
     }
 
-    public function execute(CompiledProgram $program, Env $env)
+    public function execute(IrCompiledProgram $program, Env $env)
     {
         $stack = [];
         $stackPointer = 0;
-        $frames = [new ExecutionFrame($program, $env)];
+        $frames = [new IrExecutionFrame($program, $env)];
 
         while ($frames) {
             $frame = $frames[array_key_last($frames)];
@@ -35,23 +35,23 @@ class Executor
             $opcode = $code[$pc++];
 
             switch ($opcode) {
-                case OpCode::LOAD_ENV:
+                case IrOpCode::LOAD_ENV:
                     $stack[$stackPointer++] = $env;
                     break;
 
-                case OpCode::UNDEF:
+                case IrOpCode::UNDEF:
                     $nameIndex = $code[$pc++];
                     $stack[$stackPointer++] = $env->unset($constants[$nameIndex]);
                     break;
 
-                case OpCode::BUILD_VECTOR:
+                case IrOpCode::BUILD_VECTOR:
                     $valueCount = $code[$pc++];
                     $values = $valueCount == 0 ? [] : array_slice($stack, $stackPointer - $valueCount, $valueCount);
                     $stackPointer -= $valueCount;
                     $stack[$stackPointer++] = new Vector($values);
                     break;
 
-                case OpCode::BUILD_HASH:
+                case IrOpCode::BUILD_HASH:
                     $keyIndex = $code[$pc++];
                     $valueCount = $code[$pc++];
                     $values = $valueCount == 0 ? [] : array_slice($stack, $stackPointer - $valueCount, $valueCount);
@@ -68,22 +68,22 @@ class Executor
                     $stack[$stackPointer++] = new Hash($data);
                     break;
 
-                case OpCode::LOAD_CONSTANT:
+                case IrOpCode::LOAD_CONSTANT:
                     $constantIndex = $code[$pc++];
                     $stack[$stackPointer++] = $constants[$constantIndex];
                     break;
 
-                case OpCode::EXECUTE_PROGRAM:
+                case IrOpCode::EXECUTE_PROGRAM:
                     $childProgram = $stack[--$stackPointer];
-                    if (!($childProgram instanceof CompiledProgram)) {
-                        throw new MadLispException('exec: execute requires a CompiledProgram');
+                    if (!($childProgram instanceof IrCompiledProgram)) {
+                        throw new MadLispException('exec: execute requires an IrCompiledProgram');
                     }
 
                     $frame->pc = $pc;
-                    $frames[] = new ExecutionFrame($childProgram, $env, $stackPointer);
+                    $frames[] = new IrExecutionFrame($childProgram, $env, $stackPointer);
                     continue 2;
 
-                case OpCode::LOAD_FILE:
+                case IrOpCode::LOAD_FILE:
                     $filename = $stack[--$stackPointer];
                     if (!is_string($filename)) {
                         throw new MadLispException('exec: load filename is not string');
@@ -94,15 +94,15 @@ class Executor
 
                     $childProgram = $this->loader->load($filename);
                     $frame->pc = $pc;
-                    $frames[] = new ExecutionFrame($childProgram, $env, $stackPointer);
+                    $frames[] = new IrExecutionFrame($childProgram, $env, $stackPointer);
                     continue 2;
 
-                case OpCode::LOAD_GLOBAL:
+                case IrOpCode::LOAD_GLOBAL:
                     $nameIndex = $code[$pc++];
                     $stack[$stackPointer++] = $env->get($constants[$nameIndex]);
                     break;
 
-                case OpCode::LOAD_LOCAL:
+                case IrOpCode::LOAD_LOCAL:
                     $localSlot = $code[$pc++];
                     if (!array_key_exists($localSlot, $frame->locals)) {
                         throw new MadLispException("exec: invalid local slot $localSlot");
@@ -111,7 +111,7 @@ class Executor
                     $stack[$stackPointer++] = $frame->locals[$localSlot];
                     break;
 
-                case OpCode::LOAD_CAPTURE:
+                case IrOpCode::LOAD_CAPTURE:
                     $captureIndex = $code[$pc++];
                     if (!array_key_exists($captureIndex, $frame->captures)) {
                         throw new MadLispException("exec: invalid capture slot $captureIndex");
@@ -120,7 +120,7 @@ class Executor
                     $stack[$stackPointer++] = $frame->captures[$captureIndex];
                     break;
 
-                case OpCode::STORE_LOCAL:
+                case IrOpCode::STORE_LOCAL:
                     $localSlot = $code[$pc++];
                     if (!array_key_exists($localSlot, $frame->locals)) {
                         throw new MadLispException("exec: invalid local slot $localSlot");
@@ -129,17 +129,17 @@ class Executor
                     $frame->locals[$localSlot] = $stack[--$stackPointer];
                     break;
 
-                case OpCode::STORE_GLOBAL:
+                case IrOpCode::STORE_GLOBAL:
                     $nameIndex = $code[$pc++];
                     $value = $stack[--$stackPointer];
                     $stack[$stackPointer++] = $env->set($constants[$nameIndex], $value);
                     break;
 
-                case OpCode::POP:
+                case IrOpCode::POP:
                     $stackPointer--;
                     break;
 
-                case OpCode::JUMP_IF_FALSE:
+                case IrOpCode::JUMP_IF_FALSE:
                     $target = $code[$pc++];
                     $condition = $stack[--$stackPointer];
 
@@ -148,40 +148,40 @@ class Executor
                     }
                     break;
 
-                case OpCode::JUMP_IF_FALSE_KEEP:
+                case IrOpCode::JUMP_IF_FALSE_KEEP:
                     $target = $code[$pc++];
                     if ($stack[$stackPointer - 1] != true) {
                         $pc = $target;
                     }
                     break;
 
-                case OpCode::JUMP_IF_TRUE_KEEP:
+                case IrOpCode::JUMP_IF_TRUE_KEEP:
                     $target = $code[$pc++];
                     if ($stack[$stackPointer - 1] == true) {
                         $pc = $target;
                     }
                     break;
 
-                case OpCode::JUMP:
+                case IrOpCode::JUMP:
                     $pc = $code[$pc];
                     break;
 
-                case OpCode::CASE_COMPARE:
+                case IrOpCode::CASE_COMPARE:
                     $right = $stack[--$stackPointer];
                     $left = $stack[--$stackPointer];
                     $stack[$stackPointer++] = Util::valueForCompare($left) == Util::valueForCompare($right);
                     break;
 
-                case OpCode::CASE_COMPARE_STRICT:
+                case IrOpCode::CASE_COMPARE_STRICT:
                     $right = $stack[--$stackPointer];
                     $left = $stack[--$stackPointer];
                     $stack[$stackPointer++] = Util::valueForCompare($left) === Util::valueForCompare($right);
                     break;
 
-                case OpCode::MAKE_FUNCTION:
+                case IrOpCode::MAKE_FUNCTION:
                     $templateIndex = $code[$pc++];
                     $template = $constants[$templateIndex];
-                    if (!($template instanceof CompiledFuncTemplate)) {
+                    if (!($template instanceof IrCompiledFuncTemplate)) {
                         throw new MadLispException('exec: invalid compiled function template');
                     }
 
@@ -206,12 +206,12 @@ class Executor
                         }
                     }
 
-                    $stack[$stackPointer++] = new CompiledFunc($template->program, $env, $template->arity, $captures);
+                    $stack[$stackPointer++] = new IrCompiledFunc($template->program, $env, $template->arity, $captures);
                     break;
 
-                case OpCode::TAIL_CALL:
-                case OpCode::CALL:
-                    $tailCall = $opcode == OpCode::TAIL_CALL;
+                case IrOpCode::TAIL_CALL:
+                case IrOpCode::CALL:
+                    $tailCall = $opcode == IrOpCode::TAIL_CALL;
                     $arity = $code[$pc++];
                     $args = $arity == 0 ? [] : array_slice($stack, $stackPointer - $arity, $arity);
                     $stackPointer -= $arity;
@@ -221,7 +221,7 @@ class Executor
                         throw new MadLispException('exec: first item of list is not function');
                     }
 
-                    if ($func instanceof CompiledFunc) {
+                    if ($func instanceof IrCompiledFunc) {
                         if ($arity != $func->getArity()) {
                             throw new MadLispException(sprintf(
                                 'exec: compiled function requires exactly %d argument%s',
@@ -237,7 +237,7 @@ class Executor
                             array_pop($frames);
                             $callerBase = $thisFrame->stackBase;
                         }
-                        $callee = new ExecutionFrame(
+                        $callee = new IrExecutionFrame(
                             $func->getProgram(),
                             $func->getEnv(),
                             $callerBase,
@@ -255,15 +255,15 @@ class Executor
                     $stack[$stackPointer++] = $func->call($args);
                     break;
 
-                case OpCode::MAP:
-                case OpCode::REDUCE:
+                case IrOpCode::MAP:
+                case IrOpCode::REDUCE:
                     $arity = $code[$pc++];
                     $args = $arity == 0 ? [] : array_slice($stack, $stackPointer - $arity, $arity);
                     $stackPointer -= $arity;
                     $function = $args[0] ?? null;
                     $sequence = $args[1] ?? null;
 
-                    if ($function instanceof CompiledFunc) {
+                    if ($function instanceof IrCompiledFunc) {
                         $frame->pc = $pc;
                         if ($this->startCompiledCollectionOperation(
                             $opcode,
@@ -287,7 +287,7 @@ class Executor
                         throw new MadLispException('exec: argument to collection operation is not sequence');
                     }
 
-                    if ($opcode === OpCode::MAP) {
+                    if ($opcode === IrOpCode::MAP) {
                         $stack[$stackPointer++] = $sequence::new(
                             array_map($function->getClosure(), $sequence->getData())
                         );
@@ -300,26 +300,26 @@ class Executor
                     }
                     break;
 
-                case OpCode::CALL_CORE:
+                case IrOpCode::CALL_CORE:
                     $coreFuncId = $code[$pc++];
                     $arity = $code[$pc++];
                     $args = $arity == 0 ? [] : array_slice($stack, $stackPointer - $arity, $arity);
                     $stackPointer -= $arity;
 
                     $continuationTypes = [
-                        CoreFuncId::APPLY => 'apply',
-                        CoreFuncId::MAP2 => 'map2',
-                        CoreFuncId::FILTER => 'filter',
-                        CoreFuncId::FILTERH => 'filterh',
+                        IrCoreFuncId::APPLY => 'apply',
+                        IrCoreFuncId::MAP2 => 'map2',
+                        IrCoreFuncId::FILTER => 'filter',
+                        IrCoreFuncId::FILTERH => 'filterh',
                     ];
 
                     // Higher-order collection functions need two execution paths.
-                    // A CompiledFunc cannot be passed to PHP array_* functions because
+                    // An IrCompiledFunc cannot be passed to PHP array_* functions because
                     // it has no PHP closure, so compiled callbacks are suspended into
                     // the VM frame stack and resumed through a continuation below.
                     // Closure-backed Func instances use the normal path below.
                     if (isset($continuationTypes[$coreFuncId])
-                        && $args[0] instanceof CompiledFunc
+                        && $args[0] instanceof IrCompiledFunc
                     ) {
                         $type = $continuationTypes[$coreFuncId];
                         $sequence = $type === 'apply' ? $args[$arity - 1] : $args[1];
@@ -348,17 +348,17 @@ class Executor
 
                     // This path handles ordinary core calls, including the
                     // closure-backed implementations of map, map2, reduce, filter,
-                    // and filterh. CompiledFunc callbacks have already been handled
+                    // and filterh. IrCompiledFunc callbacks have already been handled
                     // by the continuation path above.
                     switch ($coreFuncId) {
-                        case CoreFuncId::ADD:
+                        case IrCoreFuncId::ADD:
                             $result = 0;
                             foreach ($args as $arg) {
                                 $result += $arg;
                             }
                             break;
 
-                        case CoreFuncId::SUBTRACT:
+                        case IrCoreFuncId::SUBTRACT:
                             if ($arity == 1) {
                                 $result = -$args[0];
                             } else {
@@ -369,95 +369,95 @@ class Executor
                             }
                             break;
 
-                        case CoreFuncId::MULTIPLY:
+                        case IrCoreFuncId::MULTIPLY:
                             $result = $args[0];
                             for ($i = 1; $i < $arity; $i++) {
                                 $result *= $args[$i];
                             }
                             break;
 
-                        case CoreFuncId::DIVIDE:
+                        case IrCoreFuncId::DIVIDE:
                             $result = $args[0];
                             for ($i = 1; $i < $arity; $i++) {
                                 $result /= $args[$i];
                             }
                             break;
 
-                        case CoreFuncId::INTDIV:
+                        case IrCoreFuncId::INTDIV:
                             $result = $args[0];
                             for ($i = 1; $i < $arity; $i++) {
                                 $result = intdiv($result, $args[$i]);
                             }
                             break;
 
-                        case CoreFuncId::MODULO:
+                        case IrCoreFuncId::MODULO:
                             $result = $args[0];
                             for ($i = 1; $i < $arity; $i++) {
                                 $result %= $args[$i];
                             }
                             break;
 
-                        case CoreFuncId::INC:
+                        case IrCoreFuncId::INC:
                             $result = $args[0] + 1;
                             break;
 
-                        case CoreFuncId::DEC:
+                        case IrCoreFuncId::DEC:
                             $result = $args[0] - 1;
                             break;
 
-                        case CoreFuncId::MAX:
+                        case IrCoreFuncId::MAX:
                             $result = max(($args[0] instanceof Seq) ? $args[0]->getData() : $args);
                             break;
 
-                        case CoreFuncId::MIN:
+                        case IrCoreFuncId::MIN:
                             $result = min(($args[0] instanceof Seq) ? $args[0]->getData() : $args);
                             break;
 
-                        case CoreFuncId::EQUAL:
+                        case IrCoreFuncId::EQUAL:
                             $result = Util::valueForCompare($args[0]) == Util::valueForCompare($args[1]);
                             break;
 
-                        case CoreFuncId::STRICT_EQUAL:
+                        case IrCoreFuncId::STRICT_EQUAL:
                             $result = Util::valueForCompare($args[0]) === Util::valueForCompare($args[1]);
                             break;
 
-                        case CoreFuncId::NOT_EQUAL:
+                        case IrCoreFuncId::NOT_EQUAL:
                             $result = Util::valueForCompare($args[0]) != Util::valueForCompare($args[1]);
                             break;
 
-                        case CoreFuncId::STRICT_NOT_EQUAL:
+                        case IrCoreFuncId::STRICT_NOT_EQUAL:
                             $result = Util::valueForCompare($args[0]) !== Util::valueForCompare($args[1]);
                             break;
 
-                        case CoreFuncId::LESS:
+                        case IrCoreFuncId::LESS:
                             $result = $args[0] < $args[1];
                             break;
 
-                        case CoreFuncId::LESS_EQUAL:
+                        case IrCoreFuncId::LESS_EQUAL:
                             $result = $args[0] <= $args[1];
                             break;
 
-                        case CoreFuncId::GREATER:
+                        case IrCoreFuncId::GREATER:
                             $result = $args[0] > $args[1];
                             break;
 
-                        case CoreFuncId::GREATER_EQUAL:
+                        case IrCoreFuncId::GREATER_EQUAL:
                             $result = $args[0] >= $args[1];
                             break;
 
-                        case CoreFuncId::HASH:
+                        case IrCoreFuncId::HASH:
                             $result = Util::makeHash($args);
                             break;
 
-                        case CoreFuncId::LIST:
+                        case IrCoreFuncId::LIST:
                             $result = new MList($args);
                             break;
 
-                        case CoreFuncId::VECTOR:
+                        case IrCoreFuncId::VECTOR:
                             $result = new Vector($args);
                             break;
 
-                        case CoreFuncId::RANGE:
+                        case IrCoreFuncId::RANGE:
                             if ($arity == 1) {
                                 $data = range(0, $args[0] - 1);
                             } else {
@@ -466,15 +466,15 @@ class Executor
                             $result = new Vector($data);
                             break;
 
-                        case CoreFuncId::LTOV:
+                        case IrCoreFuncId::LTOV:
                             $result = new Vector($args[0]->getData());
                             break;
 
-                        case CoreFuncId::VTOL:
+                        case IrCoreFuncId::VTOL:
                             $result = new MList($args[0]->getData());
                             break;
 
-                        case CoreFuncId::EMPTY:
+                        case IrCoreFuncId::EMPTY:
                             if ($args[0] instanceof Collection) {
                                 $result = $args[0]->count() === 0;
                             } elseif (is_string($args[0])) {
@@ -484,15 +484,15 @@ class Executor
                             }
                             break;
 
-                        case CoreFuncId::CONTAINS:
+                        case IrCoreFuncId::CONTAINS:
                             $result = in_array($args[1], $args[0]->getData(), $args[2] ?? false);
                             break;
 
-                        case CoreFuncId::GET:
+                        case IrCoreFuncId::GET:
                             $result = $args[0]->get($args[1]);
                             break;
 
-                        case CoreFuncId::LEN:
+                        case IrCoreFuncId::LEN:
                             if ($args[0] instanceof Collection) {
                                 $result = $args[0]->count();
                             } elseif (is_string($args[0])) {
@@ -502,29 +502,29 @@ class Executor
                             }
                             break;
 
-                        case CoreFuncId::CAR:
-                        case CoreFuncId::FIRST:
+                        case IrCoreFuncId::CAR:
+                        case IrCoreFuncId::FIRST:
                             $result = $args[0]->getData()[0] ?? null;
                             break;
 
-                        case CoreFuncId::LAST:
+                        case IrCoreFuncId::LAST:
                             $result = $args[0]->getData()[$args[0]->count() - 1] ?? null;
                             break;
 
-                        case CoreFuncId::HEAD:
+                        case IrCoreFuncId::HEAD:
                             $result = $args[0]::new(array_slice($args[0]->getData(), 0, $args[0]->count() - 1));
                             break;
 
-                        case CoreFuncId::CDR:
-                        case CoreFuncId::TAIL:
+                        case IrCoreFuncId::CDR:
+                        case IrCoreFuncId::TAIL:
                             $result = $args[0]::new(array_slice($args[0]->getData(), 1));
                             break;
 
-                        case CoreFuncId::SLICE:
+                        case IrCoreFuncId::SLICE:
                             $result = $args[0]::new(array_slice($args[0]->getData(), $args[1], $args[2] ?? null));
                             break;
 
-                        case CoreFuncId::APPLY:
+                        case IrCoreFuncId::APPLY:
                             $func = $args[0];
                             $seq = $args[$arity - 1];
                             if (!($func instanceof Func)) {
@@ -539,7 +539,7 @@ class Executor
                             $result = $func->call($applyArgs);
                             break;
 
-                        case CoreFuncId::CHUNK:
+                        case IrCoreFuncId::CHUNK:
                             $chunks = array_chunk($args[0]->getData(), $args[1]);
                             $data = [];
                             foreach ($chunks as $chunk) {
@@ -548,7 +548,7 @@ class Executor
                             $result = $args[0]::new($data);
                             break;
 
-                        case CoreFuncId::CONCAT:
+                        case IrCoreFuncId::CONCAT:
                             $data = [];
                             foreach ($args as $arg) {
                                 $data[] = $arg->getData();
@@ -556,7 +556,7 @@ class Executor
                             $result = new MList(array_merge(...$data));
                             break;
 
-                        case CoreFuncId::PUSH:
+                        case IrCoreFuncId::PUSH:
                             $data = $args[0]->getData();
                             for ($i = 1; $i < $arity; $i++) {
                                 $data[] = $args[$i];
@@ -564,7 +564,7 @@ class Executor
                             $result = $args[0]::new($data);
                             break;
 
-                        case CoreFuncId::CONS:
+                        case IrCoreFuncId::CONS:
                             $seq = $args[$arity - 1];
                             if (!($seq instanceof Seq)) {
                                 throw new MadLispException('exec: last argument to cons is not sequence');
@@ -573,30 +573,30 @@ class Executor
                             $result = $seq::new(array_merge($data, $seq->getData()));
                             break;
 
-                        case CoreFuncId::MAP:
+                        case IrCoreFuncId::MAP:
                             $result = $args[1]::new(array_map($args[0]->getClosure(), $args[1]->getData()));
                             break;
 
-                        case CoreFuncId::MAP2:
+                        case IrCoreFuncId::MAP2:
                             if ($args[1]->count() != $args[2]->count()) {
                                 throw new MadLispException('exec: map2 requires equal number of elements in both sequences');
                             }
                             $result = $args[1]::new(array_map($args[0]->getClosure(), $args[1]->getData(), $args[2]->getData()));
                             break;
 
-                        case CoreFuncId::REDUCE:
+                        case IrCoreFuncId::REDUCE:
                             $result = array_reduce($args[1]->getData(), $args[0]->getClosure(), $args[2] ?? null);
                             break;
 
-                        case CoreFuncId::FILTER:
+                        case IrCoreFuncId::FILTER:
                             $result = $args[1]::new(array_values(array_filter($args[1]->getData(), $args[0]->getClosure())));
                             break;
 
-                        case CoreFuncId::FILTERH:
+                        case IrCoreFuncId::FILTERH:
                             $result = new Hash(array_filter($args[1]->getData(), $args[0]->getClosure(), ARRAY_FILTER_USE_BOTH));
                             break;
 
-                        case CoreFuncId::REVERSE:
+                        case IrCoreFuncId::REVERSE:
                             if ($args[0] instanceof Seq) {
                                 $result = $args[0]::new(array_reverse($args[0]->getData()));
                             } elseif (is_string($args[0])) {
@@ -606,64 +606,64 @@ class Executor
                             }
                             break;
 
-                        case CoreFuncId::KEY:
+                        case IrCoreFuncId::KEY:
                             $result = $args[0]->has($args[1]);
                             break;
 
-                        case CoreFuncId::SET:
+                        case IrCoreFuncId::SET:
                             $hash = new Hash($args[0]->getData());
                             $hash->set($args[1], $args[2]);
                             $result = $hash;
                             break;
 
-                        case CoreFuncId::SET_MUTATE:
+                        case IrCoreFuncId::SET_MUTATE:
                             $result = $args[0]->set($args[1], $args[2]);
                             break;
 
-                        case CoreFuncId::UNSET:
+                        case IrCoreFuncId::UNSET:
                             $data = $args[0]->getData();
                             unset($data[$args[1]]);
                             $result = new Hash($data);
                             break;
 
-                        case CoreFuncId::UNSET_MUTATE:
+                        case IrCoreFuncId::UNSET_MUTATE:
                             $result = $args[0]->unset($args[1]);
                             break;
 
-                        case CoreFuncId::KEYS:
+                        case IrCoreFuncId::KEYS:
                             $result = new MList(array_keys($args[0]->getData()));
                             break;
 
-                        case CoreFuncId::VALUES:
+                        case IrCoreFuncId::VALUES:
                             $result = new MList(array_values($args[0]->getData()));
                             break;
 
-                        case CoreFuncId::ZIP:
+                        case IrCoreFuncId::ZIP:
                             if ($args[0]->count() != $args[1]->count()) {
                                 throw new MadLispException('exec: zip requires equal number of keys and values');
                             }
                             $result = new Hash(array_combine($args[0]->getData(), $args[1]->getData()));
                             break;
 
-                        case CoreFuncId::SORT:
+                        case IrCoreFuncId::SORT:
                             $data = $args[0]->getData();
                             sort($data);
                             $result = $args[0]::new($data);
                             break;
 
-                        case CoreFuncId::BOOL:
+                        case IrCoreFuncId::BOOL:
                             $result = boolval($args[0]);
                             break;
 
-                        case CoreFuncId::FLOAT:
+                        case IrCoreFuncId::FLOAT:
                             $result = floatval($args[0]);
                             break;
 
-                        case CoreFuncId::INT:
+                        case IrCoreFuncId::INT:
                             $result = intval($args[0]);
                             break;
 
-                        case CoreFuncId::STR:
+                        case IrCoreFuncId::STR:
                             $data = [];
                             foreach ($args as $arg) {
                                 $data[] = $arg instanceof Symbol ? $arg->getName() : strval($arg);
@@ -671,15 +671,15 @@ class Executor
                             $result = implode('', $data);
                             break;
 
-                        case CoreFuncId::SYMBOL:
+                        case IrCoreFuncId::SYMBOL:
                             $result = new Symbol($args[0]);
                             break;
 
-                        case CoreFuncId::NOT:
+                        case IrCoreFuncId::NOT:
                             $result = !$args[0];
                             break;
 
-                        case CoreFuncId::TYPE:
+                        case IrCoreFuncId::TYPE:
                             $value = $args[0];
                             if ($value instanceof Func) {
                                 $result = $value->isMacro() ? 'macro' : 'function';
@@ -708,164 +708,164 @@ class Executor
                             }
                             break;
 
-                        case CoreFuncId::FUNCTION:
+                        case IrCoreFuncId::FUNCTION:
                             $result = $args[0] instanceof Func;
                             break;
 
-                        case CoreFuncId::MACRO:
+                        case IrCoreFuncId::MACRO:
                             $result = $args[0] instanceof Func && $args[0]->isMacro();
                             break;
 
-                        case CoreFuncId::LIST_TYPE:
+                        case IrCoreFuncId::LIST_TYPE:
                             $result = $args[0] instanceof MList;
                             break;
 
-                        case CoreFuncId::VECTOR_TYPE:
+                        case IrCoreFuncId::VECTOR_TYPE:
                             $result = $args[0] instanceof Vector;
                             break;
 
-                        case CoreFuncId::SEQ_TYPE:
+                        case IrCoreFuncId::SEQ_TYPE:
                             $result = $args[0] instanceof Seq;
                             break;
 
-                        case CoreFuncId::HASH_TYPE:
+                        case IrCoreFuncId::HASH_TYPE:
                             $result = $args[0] instanceof Hash;
                             break;
 
-                        case CoreFuncId::SYMBOL_TYPE:
+                        case IrCoreFuncId::SYMBOL_TYPE:
                             $result = $args[0] instanceof Symbol;
                             break;
 
-                        case CoreFuncId::OBJECT_TYPE:
+                        case IrCoreFuncId::OBJECT_TYPE:
                             $value = $args[0];
                             $result = !($value instanceof Func || $value instanceof Collection || $value instanceof Symbol)
                                 && is_object($value);
                             break;
 
-                        case CoreFuncId::RESOURCE_TYPE:
+                        case IrCoreFuncId::RESOURCE_TYPE:
                             $result = is_resource($args[0]);
                             break;
 
-                        case CoreFuncId::BOOL_TYPE:
+                        case IrCoreFuncId::BOOL_TYPE:
                             $result = $args[0] === true || $args[0] === false;
                             break;
 
-                        case CoreFuncId::TRUE:
+                        case IrCoreFuncId::TRUE:
                             $result = $args[0] == true;
                             break;
 
-                        case CoreFuncId::FALSE:
+                        case IrCoreFuncId::FALSE:
                             $result = $args[0] == false;
                             break;
 
-                        case CoreFuncId::NULL_TYPE:
+                        case IrCoreFuncId::NULL_TYPE:
                             $result = $args[0] === null;
                             break;
 
-                        case CoreFuncId::INT_TYPE:
+                        case IrCoreFuncId::INT_TYPE:
                             $result = is_int($args[0]);
                             break;
 
-                        case CoreFuncId::FLOAT_TYPE:
+                        case IrCoreFuncId::FLOAT_TYPE:
                             $result = is_float($args[0]);
                             break;
 
-                        case CoreFuncId::STR_TYPE:
+                        case IrCoreFuncId::STR_TYPE:
                             $result = is_string($args[0]);
                             break;
 
-                        case CoreFuncId::ZERO:
+                        case IrCoreFuncId::ZERO:
                             $result = $args[0] === 0;
                             break;
 
-                        case CoreFuncId::ONE:
+                        case IrCoreFuncId::ONE:
                             $result = $args[0] === 1;
                             break;
 
-                        case CoreFuncId::EVEN:
+                        case IrCoreFuncId::EVEN:
                             $result = $args[0] % 2 === 0;
                             break;
 
-                        case CoreFuncId::ODD:
+                        case IrCoreFuncId::ODD:
                             $result = $args[0] % 2 !== 0;
                             break;
 
-                        case CoreFuncId::TRIM:
+                        case IrCoreFuncId::TRIM:
                             $result = $arity == 1 ? trim($args[0]) : trim($args[0], $args[1]);
                             break;
 
-                        case CoreFuncId::LTRIM:
+                        case IrCoreFuncId::LTRIM:
                             $result = $arity == 1 ? ltrim($args[0]) : ltrim($args[0], $args[1]);
                             break;
 
-                        case CoreFuncId::RTRIM:
+                        case IrCoreFuncId::RTRIM:
                             $result = $arity == 1 ? rtrim($args[0]) : rtrim($args[0], $args[1]);
                             break;
 
-                        case CoreFuncId::UPCASE:
+                        case IrCoreFuncId::UPCASE:
                             $result = strtoupper($args[0]);
                             break;
 
-                        case CoreFuncId::LOWCASE:
+                        case IrCoreFuncId::LOWCASE:
                             $result = strtolower($args[0]);
                             break;
 
-                        case CoreFuncId::STRPOS:
+                        case IrCoreFuncId::STRPOS:
                             $result = $arity == 2
                                 ? strpos($args[0], $args[1])
                                 : strpos($args[0], $args[1], $args[2]);
                             break;
 
-                        case CoreFuncId::STRIPOS:
+                        case IrCoreFuncId::STRIPOS:
                             $result = $arity == 2
                                 ? stripos($args[0], $args[1])
                                 : stripos($args[0], $args[1], $args[2]);
                             break;
 
-                        case CoreFuncId::SUBSTR:
+                        case IrCoreFuncId::SUBSTR:
                             $result = $arity == 2
                                 ? substr($args[0], $args[1])
                                 : substr($args[0], $args[1], $args[2]);
                             break;
 
-                        case CoreFuncId::REPLACE:
+                        case IrCoreFuncId::REPLACE:
                             $result = str_replace($args[1], $args[2], $args[0]);
                             break;
 
-                        case CoreFuncId::SPLIT:
+                        case IrCoreFuncId::SPLIT:
                             $result = new Vector(explode($args[0], $args[1]));
                             break;
 
-                        case CoreFuncId::JOIN:
+                        case IrCoreFuncId::JOIN:
                             $result = implode($args[0], array_slice($args, 1));
                             break;
 
-                        case CoreFuncId::FORMAT:
+                        case IrCoreFuncId::FORMAT:
                             $formatArgs = array_slice($args, 1);
                             $result = sprintf($args[0], ...$formatArgs);
                             break;
 
-                        case CoreFuncId::PREFIX:
+                        case IrCoreFuncId::PREFIX:
                             $result = substr($args[0], 0, strlen($args[1])) === $args[1];
                             break;
 
-                        case CoreFuncId::SUFFIX:
+                        case IrCoreFuncId::SUFFIX:
                             $result = substr($args[0], strlen($args[0]) - strlen($args[1])) === $args[1];
                             break;
 
-                        case CoreFuncId::STRCMP:
+                        case IrCoreFuncId::STRCMP:
                             $result = strcmp($args[0], $args[1]);
                             break;
 
-                        case CoreFuncId::STRCASECMP:
+                        case IrCoreFuncId::STRCASECMP:
                             $result = strcasecmp($args[0], $args[1]);
                             break;
 
-                        case CoreFuncId::STRNATCMP:
+                        case IrCoreFuncId::STRNATCMP:
                             $result = strnatcmp($args[0], $args[1]);
                             break;
 
-                        case CoreFuncId::STRNATCASECMP:
+                        case IrCoreFuncId::STRNATCASECMP:
                             $result = strnatcasecmp($args[0], $args[1]);
                             break;
 
@@ -876,7 +876,7 @@ class Executor
                     $stack[$stackPointer++] = $result;
                     break;
 
-                case OpCode::RETURN:
+                case IrOpCode::RETURN:
                     if ($stackPointer - $frame->stackBase !== 1) {
                         throw new MadLispException('exec: frame must return exactly one value');
                     }
@@ -893,7 +893,7 @@ class Executor
                     if ($caller->collectionOperation !== null) {
                         $state =& $caller->collectionOperation;
                         $index = $state['index'];
-                        if ($state['opcode'] === OpCode::MAP) {
+                        if ($state['opcode'] === IrOpCode::MAP) {
                             $state['result'][] = $result;
                         } else {
                             $state['carry'] = $result;
@@ -902,7 +902,7 @@ class Executor
                         $index++;
                         $state['index'] = $index;
                         if ($index >= $state['count']) {
-                            $final = $state['opcode'] === OpCode::REDUCE
+                            $final = $state['opcode'] === IrOpCode::REDUCE
                                 ? $state['carry']
                                 : $state['sequence']::new($state['result']);
                             $caller->collectionOperation = null;
@@ -923,10 +923,10 @@ class Executor
                         if (count($frame->locals) !== $localCount) {
                             $frame->locals = array_fill(0, $localCount, null);
                         }
-                        $frame->locals[0] = $state['opcode'] === OpCode::REDUCE
+                        $frame->locals[0] = $state['opcode'] === IrOpCode::REDUCE
                             ? $state['carry']
                             : $state['values'][$index];
-                        if ($state['opcode'] === OpCode::REDUCE) {
+                        if ($state['opcode'] === IrOpCode::REDUCE) {
                             $frame->locals[1] = $state['values'][$index];
                         }
 
@@ -950,25 +950,25 @@ class Executor
 
     private function startCompiledCollectionOperation(
         int $opcode,
-        ExecutionFrame $caller,
+        IrExecutionFrame $caller,
         array &$frames,
         array &$stack,
         int &$stackPointer,
-        CompiledFunc $function,
+        IrCompiledFunc $function,
         $sequence,
         array $args
     ): bool {
         if (!($sequence instanceof Seq)) {
             throw new MadLispException('exec: argument to collection operation is not sequence');
         }
-        if ($opcode === OpCode::MAP && count($args) !== 2) {
+        if ($opcode === IrOpCode::MAP && count($args) !== 2) {
             throw new MadLispException('exec: map requires exactly 2 arguments');
         }
-        if ($opcode === OpCode::REDUCE && (count($args) < 2 || count($args) > 3)) {
+        if ($opcode === IrOpCode::REDUCE && (count($args) < 2 || count($args) > 3)) {
             throw new MadLispException('exec: reduce requires 1 or 2 arguments');
         }
 
-        $arity = $opcode === OpCode::MAP ? 1 : 2;
+        $arity = $opcode === IrOpCode::MAP ? 1 : 2;
         if ($function->getArity() !== $arity) {
             throw new MadLispException(sprintf(
                 'exec: compiled function requires exactly %d argument%s',
@@ -978,9 +978,9 @@ class Executor
         }
 
         $values = array_values($sequence->getData());
-        $hasInitial = $opcode === OpCode::REDUCE && count($args) === 3;
-        $index = $opcode === OpCode::REDUCE && !$hasInitial ? 1 : 0;
-        $carry = $opcode === OpCode::REDUCE
+        $hasInitial = $opcode === IrOpCode::REDUCE && count($args) === 3;
+        $index = $opcode === IrOpCode::REDUCE && !$hasInitial ? 1 : 0;
+        $carry = $opcode === IrOpCode::REDUCE
             ? ($hasInitial ? $args[2] : ($values[0] ?? null))
             : null;
 
@@ -996,13 +996,13 @@ class Executor
         ];
 
         if ($index >= count($values)) {
-            $result = $opcode === OpCode::REDUCE ? $carry : $sequence::new([]);
+            $result = $opcode === IrOpCode::REDUCE ? $carry : $sequence::new([]);
             $caller->collectionOperation = null;
             $stack[$stackPointer++] = $result;
             return false;
         }
 
-        $callbackFrame = new ExecutionFrame(
+        $callbackFrame = new IrExecutionFrame(
             $function->getProgram(),
             $function->getEnv(),
             $stackPointer,
@@ -1014,23 +1014,23 @@ class Executor
         return true;
     }
 
-    private function bindCompiledCollectionCallback(ExecutionFrame $frame, array $state): void
+    private function bindCompiledCollectionCallback(IrExecutionFrame $frame, array $state): void
     {
-        $frame->locals[0] = $state['opcode'] === OpCode::REDUCE
+        $frame->locals[0] = $state['opcode'] === IrOpCode::REDUCE
             ? $state['carry']
             : $state['values'][$state['index']];
-        if ($state['opcode'] === OpCode::REDUCE) {
+        if ($state['opcode'] === IrOpCode::REDUCE) {
             $frame->locals[1] = $state['values'][$state['index']];
         }
     }
 
     private function startCollectionContinuation(
         string $type,
-        ExecutionFrame $caller,
+        IrExecutionFrame $caller,
         array &$frames,
         array &$stack,
         int &$stackPointer,
-        CompiledFunc $function,
+        IrCompiledFunc $function,
         Collection $sequence,
         array $args
     ): bool {
@@ -1073,7 +1073,7 @@ class Executor
     }
 
     private function resumeContinuation(
-        ExecutionFrame $caller,
+        IrExecutionFrame $caller,
         array &$frames,
         array &$stack,
         int &$stackPointer,
@@ -1135,10 +1135,10 @@ class Executor
         array &$frames,
         array &$stack,
         int &$stackPointer,
-        CompiledFunc $function,
+        IrCompiledFunc $function,
         array $args
     ): void {
-        $frame = new ExecutionFrame(
+        $frame = new IrExecutionFrame(
             $function->getProgram(),
             $function->getEnv(),
             $stackPointer,

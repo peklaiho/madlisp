@@ -7,19 +7,19 @@
 
 namespace MadLisp;
 
-class CompileScope
+class IrCompileScope
 {
     protected array $locals = [];
-    protected ?CompileScope $parent;
-    protected CompileScope $root;
+    protected ?IrCompileScope $parent;
+    protected IrCompileScope $root;
     protected int $nextSlot = 0;
     protected bool $functionBoundary;
-    protected ?CompileScope $functionOwner;
+    protected ?IrCompileScope $functionOwner;
     protected array $captures = [];
     protected array $captureSources = [];
 
     public function __construct(
-        ?CompileScope $parent = null,
+        ?IrCompileScope $parent = null,
         bool $functionBoundary = false,
         bool $isolatedSlots = false
     ) {
@@ -29,14 +29,14 @@ class CompileScope
         $this->functionOwner = $functionBoundary ? $this : $parent?->functionOwner;
     }
 
-    public function child(): CompileScope
+    public function child(): IrCompileScope
     {
-        return new CompileScope($this);
+        return new IrCompileScope($this);
     }
 
-    public function functionChild(): CompileScope
+    public function functionChild(): IrCompileScope
     {
-        return new CompileScope($this, true, true);
+        return new IrCompileScope($this, true, true);
     }
 
     public function allocate(): int

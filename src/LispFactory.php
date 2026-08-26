@@ -13,9 +13,9 @@ class LispFactory
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
-        $compiler = new Compiler();
-        $loader = new CompiledLoader($tokenizer, $reader, $compiler);
-        $executor = new Executor($loader);
+        $compiler = new IrCompiler();
+        $loader = new IrCompiledLoader($tokenizer, $reader, $compiler);
+        $executor = new IrExecutor($loader);
         $printer = new Printer();
         $eval = new Evaller($tokenizer, $reader, $printer, $safemode);
 

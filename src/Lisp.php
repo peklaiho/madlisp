@@ -12,8 +12,8 @@ class Lisp
     public function __construct(
         protected Tokenizer $tokenizer,
         protected Reader $reader,
-        protected Compiler $compiler,
-        protected Executor $executor,
+        protected IrCompiler $compiler,
+        protected IrExecutor $executor,
         protected Evaller $eval,
         protected Printer $printer,
         protected Env $env
@@ -21,12 +21,12 @@ class Lisp
 
     }
 
-    public function compile($ast): CompiledProgram
+    public function compile($ast): IrCompiledProgram
     {
         return $this->compiler->compile($ast);
     }
 
-    public function execute(CompiledProgram $program, ?Env $customEnv = null)
+    public function execute(IrCompiledProgram $program, ?Env $customEnv = null)
     {
         return $this->executor->execute($program, $customEnv ? $customEnv : $this->env);
     }

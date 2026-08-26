@@ -7,7 +7,7 @@
 
 namespace MadLisp;
 
-class ExecutionFrame
+class IrExecutionFrame
 {
     public int $pc = 0;
     public array $locals;
@@ -15,7 +15,7 @@ class ExecutionFrame
     public ?array $collectionOperation = null;
 
     public function __construct(
-        public CompiledProgram $program,
+        public IrCompiledProgram $program,
         public Env $env,
         public int $stackBase = 0,
         public ?int $returnPc = null,

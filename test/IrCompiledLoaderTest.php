@@ -7,15 +7,15 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\CompiledLoader;
-use MadLisp\CompiledProgram;
-use MadLisp\Compiler;
-use MadLisp\CoreFuncId;
-use MadLisp\OpCode;
+use MadLisp\IrCompiledLoader;
+use MadLisp\IrCompiledProgram;
+use MadLisp\IrCompiler;
+use MadLisp\IrCoreFuncId;
+use MadLisp\IrOpCode;
 use MadLisp\Reader;
 use MadLisp\Tokenizer;
 
-class CompiledLoaderTest extends TestCase
+class IrCompiledLoaderTest extends TestCase
 {
     public function testLoadsFile(): void
     {
@@ -23,15 +23,15 @@ class CompiledLoaderTest extends TestCase
         file_put_contents($filename, '(+ 1 2)');
 
         try {
-            $loader = new CompiledLoader(new Tokenizer(), new Reader(), new Compiler());
+            $loader = new IrCompiledLoader(new Tokenizer(), new Reader(), new IrCompiler());
             $program = $loader->load($filename);
 
-            $this->assertInstanceOf(CompiledProgram::class, $program);
+            $this->assertInstanceOf(IrCompiledProgram::class, $program);
             $this->assertSame([
-                OpCode::LOAD_CONSTANT, 0,
-                OpCode::LOAD_CONSTANT, 1,
-                OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-                OpCode::RETURN,
+                IrOpCode::LOAD_CONSTANT, 0,
+                IrOpCode::LOAD_CONSTANT, 1,
+                IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+                IrOpCode::RETURN,
             ], $program->getCode());
             $this->assertSame([1, 2], $program->getConstants());
             $this->assertSame(0, $program->getLocalCount());

@@ -7,19 +7,19 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\CompiledFunc;
-use MadLisp\CompiledProgram;
+use MadLisp\IrCompiledFunc;
+use MadLisp\IrCompiledProgram;
 use MadLisp\Env;
 use MadLisp\MadLispException;
 
-class CompiledFuncTest extends TestCase
+class IrCompiledFuncTest extends TestCase
 {
     public function testExposesCompiledFunctionState(): void
     {
-        $program = new CompiledProgram([], [], 0);
+        $program = new IrCompiledProgram([], [], 0);
         $env = new Env('root');
         $captures = ['value'];
-        $function = new CompiledFunc($program, $env, 2, $captures);
+        $function = new IrCompiledFunc($program, $env, 2, $captures);
 
         $this->assertSame($program, $function->getProgram());
         $this->assertSame($env, $function->getEnv());
@@ -29,7 +29,7 @@ class CompiledFuncTest extends TestCase
 
     public function testCannotBeCalledDirectly(): void
     {
-        $function = new CompiledFunc(new CompiledProgram([], [], 0), new Env('root'), 0);
+        $function = new IrCompiledFunc(new IrCompiledProgram([], [], 0), new Env('root'), 0);
 
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('compiled function must be invoked by executor');

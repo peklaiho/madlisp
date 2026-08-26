@@ -7,17 +7,17 @@
 
 namespace MadLisp;
 
-class CompiledLoader
+class IrCompiledLoader
 {
     public function __construct(
         private Tokenizer $tokenizer,
         private Reader $reader,
-        private Compiler $compiler
+        private IrCompiler $compiler
     ) {
 
     }
 
-    public function load(string $filename): CompiledProgram
+    public function load(string $filename): IrCompiledProgram
     {
         $targetFile = realpath(str_replace('~', getenv('HOME') ?: '~', $filename));
         if (!$targetFile || !is_readable($targetFile)) {

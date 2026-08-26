@@ -7,10 +7,10 @@
 
 namespace MadLisp;
 
-class CompiledFuncTemplate
+class IrCompiledFuncTemplate
 {
     public function __construct(
-        public CompiledProgram $program,
+        public IrCompiledProgram $program,
         public int $arity,
         public array $captureSources
     ) {

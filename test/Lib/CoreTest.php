@@ -7,15 +7,15 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\Compiler;
-use MadLisp\CompiledProgram;
-use MadLisp\CoreFuncId;
+use MadLisp\IrCompiler;
+use MadLisp\IrCompiledProgram;
+use MadLisp\IrCoreFuncId;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Func;
 use MadLisp\MadLispUserException;
 use MadLisp\MList;
-use MadLisp\OpCode;
+use MadLisp\IrOpCode;
 use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Symbol;
@@ -40,12 +40,12 @@ class CoreTest extends TestCase
 
         $program = $env->get('compile')->call([$ast]);
 
-        $this->assertInstanceOf(CompiledProgram::class, $program);
+        $this->assertInstanceOf(IrCompiledProgram::class, $program);
         $this->assertSame([
-            OpCode::LOAD_CONSTANT, 0,
-            OpCode::LOAD_CONSTANT, 1,
-            OpCode::CALL_CORE, CoreFuncId::ADD, 2,
-            OpCode::RETURN,
+            IrOpCode::LOAD_CONSTANT, 0,
+            IrOpCode::LOAD_CONSTANT, 1,
+            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
+            IrOpCode::RETURN,
         ], $program->getCode());
         $this->assertSame([1, 2], $program->getConstants());
     }
@@ -265,7 +265,7 @@ class CoreTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
-        $compiler = new Compiler();
+        $compiler = new IrCompiler();
         $printer = new Printer();
         $evaller = new Evaller($tokenizer, $reader, $printer, $safemode);
 
