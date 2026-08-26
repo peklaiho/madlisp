@@ -1,0 +1,21 @@
+#!/usr/bin/env php
+<?php
+require(__DIR__ . '/../vendor/autoload.php');
+
+if ($argc != 2) {
+    echo "Enter Lisp expression as argument.\n";
+    exit(1);
+}
+
+$reader = new \MadLisp\Reader();
+$tokenizer = new \MadLisp\Tokenizer();
+$compiler = new \MadLisp\PhpCompiler();
+
+$program = $compiler->compile($reader->read($tokenizer->tokenize($argv[1])));
+
+echo $program->getSource() . "\n";
+
+$env = new \MadLisp\Env('root');
+$result = $program->execute($env);
+
+var_dump($result);
