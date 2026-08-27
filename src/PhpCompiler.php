@@ -12,14 +12,22 @@ class PhpCompiler
     private int $temporaryCount;
     private int $localCount;
     private array $scopes;
+    private array $functionScopes;
+    private array $functionCaptures;
 
     public function compile($ast): PhpCompiledProgram
     {
         $this->temporaryCount = 0;
         $this->localCount = 0;
         $this->scopes = [[]];
+        $this->functionScopes = [];
+        $this->functionCaptures = [];
         $body = [];
         $this->compileExpression($ast, $body, '$result', 1);
+
+        if (count($this->scopes) !== 1 || $this->functionScopes || $this->functionCaptures) {
+            throw new MadLispException('php compiler scope cleanup failed');
+        }
 
         $source = implode("\n", array_merge(
             ['return static function (\\MadLisp\\Env $env) {'],
@@ -59,8 +67,13 @@ class PhpCompiler
         }
 
         $data = $ast->getData();
-        if (!$data || !($data[0] instanceof Symbol)) {
+        if (!$data) {
             throw new MadLispException('php compiler requires a supported operator');
+        }
+
+        if (!($data[0] instanceof Symbol)) {
+            $this->compileCall($data, $body, $target, $indent);
+            return;
         }
 
         $operator = $data[0]->getName();
@@ -78,6 +91,16 @@ class PhpCompiler
 
         if ($operator === 'do') {
             $this->compileDo($arguments, $body, $target, $indent);
+            return;
+        }
+
+        if ($operator === 'fn') {
+            $this->compileFn($arguments, $body, $target, $indent);
+            return;
+        }
+
+        if ($this->resolveLocal($operator) !== null) {
+            $this->compileCall($data, $body, $target, $indent);
             return;
         }
 
@@ -146,25 +169,22 @@ class PhpCompiler
 
         $this->scopes[] = [];
 
-        try {
-            for ($i = 0; $i < count($bindingData); $i += 2) {
-                if (!($bindingData[$i] instanceof Symbol)) {
-                    throw new MadLispException('binding key for let is not symbol');
-                }
-
-                // Compile the value before adding the name to the scope.
-                $value = $this->temporary();
-                $this->compileExpression($bindingData[$i + 1], $body, $value, $indent);
-
-                $local = '$v' . $this->localCount++;
-                $this->emit($body, $indent, "$local = $value;");
-                $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
+        for ($i = 0; $i < count($bindingData); $i += 2) {
+            if (!($bindingData[$i] instanceof Symbol)) {
+                throw new MadLispException('binding key for let is not symbol');
             }
 
-            $this->compileDo(array_slice($arguments, 1), $body, $target, $indent);
-        } finally {
-            array_pop($this->scopes);
+            // Compile the value before adding the name to the scope.
+            $value = $this->temporary();
+            $this->compileExpression($bindingData[$i + 1], $body, $value, $indent);
+
+            $local = '$v' . $this->localCount++;
+            $this->emit($body, $indent, "$local = $value;");
+            $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
         }
+
+        $this->compileDo(array_slice($arguments, 1), $body, $target, $indent);
+        array_pop($this->scopes);
     }
 
     private function compileDo(array $arguments, array &$body, string $target, int $indent): void
@@ -179,6 +199,60 @@ class PhpCompiler
             $expressionTarget = $index === $last ? $target : $this->temporary();
             $this->compileExpression($argument, $body, $expressionTarget, $indent);
         }
+    }
+
+    private function compileFn(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== 2) {
+            throw new MadLispException('fn requires exactly 2 arguments');
+        }
+
+        $parameters = $arguments[0];
+        if (!($parameters instanceof Seq)) {
+            throw new MadLispException('first argument to fn is not seq');
+        }
+
+        $parameterNames = [];
+        $parameterVariables = [];
+        foreach ($parameters->getData() as $parameter) {
+            if (!($parameter instanceof Symbol)) {
+                throw new MadLispException('parameter for fn is not symbol');
+            }
+
+            $name = $parameter->getName();
+            if ($name === '&') {
+                throw new MadLispException('variadic parameters are not supported for compiled fn');
+            }
+            if (array_key_exists($name, $parameterNames)) {
+                throw new MadLispException("duplicate parameter $name for fn");
+            }
+
+            $variable = '$v' . $this->localCount++;
+            $parameterNames[$name] = $variable;
+            $parameterVariables[] = $variable;
+        }
+
+        $this->scopes[] = $parameterNames;
+        $this->functionScopes[] = count($this->scopes) - 1;
+        $this->functionCaptures[] = [];
+
+        $functionBody = [];
+        $this->compileExpression($arguments[1], $functionBody, '$result', $indent + 1);
+        $this->emit($functionBody, $indent + 1, 'return $result;');
+
+        $captures = array_values($this->functionCaptures[array_key_last($this->functionCaptures)]);
+        array_pop($this->functionCaptures);
+        array_pop($this->functionScopes);
+        array_pop($this->scopes);
+
+        $use = array_merge(['$env'], $captures);
+        $this->emit(
+            $body,
+            $indent,
+            "$target = static function (" . implode(', ', $parameterVariables) . ") use (" . implode(', ', $use) . ') {'
+        );
+        array_push($body, ...$functionBody);
+        $this->emit($body, $indent, '};');
     }
 
     private function compileIf(array $arguments, array &$body, string $target, int $indent): void
@@ -200,6 +274,25 @@ class PhpCompiler
         }
 
         $this->emit($body, $indent, '}');
+    }
+
+    private function compileCall(array $data, array &$body, string $target, int $indent): void
+    {
+        $functionExpression = $data[0];
+        if ($functionExpression instanceof Symbol) {
+            $function = $this->resolveLocal($functionExpression->getName());
+            if ($function === null) {
+                throw new MadLispException(
+                    "php compiler does not support calls to global function {$functionExpression->getName()}"
+                );
+            }
+        } else {
+            $function = $this->temporary();
+            $this->compileExpression($functionExpression, $body, $function, $indent);
+        }
+
+        $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
+        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
     }
 
     private function compileArguments(array $arguments, array &$body, int $indent): array
@@ -277,9 +370,18 @@ class PhpCompiler
     private function resolveLocal(string $name): ?string
     {
         for ($i = count($this->scopes) - 1; $i >= 0; $i--) {
-            if (array_key_exists($name, $this->scopes[$i])) {
-                return $this->scopes[$i][$name];
+            if (!array_key_exists($name, $this->scopes[$i])) {
+                continue;
             }
+
+            $local = $this->scopes[$i][$name];
+            foreach ($this->functionScopes as $functionIndex => $functionScope) {
+                if ($i < $functionScope) {
+                    $this->functionCaptures[$functionIndex][$name] = $local;
+                }
+            }
+
+            return $local;
         }
 
         return null;
