@@ -8,6 +8,7 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\Env;
+use MadLisp\MadLispException;
 use MadLisp\MList;
 use MadLisp\PhpCompiledProgram;
 use MadLisp\PhpCompiler;
@@ -97,4 +98,74 @@ class PhpCompilerTest extends TestCase
         $this->assertInstanceOf(PhpCompiledProgram::class, $program);
         $this->assertNull($program->execute($env));
     }
+
+    public function testLooksUpUnboundSymbolInEnvironment(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('value', 42);
+
+        $program = $compiler->compile(new Symbol('value'));
+
+        $this->assertSame(42, $program->execute($env));
+    }
+
+    public function testLooksUpUnboundSymbolInParentEnvironment(): void
+    {
+        $compiler = new PhpCompiler();
+        $parent = new Env('parent');
+        $env = new Env('child', $parent);
+        $parent->set('value', 42);
+
+        $program = $compiler->compile(new Symbol('value'));
+
+        $this->assertSame(42, $program->execute($env));
+    }
+
+    public function testThrowsWhenUnboundSymbolIsMissingFromEnvironment(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $program = $compiler->compile(new Symbol('missing'));
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('symbol missing not defined in env');
+        $program->execute($env);
+    }
+
+    public function testLocalLetBindingShadowsEnvironmentBinding(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('value', 10);
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([new Symbol('value'), 20]),
+            new Symbol('value'),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(20, $program->execute($env));
+    }
+
+    public function testLetInitializerCanReadEnvironmentBinding(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('value', 10);
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([
+                new Symbol('result'),
+                new MList([new Symbol('+'), new Symbol('value'), 5]),
+            ]),
+            new Symbol('result'),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(15, $program->execute($env));
+    }
 }
+
