@@ -8,13 +8,13 @@
 namespace MadLisp\Lib;
 
 use MadLisp\Collection;
-use MadLisp\IrCompiler;
 use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Func;
 use MadLisp\MadLispUserException;
 use MadLisp\MList;
+use MadLisp\PhpCompiler;
 use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Symbol;
@@ -27,7 +27,7 @@ class Core implements ILib
     public function __construct(
         protected Tokenizer $tokenizer,
         protected Reader $reader,
-        protected IrCompiler $compiler,
+        protected PhpCompiler $compiler,
         protected Printer $printer,
         protected Evaller $evaller,
         protected bool $safemode
@@ -43,7 +43,7 @@ class Core implements ILib
             $env->set('__DIR__', null);
         }
 
-        $env->set('compile', new CoreFunc('compile', 'Compile Lisp code.', 1, 1,
+        $env->set('compile', new CoreFunc('compile', 'Compile Lisp code into PHP code.', 1, 1,
             function ($ast) {
                 return $this->compiler->compile($ast);
             }

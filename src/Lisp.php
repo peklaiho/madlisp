@@ -12,8 +12,7 @@ class Lisp
     public function __construct(
         protected Tokenizer $tokenizer,
         protected Reader $reader,
-        protected IrCompiler $compiler,
-        protected IrExecutor $executor,
+        protected PhpCompiler $compiler,
         protected Evaller $eval,
         protected Printer $printer,
         protected Env $env
@@ -21,14 +20,14 @@ class Lisp
 
     }
 
-    public function compile($ast): IrCompiledProgram
+    public function compile($ast): PhpCompiledProgram
     {
         return $this->compiler->compile($ast);
     }
 
-    public function execute(IrCompiledProgram $program, ?Env $customEnv = null)
+    public function execute(PhpCompiledProgram $program, ?Env $customEnv = null)
     {
-        return $this->executor->execute($program, $customEnv ? $customEnv : $this->env);
+        return $program->execute($customEnv ? $customEnv : $this->env);
     }
 
     public function getEnv(): Env
@@ -68,7 +67,7 @@ class Lisp
 
         $program = $this->compiler->compile($expr);
 
-        return $this->executor->execute($program, $customEnv ? $customEnv : $this->env);
+        return $program->execute($customEnv ? $customEnv : $this->env);
     }
 
     // read, eval, print

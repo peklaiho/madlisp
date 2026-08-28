@@ -7,15 +7,13 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\IrCompiler;
-use MadLisp\IrCompiledProgram;
-use MadLisp\IrCoreFuncId;
+use MadLisp\PhpCompiler;
+use MadLisp\PhpCompiledProgram;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Func;
 use MadLisp\MadLispUserException;
 use MadLisp\MList;
-use MadLisp\IrOpCode;
 use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Symbol;
@@ -40,14 +38,8 @@ class CoreTest extends TestCase
 
         $program = $env->get('compile')->call([$ast]);
 
-        $this->assertInstanceOf(IrCompiledProgram::class, $program);
-        $this->assertSame([
-            IrOpCode::LOAD_CONSTANT, 0,
-            IrOpCode::LOAD_CONSTANT, 1,
-            IrOpCode::CALL_CORE, IrCoreFuncId::ADD, 2,
-            IrOpCode::RETURN,
-        ], $program->getCode());
-        $this->assertSame([1, 2], $program->getConstants());
+        $this->assertInstanceOf(PhpCompiledProgram::class, $program);
+        $this->assertSame(3, $program->execute($env));
     }
 
     public function testDebug()
@@ -265,7 +257,7 @@ class CoreTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
-        $compiler = new IrCompiler();
+        $compiler = new PhpCompiler();
         $printer = new Printer();
         $evaller = new Evaller($tokenizer, $reader, $printer, $safemode);
 
