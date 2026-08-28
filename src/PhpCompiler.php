@@ -9,6 +9,12 @@ namespace MadLisp;
 
 class PhpCompiler
 {
+    private const RESERVED_DEFINITION_NAMES = [
+        'if', 'let', 'do', 'fn', 'quote', 'def',
+        '+', '-', '*', '/', '==', '=', '<', '<=', '>', '>=',
+        'inc', 'dec', 'not',
+    ];
+
     private int $temporaryCount;
     private int $localCount;
     private array $scopes;
@@ -79,6 +85,16 @@ class PhpCompiler
         $operator = $data[0]->getName();
         $arguments = array_slice($data, 1);
 
+        if ($operator === 'quote') {
+            $this->compileQuote($arguments, $body, $target, $indent);
+            return;
+        }
+
+        if ($operator === 'def') {
+            $this->compileDef($arguments, $body, $target, $indent);
+            return;
+        }
+
         if ($operator === 'if') {
             $this->compileIf($arguments, $body, $target, $indent);
             return;
@@ -101,6 +117,11 @@ class PhpCompiler
 
         if ($this->resolveLocal($operator) !== null) {
             $this->compileCall($data, $body, $target, $indent);
+            return;
+        }
+
+        if (!in_array($operator, self::RESERVED_DEFINITION_NAMES, true)) {
+            $this->compileDynamicCall($operator, $arguments, $body, $target, $indent);
             return;
         }
 
@@ -149,6 +170,68 @@ class PhpCompiler
             default:
                 throw new MadLispException("php compiler does not support $operator");
         }
+    }
+
+    private function compileQuote(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== 1) {
+            throw new MadLispException('quote requires exactly 1 argument');
+        }
+
+        $this->emit($body, $indent, "$target = " . $this->quotedValueExpression($arguments[0]) . ';');
+    }
+
+    private function compileDef(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== 2) {
+            throw new MadLispException('def requires exactly 2 arguments');
+        }
+        if (!($arguments[0] instanceof Symbol)) {
+            throw new MadLispException('first argument to def is not symbol');
+        }
+
+        $name = $arguments[0]->getName();
+        if ($name === '__FILE__' || $name === '__DIR__') {
+            throw new MadLispException("cannot define reserved name $name");
+        }
+        if (in_array($name, self::RESERVED_DEFINITION_NAMES, true)) {
+            throw new MadLispException("cannot redefine core operator $name");
+        }
+
+        $value = $this->temporary();
+        $this->compileExpression($arguments[1], $body, $value, $indent);
+        $this->emit($body, $indent, "$target = \$env->set(" . var_export($name, true) . ", $value);");
+    }
+
+    private function quotedValueExpression($value): string
+    {
+        if ($value === null || is_bool($value) || is_int($value) || is_float($value) || is_string($value)) {
+            return var_export($value, true);
+        }
+        if ($value instanceof Symbol) {
+            return 'new \\MadLisp\\Symbol(' . var_export($value->getName(), true) . ')';
+        }
+        if ($value instanceof MList) {
+            return 'new \\MadLisp\\MList([' . implode(', ', array_map(
+                fn ($item) => $this->quotedValueExpression($item),
+                $value->getData()
+            )) . '])';
+        }
+        if ($value instanceof Vector) {
+            return 'new \\MadLisp\\Vector([' . implode(', ', array_map(
+                fn ($item) => $this->quotedValueExpression($item),
+                $value->getData()
+            )) . '])';
+        }
+        if ($value instanceof Hash) {
+            $items = [];
+            foreach ($value->getData() as $key => $item) {
+                $items[] = var_export($key, true) . ' => ' . $this->quotedValueExpression($item);
+            }
+            return 'new \\MadLisp\\Hash([' . implode(', ', $items) . '])';
+        }
+
+        throw new MadLispException('php compiler does not support this quoted value');
     }
 
     private function compileLet(array $arguments, array &$body, string $target, int $indent): void
@@ -274,6 +357,19 @@ class PhpCompiler
         }
 
         $this->emit($body, $indent, '}');
+    }
+
+    private function compileDynamicCall(
+        string $name,
+        array $arguments,
+        array &$body,
+        string $target,
+        int $indent
+    ): void {
+        $function = $this->temporary();
+        $this->emit($body, $indent, "$function = \$env->get(" . var_export($name, true) . ');');
+        $values = $this->compileArguments($arguments, $body, $indent);
+        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
     }
 
     private function compileCall(array $data, array &$body, string $target, int $indent): void

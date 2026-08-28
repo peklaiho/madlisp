@@ -24,6 +24,11 @@ class CoreFunc extends Func
         $this->maxArgs = $maxArgs;
     }
 
+    public function __invoke(...$args)
+    {
+        return ($this->closure)(...$args);
+    }
+
     public function call(array $args)
     {
         $this->validateArgs(count($args));

@@ -7,15 +7,233 @@
 
 use PHPUnit\Framework\TestCase;
 
+use MadLisp\CoreFunc;
 use MadLisp\Env;
+use MadLisp\Hash;
 use MadLisp\MadLispException;
 use MadLisp\MList;
 use MadLisp\PhpCompiledProgram;
 use MadLisp\PhpCompiler;
 use MadLisp\Symbol;
+use MadLisp\Vector;
 
 class PhpCompilerTest extends TestCase
 {
+    public function testCompilesQuotedSymbolWithoutEnvironmentLookup(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([new Symbol('quote'), new Symbol('+')]);
+
+        $program = $compiler->compile($ast);
+        $value = $program->execute($env);
+
+        $this->assertInstanceOf(Symbol::class, $value);
+        $this->assertSame('+', $value->getName());
+    }
+
+    public function testCompilesQuotedNestedListAsData(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('quote'),
+            new MList([
+                new Symbol('a'),
+                new MList([new Symbol('+'), 1, new Symbol('b')]),
+                new Vector([new Symbol('c'), 2]),
+                new Hash(['key' => new Symbol('value')]),
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+        $value = $program->execute($env);
+
+        $this->assertInstanceOf(MList::class, $value);
+        $this->assertInstanceOf(Symbol::class, $value->getData()[0]);
+        $this->assertSame('a', $value->getData()[0]->getName());
+        $this->assertInstanceOf(MList::class, $value->getData()[1]);
+        $this->assertSame('+', $value->getData()[1]->getData()[0]->getName());
+        $this->assertInstanceOf(Vector::class, $value->getData()[2]);
+        $this->assertInstanceOf(Hash::class, $value->getData()[3]);
+    }
+
+    public function testQuotedValueCanBeReturnedFromFunction(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new MList([
+                new Symbol('fn'),
+                new MList([]),
+                new MList([new Symbol('quote'), new MList([new Symbol('value')])]),
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+        $value = $program->execute($env);
+
+        $this->assertInstanceOf(MList::class, $value);
+        $this->assertSame('value', $value->getData()[0]->getName());
+    }
+
+    public function testDefStoresValueInExecutionEnvironment(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('do'),
+            new MList([new Symbol('def'), new Symbol('answer'), 42]),
+            new Symbol('answer'),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(42, $program->execute($env));
+        $this->assertSame(42, $env->get('answer'));
+    }
+
+    public function testDefEvaluatesInitializerBeforeAssignment(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('value', 10);
+        $ast = new MList([
+            new Symbol('def'),
+            new Symbol('value'),
+            new MList([new Symbol('+'), new Symbol('value'), 5]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(15, $program->execute($env));
+        $this->assertSame(15, $env->get('value'));
+    }
+
+    public function testDefRejectsReservedNamesAndCoreOperators(): void
+    {
+        foreach (['__FILE__', '__DIR__', '+'] as $name) {
+            $compiler = new PhpCompiler();
+            $ast = new MList([new Symbol('def'), new Symbol($name), 1]);
+
+            $this->expectException(MadLispException::class);
+            $compiler->compile($ast);
+        }
+    }
+
+    public function testQuoteAndDefValidateTheirArguments(): void
+    {
+        $compiler = new PhpCompiler();
+
+        $this->expectExceptionMessage('quote requires exactly 1 argument');
+        $compiler->compile(new MList([new Symbol('quote')]));
+    }
+
+    public function testDefRequiresSymbolName(): void
+    {
+        $compiler = new PhpCompiler();
+
+        $this->expectExceptionMessage('first argument to def is not symbol');
+        $compiler->compile(new MList([new Symbol('def'), 1, 2]));
+    }
+
+    public function testMapsAndReducesUsingGeneratedFunctionAndCoreFunctions(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('map', new CoreFunc(
+            'map',
+            'doc',
+            2,
+            2,
+            fn (callable $function, Vector $values): Vector => new Vector(
+                array_map($function, $values->getData())
+            )
+        ));
+        $env->set('reduce', new CoreFunc(
+            'reduce',
+            'doc',
+            2,
+            3,
+            fn (callable $function, Vector $values, $initial = null) => array_reduce(
+                $values->getData(),
+                $function,
+                $initial
+            )
+        ));
+        $env->set('+', new CoreFunc('+', 'doc', 1, -1, fn (...$values) => array_sum($values)));
+
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([
+                new Symbol('double'),
+                new MList([
+                    new Symbol('fn'),
+                    new MList([new Symbol('value')]),
+                    new MList([new Symbol('*'), new Symbol('value'), 2]),
+                ]),
+            ]),
+            new MList([
+                new Symbol('reduce'),
+                new Symbol('+'),
+                new MList([
+                    new Symbol('map'),
+                    new Symbol('double'),
+                    new MList([
+                        new Symbol('quote'),
+                        new Vector([1, 2, 3, 4]),
+                    ]),
+                ]),
+                0,
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(20, $program->execute($env));
+    }
+
+    public function testCallsCoreFuncFromEnvironment(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('triple', new CoreFunc('triple', 'doc', 1, 1, fn ($value) => $value * 3));
+        $ast = new MList([new Symbol('triple'), 14]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(42, $program->execute($env));
+    }
+
+    public function testCallsGeneratedClosureFromEnvironment(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('double', fn ($value) => $value * 2);
+        $ast = new MList([new Symbol('double'), 21]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(42, $program->execute($env));
+    }
+
+    public function testDynamicCallEvaluatesArgumentsInOrder(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('collect', new CoreFunc('collect', 'doc', 0, -1, fn (...$args) => $args));
+        $ast = new MList([
+            new Symbol('collect'),
+            new MList([new Symbol('def'), new Symbol('first'), 1]),
+            new MList([new Symbol('def'), new Symbol('second'), 2]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame([1, 2], $program->execute($env));
+        $this->assertSame(2, $env->get('second'));
+    }
+
     public function testCompilesAndExecutesArithmetic(): void
     {
         $compiler = new PhpCompiler();
