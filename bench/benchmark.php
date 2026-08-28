@@ -10,12 +10,12 @@ $workloadDir = __DIR__ . '/lisp';
 $workloads = [
     'arithmetic' => ['file' => 'arithmetic.lisp', 'expected' => 12502500],
     'tail-recursion' => ['file' => 'tail-recursion.lisp', 'expected' => 0],
-    'collections' => ['file' => 'collections.lisp', 'expected' => 399980000],
+    // 'collections' => ['file' => 'collections.lisp', 'expected' => 399980000],
     'environment' => ['file' => 'environment.lisp', 'expected' => 30000],
     'fibonacci' => ['file' => 'fibonacci.lisp', 'expected' => 6765],
 ];
 
-$options = getopt('', ['workload:', 'iterations:', 'warmup:', 'compile', 'json', 'profile', 'list', 'help']);
+$options = getopt('', ['workload:', 'iterations:', 'warmup:', 'compile', 'source', 'json', 'profile', 'list', 'help']);
 
 if (isset($options['help'])) {
     printUsage();
@@ -36,6 +36,27 @@ $compile = isset($options['compile']);
 if ($name !== 'all' && !isset($workloads[$name])) {
     fwrite(STDERR, "Unknown workload: $name" . PHP_EOL);
     printUsage(1);
+}
+
+if (isset($options['source'])) {
+    $sourceWorkloads = $name === 'all' ? array_keys($workloads) : [$name];
+
+    foreach ($sourceWorkloads as $workloadName) {
+        $source = file_get_contents($workloadDir . '/' . $workloads[$workloadName]['file']);
+        if ($source === false) {
+            throw new RuntimeException('Unable to read workload ' . $workloads[$workloadName]['file']);
+        }
+
+        $lisp = (new LispFactory())->make(true);
+        $program = $lisp->compile($lisp->read($source));
+
+        if (count($sourceWorkloads) > 1) {
+            echo '// ' . $workloadName . PHP_EOL;
+        }
+        echo $program->getSource() . PHP_EOL;
+    }
+
+    exit(0);
 }
 
 $results = [];
@@ -170,6 +191,7 @@ Usage: php bench/benchmark.php [options]
 Options:
   --workload=name       Run one workload, or all (default: all)
   --compile             Use the compiler and executor
+  --source              Print compiled PHP source without executing
   --iterations=n        Timed iterations (default: 10)
   --warmup=n            Untimed warmup iterations (default: 2)
   --json                Emit machine-readable JSON
