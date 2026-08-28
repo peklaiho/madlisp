@@ -258,11 +258,15 @@ class PhpCompiler
             }
 
             // Compile the value before adding the name to the scope.
-            $value = $this->temporary();
-            $this->compileExpression($bindingData[$i + 1], $body, $value, $indent);
-
             $local = '$v' . $this->localCount++;
-            $this->emit($body, $indent, "$local = $value;");
+            $simple = $this->compileSimpleExpression($bindingData[$i + 1]);
+            if ($simple !== null) {
+                $this->emit($body, $indent, "$local = $simple;");
+            } else {
+                $value = $this->temporary();
+                $this->compileExpression($bindingData[$i + 1], $body, $value, $indent);
+                $this->emit($body, $indent, "$local = $value;");
+            }
             $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
         }
 
@@ -395,12 +399,31 @@ class PhpCompiler
     {
         $values = [];
         foreach ($arguments as $argument) {
+            $simple = $this->compileSimpleExpression($argument);
+            if ($simple !== null) {
+                $values[] = $simple;
+                continue;
+            }
+
             $value = $this->temporary();
             $this->compileExpression($argument, $body, $value, $indent);
             $values[] = $value;
         }
 
         return $values;
+    }
+
+    private function compileSimpleExpression($ast): ?string
+    {
+        if ($ast === null || is_bool($ast) || is_int($ast) || is_float($ast) || is_string($ast)) {
+            return var_export($ast, true);
+        }
+
+        if ($ast instanceof Symbol) {
+            return $this->resolveLocal($ast->getName());
+        }
+
+        return null;
     }
 
     private function compileArithmetic(
