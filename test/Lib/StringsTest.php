@@ -58,6 +58,22 @@ class StringsTest extends TestCase
         $this->assertSame('', $fn->call(['']));
     }
 
+    public function testStrlen(): void
+    {
+        $fn = $this->getEnv()->get('strlen');
+
+        $this->assertSame(5, $fn->call(['hello']));
+        $this->assertSame(0, $fn->call(['']));
+    }
+
+    public function testStrrev(): void
+    {
+        $fn = $this->getEnv()->get('strrev');
+
+        $this->assertSame('olleh', $fn->call(['hello']));
+        $this->assertSame('', $fn->call(['']));
+    }
+
     public function testStrpos(): void
     {
         $fn = $this->getEnv()->get('strpos');

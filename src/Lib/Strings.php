@@ -78,6 +78,14 @@ class Strings implements ILib
             }
         ));
 
+        $env->set('strlen', new CoreFunc('strlen', 'Return length of a string.', 1, 1,
+            fn (string $a) => strlen($a)
+        ));
+
+        $env->set('strrev', new CoreFunc('strrev', 'Reverse a string.', 1, 1,
+            fn (string $a) => strrev($a)
+        ));
+
         $env->set('substr', new CoreFunc('substr', 'Return substring starting from index as second argument and length as optional third argument.', 2, 3,
             function (string $str, int $idx, ?int $len = null) {
                 if (func_num_args() == 2) {

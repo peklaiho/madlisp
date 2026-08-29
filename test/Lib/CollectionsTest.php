@@ -100,15 +100,11 @@ class CollectionsTest extends TestCase
         $this->assertFalse($function->call([new Vector([1])]));
         $this->assertFalse($function->call([new Hash(['a' => 1])]));
 
-        // Strings
-        $this->assertTrue($function->call(['']));
-        $this->assertFalse($function->call(['a']));
     }
 
     public function testEmptyException(): void
     {
-        $this->expectException(MadLispException::class);
-        $this->expectExceptionMessage('argument to empty? is not collection or string');
+        $this->expectException(TypeError::class);
 
         $this->getEnv()->get('empty?')->call([42]);
     }
@@ -163,14 +159,11 @@ class CollectionsTest extends TestCase
         $this->assertSame(3, $function->call([new Vector([1, 2, 3])]));
         $this->assertSame(2, $function->call([new Hash(['a' => 1, 'b' => 2])]));
 
-        // Strings
-        $this->assertSame(3, $function->call(['abc']));
     }
 
     public function testLenException(): void
     {
-        $this->expectException(MadLispException::class);
-        $this->expectExceptionMessage('argument to len is not collection or string');
+        $this->expectException(TypeError::class);
 
         $this->getEnv()->get('len')->call([42]);
     }
@@ -404,14 +397,11 @@ class CollectionsTest extends TestCase
             $this->assertSame([3, 2, 1], $result->getData());
         }
 
-        // Reverse string
-        $this->assertSame('cba', $function->call(['abc']));
     }
 
     public function testReverseException(): void
     {
-        $this->expectException(MadLispException::class);
-        $this->expectExceptionMessage('argument to reverse is not sequence or string');
+        $this->expectException(TypeError::class);
 
         $this->getEnv()->get('reverse')->call([42]);
     }

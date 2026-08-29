@@ -61,14 +61,8 @@ class Collections implements ILib
         // Read information
 
         $env->set('empty?', new CoreFunc('empty?', 'Return true if collection is empty.', 1, 1,
-            function ($a) {
-                if ($a instanceof Collection) {
-                    return $a->count() === 0;
-                } elseif (is_string($a)) {
-                    return $a === '';
-                }
-
-                throw new MadLispException('argument to empty? is not collection or string');
+            function (Collection $a) {
+                return $a->count() === 0;
             }
         ));
 
@@ -77,18 +71,12 @@ class Collections implements ILib
         ));
 
         $env->set('get', new CoreFunc('get', 'Get the item from first argument (collection) by using the second argument as index or key.', 2, 2,
-            fn (Collection $a, $b) => $a->get($b)
+            fn (Collection $a, string|int $b) => $a->get($b)
         ));
 
-        $env->set('len', new CoreFunc('len', 'Return the length of string or number of elements in collection.', 1, 1,
-            function ($a) {
-                if ($a instanceof Collection) {
-                    return $a->count();
-                } elseif (is_string($a)) {
-                    return strlen($a);
-                }
-
-                throw new MadLispException('argument to len is not collection or string');
+        $env->set('len', new CoreFunc('len', 'Return the number of elements in collection.', 1, 1,
+            function (Collection $a) {
+                return $a->count();
             }
         ));
 
@@ -257,14 +245,8 @@ class Collections implements ILib
         ));
 
         $env->set('reverse', new CoreFunc('reverse', 'Create new sequence with reversed order.', 1, 1,
-            function ($a) {
-                if ($a instanceof Seq) {
-                    return $a::new(array_reverse($a->getData()));
-                } elseif (is_string($a)) {
-                    return strrev($a);
-                }
-
-                throw new MadLispException('argument to reverse is not sequence or string');
+            function (Seq $a) {
+                return $a::new(array_reverse($a->getData()));
             }
         ));
 

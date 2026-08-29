@@ -533,7 +533,7 @@ class PhpCompilerTest extends TestCase
         $compiler->compile(new MList([new Symbol('undef'), 1]));
     }
 
-    public function testCompilesEmptyAndLenForCollectionsAndStrings(): void
+    public function testCompilesEmptyAndLenForCollections(): void
     {
         $compiler = new PhpCompiler();
         $env = new Env('root');
@@ -541,11 +541,8 @@ class PhpCompilerTest extends TestCase
         $cases = [
             ['empty?', new Vector([]), true],
             ['empty?', new Hash(['key' => 1]), false],
-            ['empty?', '', true],
-            ['empty?', 'value', false],
             ['len', new Vector([1, 2, 3]), 3],
             ['len', new Hash(['key' => 1]), 1],
-            ['len', 'value', 5],
         ];
 
         foreach ($cases as [$operator, $argument, $expected]) {
@@ -563,8 +560,7 @@ class PhpCompilerTest extends TestCase
         $compiler = new PhpCompiler();
         $env = new Env('root');
 
-        $this->expectException(MadLispException::class);
-        $this->expectExceptionMessage('argument to empty? is not collection or string');
+        $this->expectException(Error::class);
         $compiler->compile(new MList([new Symbol('empty?'), 1]))->execute($env);
     }
 
@@ -776,6 +772,27 @@ class PhpCompilerTest extends TestCase
             1,
             new MList([new Symbol('not-catch'), new Symbol('error'), 2]),
         ]));
+    }
+
+    public function testCompilesIntegerDivisionWithIntdiv(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([new Symbol('//'), 7, 2]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertStringContainsString('intdiv(7, 2)', $program->getSource());
+        $this->assertSame(3, $program->execute($env));
+    }
+
+    public function testIntegerDivisionRequiresExactlyTwoArguments(): void
+    {
+        $compiler = new PhpCompiler();
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('// requires exactly 2 arguments');
+        $compiler->compile(new MList([new Symbol('//'), 8]));
     }
 
     public function testCompilesAndExecutesArithmetic(): void
