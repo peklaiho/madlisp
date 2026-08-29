@@ -32,6 +32,47 @@ class PhpCompilerTest extends TestCase
         $this->assertSame('+', $value->getName());
     }
 
+    public function testCompilesAndEvaluatesVectorLiteral(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new Vector([
+            1,
+            new MList([new Symbol('+'), 2, 3]),
+            new Vector([new Symbol('value')]),
+        ]);
+        $env->set('value', 4);
+
+        $program = $compiler->compile($ast);
+        $value = $program->execute($env);
+
+        $this->assertInstanceOf(Vector::class, $value);
+        $this->assertSame(1, $value->getData()[0]);
+        $this->assertSame(5, $value->getData()[1]);
+        $this->assertInstanceOf(Vector::class, $value->getData()[2]);
+        $this->assertSame([4], $value->getData()[2]->getData());
+    }
+
+    public function testCompilesAndEvaluatesHashLiteral(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new Hash([
+            'answer' => new MList([new Symbol('+'), 40, 2]),
+            'value' => new Symbol('value'),
+            'nested' => new Vector([1, new Symbol('value')]),
+        ]);
+        $env->set('value', 7);
+
+        $program = $compiler->compile($ast);
+        $value = $program->execute($env);
+
+        $this->assertInstanceOf(Hash::class, $value);
+        $this->assertSame(42, $value->get('answer'));
+        $this->assertSame(7, $value->get('value'));
+        $this->assertSame([1, 7], $value->get('nested')->getData());
+    }
+
     public function testCompilesQuotedNestedListAsData(): void
     {
         $compiler = new PhpCompiler();
@@ -232,6 +273,62 @@ class PhpCompilerTest extends TestCase
 
         $this->assertSame([1, 2], $program->execute($env));
         $this->assertSame(2, $env->get('second'));
+    }
+
+    public function testAndReturnsFirstFalseyValueAndShortCircuits(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('and'),
+            1,
+            0,
+            new Symbol('missing'),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(0, $program->execute($env));
+    }
+
+    public function testOrReturnsFirstTruthyValueAndShortCircuits(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('or'),
+            false,
+            7,
+            new Symbol('missing'),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(7, $program->execute($env));
+    }
+
+    public function testAndAndOrReturnTheirLastArgumentWhenNoEarlierMatchExists(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $and = $compiler->compile(new MList([new Symbol('and'), 1, 'result']))->execute($env);
+        $or = $compiler->compile(new MList([new Symbol('or'), false, 'result']))->execute($env);
+
+        $this->assertSame('result', $and);
+        $this->assertSame('result', $or);
+    }
+
+    public function testAndAndOrUseTheirEmptyFormValues(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $and = $compiler->compile(new MList([new Symbol('and')]))->execute($env);
+        $or = $compiler->compile(new MList([new Symbol('or')]))->execute($env);
+
+        $this->assertTrue($and);
+        $this->assertFalse($or);
     }
 
     public function testCompilesAndExecutesArithmetic(): void

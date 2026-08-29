@@ -68,6 +68,16 @@ class PhpCompiler
             return;
         }
 
+        if ($ast instanceof Vector) {
+            $this->compileVector($ast, $body, $target, $indent);
+            return;
+        }
+
+        if ($ast instanceof Hash) {
+            $this->compileHash($ast, $body, $target, $indent);
+            return;
+        }
+
         if (!($ast instanceof MList)) {
             throw new MadLispException('php compiler does not support this value');
         }
@@ -84,6 +94,16 @@ class PhpCompiler
 
         $operator = $data[0]->getName();
         $arguments = array_slice($data, 1);
+
+        if ($operator === 'and') {
+            $this->compileAnd($arguments, $body, $target, $indent);
+            return;
+        }
+
+        if ($operator === 'or') {
+            $this->compileOr($arguments, $body, $target, $indent);
+            return;
+        }
 
         if ($operator === 'quote') {
             $this->compileQuote($arguments, $body, $target, $indent);
@@ -169,6 +189,77 @@ class PhpCompiler
                 return;
             default:
                 throw new MadLispException("php compiler does not support $operator");
+        }
+    }
+
+    private function compileVector(Vector $vector, array &$body, string $target, int $indent): void
+    {
+        $values = $this->compileArguments($vector->getData(), $body, $indent);
+        $this->emit(
+            $body,
+            $indent,
+            "$target = new \\MadLisp\\Vector([" . implode(', ', $values) . ']);'
+        );
+    }
+
+    private function compileHash(Hash $hash, array &$body, string $target, int $indent): void
+    {
+        $values = $this->compileArguments(array_values($hash->getData()), $body, $indent);
+        $items = [];
+        foreach (array_keys($hash->getData()) as $index => $key) {
+            $items[] = var_export($key, true) . ' => ' . $values[$index];
+        }
+
+        $this->emit(
+            $body,
+            $indent,
+            "$target = new \\MadLisp\\Hash([" . implode(', ', $items) . ']);'
+        );
+    }
+
+    private function compileAnd(array $arguments, array &$body, string $target, int $indent): void
+    {
+        $this->compileShortCircuit($arguments, false, $body, $target, $indent);
+    }
+
+    private function compileOr(array $arguments, array &$body, string $target, int $indent): void
+    {
+        $this->compileShortCircuit($arguments, true, $body, $target, $indent);
+    }
+
+    private function compileShortCircuit(
+        array $arguments,
+        bool $or,
+        array &$body,
+        string $target,
+        int $indent
+    ): void {
+        if (!$arguments) {
+            $this->emit($body, $indent, "$target = " . ($or ? 'false' : 'true') . ';');
+            return;
+        }
+
+        $openBlocks = 0;
+        $last = count($arguments) - 1;
+        foreach ($arguments as $index => $argument) {
+            if ($index === $last) {
+                $this->compileExpression($argument, $body, $target, $indent);
+                break;
+            }
+
+            $condition = $this->temporary();
+            $this->compileExpression($argument, $body, $condition, $indent);
+            $match = $or ? 'true' : 'false';
+            $this->emit($body, $indent, "if ($condition == $match) {");
+            $this->emit($body, $indent + 1, "$target = $condition;");
+            $this->emit($body, $indent, '} else {');
+            $indent++;
+            $openBlocks++;
+        }
+
+        while ($openBlocks-- > 0) {
+            $indent--;
+            $this->emit($body, $indent, '}');
         }
     }
 
