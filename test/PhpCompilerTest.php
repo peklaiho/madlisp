@@ -331,6 +331,152 @@ class PhpCompilerTest extends TestCase
         $this->assertFalse($or);
     }
 
+    public function testCondEvaluatesMatchingClauseExpressionsInOrder(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('cond'),
+            new MList([
+                false,
+                new MList([new Symbol('def'), new Symbol('value'), 1]),
+                10,
+            ]),
+            new MList([
+                true,
+                new MList([new Symbol('def'), new Symbol('value'), 2]),
+                new Symbol('value'),
+            ]),
+            new MList([
+                new Symbol('else'),
+                99,
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(2, $program->execute($env));
+        $this->assertSame(2, $env->get('value'));
+    }
+
+    public function testCondShortCircuitsLaterClausesAndReturnsNullWithoutMatch(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $ast = new MList([
+            new Symbol('cond'),
+            new MList([false, new Symbol('missing')]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertNull($program->execute($env));
+    }
+
+    public function testCondSupportsElseClause(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('cond'),
+            new MList([false, 1]),
+            new MList([new Symbol('else'), 'fallback']),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame('fallback', $program->execute($env));
+    }
+
+    public function testCondRequiresSequenceClausesWithAtLeastTwoItems(): void
+    {
+        $compiler = new PhpCompiler();
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('argument to cond is not seq');
+        $compiler->compile(new MList([new Symbol('cond'), true]));
+    }
+
+    public function testCaseEvaluatesTestOnceAndReturnsMatchingClauseResult(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('case'),
+            new MList([
+                new Symbol('do'),
+                new MList([new Symbol('def'), new Symbol('value'), 2]),
+                new Symbol('value'),
+            ]),
+            new MList([
+                1,
+                new MList([new Symbol('def'), new Symbol('matched'), 1]),
+                10,
+            ]),
+            new MList([
+                2,
+                new MList([new Symbol('def'), new Symbol('matched'), 2]),
+                20,
+            ]),
+            new MList([new Symbol('else'), 30]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(20, $program->execute($env));
+        $this->assertSame(2, $env->get('value'));
+        $this->assertSame(2, $env->get('matched'));
+    }
+
+    public function testCaseEvaluatesIntermediateExpressionsAndReturnsNullWithoutMatch(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('case'),
+            3,
+            new MList([
+                1,
+                new MList([new Symbol('def'), new Symbol('visited'), true]),
+                10,
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertNull($program->execute($env));
+        $this->expectException(MadLispException::class);
+        $env->get('visited');
+    }
+
+    public function testCaseAndCaseStrictUseDifferentRawComparisons(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $case = $compiler->compile(new MList([
+            new Symbol('case'),
+            true,
+            new MList([1, 'matched']),
+        ]))->execute($env);
+        $strict = $compiler->compile(new MList([
+            new Symbol('case-strict'),
+            true,
+            new MList([1, 'matched']),
+        ]))->execute($env);
+
+        $this->assertSame('matched', $case);
+        $this->assertNull($strict);
+    }
+
+    public function testCaseRequiresSequenceClausesWithAtLeastTwoItems(): void
+    {
+        $compiler = new PhpCompiler();
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('argument to case is not seq');
+        $compiler->compile(new MList([new Symbol('case'), 1, true]));
+    }
+
     public function testCompilesAndExecutesArithmetic(): void
     {
         $compiler = new PhpCompiler();

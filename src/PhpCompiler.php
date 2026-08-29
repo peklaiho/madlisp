@@ -105,6 +105,16 @@ class PhpCompiler
             return;
         }
 
+        if ($operator === 'cond') {
+            $this->compileCond($arguments, $body, $target, $indent);
+            return;
+        }
+
+        if ($operator === 'case' || $operator === 'case-strict') {
+            $this->compileCase($operator, $arguments, $body, $target, $indent);
+            return;
+        }
+
         if ($operator === 'quote') {
             $this->compileQuote($arguments, $body, $target, $indent);
             return;
@@ -261,6 +271,117 @@ class PhpCompiler
             $indent--;
             $this->emit($body, $indent, '}');
         }
+    }
+
+    private function compileCond(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (!$arguments) {
+            throw new MadLispException('cond requires at least 1 argument');
+        }
+
+        $clauses = [];
+        foreach ($arguments as $argument) {
+            if (!($argument instanceof Seq)) {
+                throw new MadLispException('argument to cond is not seq');
+            }
+
+            $data = $argument->getData();
+            if (count($data) < 2) {
+                throw new MadLispException('clause for cond requires at least 2 arguments');
+            }
+
+            $clauses[] = $data;
+        }
+
+        $this->compileCondBranch($clauses, 0, $body, $target, $indent);
+    }
+
+    private function compileCondBranch(
+        array $clauses,
+        int $index,
+        array &$body,
+        string $target,
+        int $indent
+    ): void {
+        if ($index === count($clauses)) {
+            $this->emit($body, $indent, "$target = null;");
+            return;
+        }
+
+        $clause = $clauses[$index];
+        $test = $clause[0];
+        if ($test instanceof Symbol && $test->getName() === 'else') {
+            $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
+            return;
+        }
+
+        $condition = $this->temporary();
+        $this->compileExpression($test, $body, $condition, $indent);
+        $this->emit($body, $indent, "if ($condition) {");
+        $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
+        $this->emit($body, $indent, '} else {');
+        $this->compileCondBranch($clauses, $index + 1, $body, $target, $indent + 1);
+        $this->emit($body, $indent, '}');
+    }
+
+    private function compileCase(
+        string $operator,
+        array $arguments,
+        array &$body,
+        string $target,
+        int $indent
+    ): void {
+        if (count($arguments) < 2) {
+            throw new MadLispException("$operator requires at least 2 arguments");
+        }
+
+        $clauses = [];
+        foreach (array_slice($arguments, 1) as $argument) {
+            if (!($argument instanceof Seq)) {
+                throw new MadLispException("argument to $operator is not seq");
+            }
+
+            $data = $argument->getData();
+            if (count($data) < 2) {
+                throw new MadLispException("clause for $operator requires at least 2 arguments");
+            }
+
+            $clauses[] = $data;
+        }
+
+        $value = $this->temporary();
+        $this->compileExpression($arguments[0], $body, $value, $indent);
+        $comparison = $operator === 'case-strict' ? '===' : '==';
+        $this->compileCaseBranch($clauses, 0, $value, $comparison, $body, $target, $indent);
+    }
+
+    private function compileCaseBranch(
+        array $clauses,
+        int $index,
+        string $value,
+        string $comparison,
+        array &$body,
+        string $target,
+        int $indent
+    ): void {
+        if ($index === count($clauses)) {
+            $this->emit($body, $indent, "$target = null;");
+            return;
+        }
+
+        $clause = $clauses[$index];
+        $test = $clause[0];
+        if ($test instanceof Symbol && $test->getName() === 'else') {
+            $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
+            return;
+        }
+
+        $match = $this->quotedValueExpression($test);
+        $this->emit($body, $indent, "if ($value $comparison $match) {");
+        $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
+        $this->emit($body, $indent, '} else {');
+        $this->compileCaseBranch($clauses, $index + 1, $value, $comparison, $body, $target, $indent + 1);
+        $this->emit($body, $indent, '}');
     }
 
     private function compileQuote(array $arguments, array &$body, string $target, int $indent): void
