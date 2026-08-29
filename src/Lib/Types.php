@@ -2,7 +2,7 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 namespace MadLisp\Lib;
@@ -67,6 +67,8 @@ class Types implements ILib
                     } else {
                         return 'function';
                     }
+                } elseif ($a instanceof \Closure) {
+                    return 'closure';
                 } elseif ($a instanceof MList) {
                     return 'list';
                 } elseif ($a instanceof Vector) {
@@ -100,6 +102,10 @@ class Types implements ILib
 
         $env->set('macro?', new CoreFunc('macro?', 'Return true if argument is a macro.', 1, 1,
             fn ($a) => $a instanceof Func && $a->isMacro()
+        ));
+
+        $env->set('closure?', new CoreFunc('closure?', 'Return true if argument is a closure.', 1, 1,
+            fn ($a) => $a instanceof \Closure
         ));
 
         $env->set('list?', new CoreFunc('list?', 'Return true if argument is a list.', 1, 1,

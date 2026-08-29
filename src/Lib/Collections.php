@@ -218,36 +218,41 @@ class Collections implements ILib
         ));
 
         $env->set('map', new CoreFunc('map', 'Apply the first argument (function) to all elements of second argument (sequence).', 2, 2,
-            function (Func $f, Seq $a) {
-                return $a::new(array_map($f->getClosure(), $a->getData()));
+            function (\Closure|Func $f, Seq $a) {
+                $closure = ($f instanceof \Closure) ? $f : $f->getClosure();
+                return $a::new(array_map($closure, $a->getData()));
             }
         ));
 
         $env->set('map2', new CoreFunc('map2', 'Apply the first argument (function) to each element from second and third argument (sequences).', 3, 3,
-            function (Func $f, Seq $a, Seq $b) {
+            function (\Closure|Func $f, Seq $a, Seq $b) {
                 if ($a->count() != $b->count()) {
                     throw new MadLispException('map2 requires equal number of elements in both sequences');
                 }
 
-                return $a::new(array_map($f->getClosure(), $a->getData(), $b->getData()));
+                $closure = ($f instanceof \Closure) ? $f : $f->getClosure();
+                return $a::new(array_map($closure, $a->getData(), $b->getData()));
             }
         ));
 
         $env->set('reduce', new CoreFunc('reduce', 'Apply the first argument (function) to each element of second argument (sequence) incrementally. Optional third argument is the initial value to be used as first input for function and it defaults to null.', 2, 3,
-            function (Func $f, Seq $a, $initial = null) {
-                return array_reduce($a->getData(), $f->getClosure(), $initial);
+            function (\Closure|Func $f, Seq $a, $initial = null) {
+                $closure = ($f instanceof \Closure) ? $f : $f->getClosure();
+                return array_reduce($a->getData(), $closure, $initial);
             }
         ));
 
         $env->set('filter', new CoreFunc('filter', 'Create new sequence which contains items that evaluate to true using first argument (function) from the second argument (sequence).', 2, 2,
-            function (Func $f, Seq $a) {
-                return $a::new(array_values(array_filter($a->getData(), $f->getClosure())));
+            function (\Closure|Func $f, Seq $a) {
+                $closure = ($f instanceof \Closure) ? $f : $f->getClosure();
+                return $a::new(array_values(array_filter($a->getData(), $closure)));
             }
         ));
 
         $env->set('filterh', new CoreFunc('filterh', 'Same as filter but for hash maps. First argument passed to the callback is the value and second is the key.', 2, 2,
-            function (Func $f, Hash $a) {
-                return new Hash(array_filter($a->getData(), $f->getClosure(), ARRAY_FILTER_USE_BOTH));
+            function (\Closure|Func $f, Hash $a) {
+                $closure = ($f instanceof \Closure) ? $f : $f->getClosure();
+                return new Hash(array_filter($a->getData(), $closure, ARRAY_FILTER_USE_BOTH));
             }
         ));
 
@@ -330,7 +335,8 @@ class Collections implements ILib
         $env->set('usort', new CoreFunc('usort', 'Sort the sequence using custom comparison function.', 2, 2,
             function (Func $f, Seq $a) {
                 $data = $a->getData();
-                usort($data, $f->getClosure());
+                $closure = ($f instanceof \Closure) ? $f : $f->getClosure();
+                usort($data, $closure);
                 return $a::new($data);
             }
         ));
