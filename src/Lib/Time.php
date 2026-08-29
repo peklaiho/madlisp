@@ -2,14 +2,13 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 namespace MadLisp\Lib;
 
 use MadLisp\CoreFunc;
 use MadLisp\Env;
-use MadLisp\Func;
 
 class Time implements ILib
 {

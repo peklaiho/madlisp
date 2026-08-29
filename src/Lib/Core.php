@@ -19,7 +19,6 @@ use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Symbol;
 use MadLisp\Tokenizer;
-use MadLisp\UserFunc;
 use MadLisp\Vector;
 
 class Core implements ILib

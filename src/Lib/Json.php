@@ -2,7 +2,7 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 namespace MadLisp\Lib;
@@ -10,7 +10,6 @@ namespace MadLisp\Lib;
 use MadLisp\Collection;
 use MadLisp\CoreFunc;
 use MadLisp\Env;
-use MadLisp\Func;
 use MadLisp\Hash;
 use MadLisp\MadLispException;
 use MadLisp\Symbol;
