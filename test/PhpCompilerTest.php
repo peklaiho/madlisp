@@ -533,6 +533,149 @@ class PhpCompilerTest extends TestCase
         $compiler->compile(new MList([new Symbol('undef'), 1]));
     }
 
+    public function testCompilesEmptyAndLenForCollectionsAndStrings(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $cases = [
+            ['empty?', new Vector([]), true],
+            ['empty?', new Hash(['key' => 1]), false],
+            ['empty?', '', true],
+            ['empty?', 'value', false],
+            ['len', new Vector([1, 2, 3]), 3],
+            ['len', new Hash(['key' => 1]), 1],
+            ['len', 'value', 5],
+        ];
+
+        foreach ($cases as [$operator, $argument, $expected]) {
+            $program = $compiler->compile(new MList([
+                new Symbol($operator),
+                $argument,
+            ]));
+
+            $this->assertSame($expected, $program->execute($env));
+        }
+    }
+
+    public function testEmptyAndLenRejectUnsupportedValues(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('argument to empty? is not collection or string');
+        $compiler->compile(new MList([new Symbol('empty?'), 1]))->execute($env);
+    }
+
+    public function testEmptyAndLenRequireExactlyOneArgument(): void
+    {
+        $compiler = new PhpCompiler();
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('len requires exactly 1 argument');
+        $compiler->compile(new MList([new Symbol('len')]));
+    }
+
+    public function testCompilesNumericPredicates(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $values = [
+            'zero?' => [0, true],
+            'one?' => [1, true],
+            'even?' => [8, true],
+            'odd?' => [7, true],
+        ];
+
+        foreach ($values as $operator => [$argument, $expected]) {
+            $program = $compiler->compile(new MList([
+                new Symbol($operator),
+                $argument,
+            ]));
+
+            $this->assertSame($expected, $program->execute($env));
+        }
+
+        $this->assertFalse($compiler->compile(new MList([
+            new Symbol('zero?'),
+            1,
+        ]))->execute($env));
+        $this->assertFalse($compiler->compile(new MList([
+            new Symbol('one?'),
+            0,
+        ]))->execute($env));
+        $this->assertFalse($compiler->compile(new MList([
+            new Symbol('even?'),
+            7,
+        ]))->execute($env));
+        $this->assertFalse($compiler->compile(new MList([
+            new Symbol('odd?'),
+            8,
+        ]))->execute($env));
+    }
+
+    public function testNumericPredicatesRequireExactlyOneArgument(): void
+    {
+        $compiler = new PhpCompiler();
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('zero? requires exactly 1 argument');
+        $compiler->compile(new MList([new Symbol('zero?')]));
+    }
+
+    public function testCompilesModuloWithMultipleArguments(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('%'),
+            28,
+            10,
+            3,
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(2, $program->execute($env));
+    }
+
+    public function testModuloRequiresAtLeastTwoArguments(): void
+    {
+        $compiler = new PhpCompiler();
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('% requires at least 2 argument');
+        $compiler->compile(new MList([new Symbol('%'), 1]));
+    }
+
+    public function testCompilesLooseAndStrictInequality(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $loose = $compiler->compile(new MList([
+            new Symbol('!='),
+            1,
+            true,
+        ]))->execute($env);
+        $strict = $compiler->compile(new MList([
+            new Symbol('!=='),
+            1,
+            true,
+        ]))->execute($env);
+
+        $this->assertFalse($loose);
+        $this->assertTrue($strict);
+    }
+
+    public function testInequalityFormsRequireExactlyTwoArguments(): void
+    {
+        $compiler = new PhpCompiler();
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('!= requires exactly 2 arguments');
+        $compiler->compile(new MList([new Symbol('!='), 1]));
+    }
+
     public function testWhileRepeatsUntilItsConditionBecomesFalse(): void
     {
         $compiler = new PhpCompiler();

@@ -11,8 +11,8 @@ class PhpCompiler
 {
     private const RESERVED_DEFINITION_NAMES = [
         'if', 'let', 'do', 'fn', 'quote', 'def',
-        '+', '-', '*', '/', '==', '=', '<', '<=', '>', '>=',
-        'inc', 'dec', 'not',
+        '+', '-', '*', '/', '%', '==', '=', '!=', '!==', '<', '<=', '>', '>=',
+        'inc', 'dec', 'not', 'zero?', 'one?', 'even?', 'odd?', 'empty?', 'len',
     ];
 
     private int $temporaryCount;
@@ -190,11 +190,20 @@ class PhpCompiler
             case '/':
                 $this->compileArithmetic($values, '/', 1, false, $body, $target, $indent);
                 return;
+            case '%':
+                $this->compileArithmetic($values, '%', 2, false, $body, $target, $indent);
+                return;
             case '==':
                 $this->compileBinary($values, '===', '== requires exactly 2 arguments', $body, $target, $indent);
                 return;
             case '=':
                 $this->compileBinary($values, '==', '= requires exactly 2 arguments', $body, $target, $indent);
+                return;
+            case '!=':
+                $this->compileBinary($values, '!=', '!= requires exactly 2 arguments', $body, $target, $indent);
+                return;
+            case '!==':
+                $this->compileBinary($values, '!==', '!== requires exactly 2 arguments', $body, $target, $indent);
                 return;
             case '<':
                 $this->compileBinary($values, '<', '< requires exactly 2 arguments', $body, $target, $indent);
@@ -216,6 +225,24 @@ class PhpCompiler
                 return;
             case 'not':
                 $this->compileUnary($values, '!', 'not requires exactly 1 argument', $body, $target, $indent, true);
+                return;
+            case 'zero?':
+                $this->compileUnary($values, '=== 0', 'zero? requires exactly 1 argument', $body, $target, $indent);
+                return;
+            case 'one?':
+                $this->compileUnary($values, '=== 1', 'one? requires exactly 1 argument', $body, $target, $indent);
+                return;
+            case 'even?':
+                $this->compileUnary($values, '% 2 === 0', 'even? requires exactly 1 argument', $body, $target, $indent);
+                return;
+            case 'odd?':
+                $this->compileUnary($values, '% 2 !== 0', 'odd? requires exactly 1 argument', $body, $target, $indent);
+                return;
+            case 'empty?':
+                $this->compileEmpty($values, $body, $target, $indent);
+                return;
+            case 'len':
+                $this->compileLen($values, $body, $target, $indent);
                 return;
             default:
                 throw new MadLispException("php compiler does not support $operator");
@@ -727,6 +754,56 @@ class PhpCompiler
         }
 
         return null;
+    }
+
+    private function compileEmpty(array $values, array &$body, string $target, int $indent): void
+    {
+        if (count($values) !== 1) {
+            throw new MadLispException('empty? requires exactly 1 argument');
+        }
+
+        $value = $values[0];
+        if ($value[0] !== '$') {
+            $evaluated = $this->temporary();
+            $this->emit($body, $indent, "$evaluated = $value;");
+            $value = $evaluated;
+        }
+        $this->emit($body, $indent, "if ($value instanceof \\MadLisp\\Collection) {");
+        $this->emit($body, $indent + 1, "$target = " . $value . '->count() === 0;');
+        $this->emit($body, $indent, '} elseif (is_string(' . $value . ')) {');
+        $this->emit($body, $indent + 1, "$target = $value === '';" );
+        $this->emit($body, $indent, '} else {');
+        $this->emit(
+            $body,
+            $indent + 1,
+            "throw new \\MadLisp\\MadLispException('argument to empty? is not collection or string');"
+        );
+        $this->emit($body, $indent, '}');
+    }
+
+    private function compileLen(array $values, array &$body, string $target, int $indent): void
+    {
+        if (count($values) !== 1) {
+            throw new MadLispException('len requires exactly 1 argument');
+        }
+
+        $value = $values[0];
+        if ($value[0] !== '$') {
+            $evaluated = $this->temporary();
+            $this->emit($body, $indent, "$evaluated = $value;");
+            $value = $evaluated;
+        }
+        $this->emit($body, $indent, "if ($value instanceof \\MadLisp\\Collection) {");
+        $this->emit($body, $indent + 1, "$target = " . $value . '->count();');
+        $this->emit($body, $indent, '} elseif (is_string(' . $value . ')) {');
+        $this->emit($body, $indent + 1, "$target = strlen($value);");
+        $this->emit($body, $indent, '} else {');
+        $this->emit(
+            $body,
+            $indent + 1,
+            "throw new \\MadLisp\\MadLispException('argument to len is not collection or string');"
+        );
+        $this->emit($body, $indent, '}');
     }
 
     private function compileArithmetic(
