@@ -115,6 +115,26 @@ class PhpCompiler
             return;
         }
 
+        if ($operator === 'env') {
+            $this->compileEnv($arguments, $body, $target, $indent);
+            return;
+        }
+
+        if ($operator === 'undef') {
+            $this->compileUndef($arguments, $body, $target, $indent);
+            return;
+        }
+
+        if ($operator === 'while') {
+            $this->compileWhile($arguments, $body, $target, $indent);
+            return;
+        }
+
+        if ($operator === 'try') {
+            $this->compileTry($arguments, $body, $target, $indent);
+            return;
+        }
+
         if ($operator === 'quote') {
             $this->compileQuote($arguments, $body, $target, $indent);
             return;
@@ -321,6 +341,77 @@ class PhpCompiler
         $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
         $this->emit($body, $indent, '} else {');
         $this->compileCondBranch($clauses, $index + 1, $body, $target, $indent + 1);
+        $this->emit($body, $indent, '}');
+    }
+
+    private function compileEnv(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if ($arguments) {
+            throw new MadLispException('env does not take arguments');
+        }
+
+        $this->emit($body, $indent, "$target = \$env;");
+    }
+
+    private function compileUndef(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== 1) {
+            throw new MadLispException('undef requires exactly 1 argument');
+        }
+        if (!($arguments[0] instanceof Symbol)) {
+            throw new MadLispException('first argument to undef is not symbol');
+        }
+
+        $this->emit(
+            $body,
+            $indent,
+            "$target = \$env->unset(" . var_export($arguments[0]->getName(), true) . ');'
+        );
+    }
+
+    private function compileWhile(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) < 2) {
+            throw new MadLispException('while requires at least 2 arguments');
+        }
+
+        $this->emit($body, $indent, "$target = null;");
+        $this->emit($body, $indent, 'while (true) {');
+
+        $condition = $this->temporary();
+        $this->compileExpression($arguments[0], $body, $condition, $indent + 1);
+        $this->emit($body, $indent + 1, "if (!$condition) {");
+        $this->emit($body, $indent + 2, 'break;');
+        $this->emit($body, $indent + 1, '}');
+        $this->compileDo(array_slice($arguments, 1), $body, $target, $indent + 1);
+        $this->emit($body, $indent, '}');
+    }
+
+    private function compileTry(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== 2) {
+            throw new MadLispException('try requires exactly 2 arguments');
+        }
+        if (!($arguments[1] instanceof Seq)) {
+            throw new MadLispException('second argument to try is not seq');
+        }
+
+        $catch = $arguments[1]->getData();
+        if (count($catch) !== 3 || !($catch[0] instanceof Symbol) ||
+            $catch[0]->getName() !== 'catch' || !($catch[1] instanceof Symbol)) {
+            throw new MadLispException('invalid form for catch');
+        }
+
+        $this->emit($body, $indent, 'try {');
+        $this->compileExpression($arguments[0], $body, $target, $indent + 1);
+        $this->emit($body, $indent, '} catch (\\Throwable $exception) {');
+
+        $exceptionVariable = '$v' . $this->localCount++;
+        $this->scopes[] = [$catch[1]->getName() => $exceptionVariable];
+        $this->emit($body, $indent + 1, "$exceptionVariable = \$exception;");
+        $this->compileExpression($catch[2], $body, $target, $indent + 1);
+        array_pop($this->scopes);
+
         $this->emit($body, $indent, '}');
     }
 

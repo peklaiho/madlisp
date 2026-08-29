@@ -477,6 +477,164 @@ class PhpCompilerTest extends TestCase
         $compiler->compile(new MList([new Symbol('case'), 1, true]));
     }
 
+    public function testEnvReturnsTheExecutionEnvironment(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $program = $compiler->compile(new MList([new Symbol('env')]));
+
+        $this->assertSame($env, $program->execute($env));
+    }
+
+    public function testEnvReturnsTheExecutionEnvironmentInsideAFunction(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('fn'),
+            new MList([]),
+            new MList([new Symbol('env')]),
+        ]);
+
+        $program = $compiler->compile($ast);
+        $function = $program->execute($env);
+
+        $this->assertSame($env, $function());
+    }
+
+    public function testEnvRejectsArguments(): void
+    {
+        $compiler = new PhpCompiler();
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('env does not take arguments');
+        $compiler->compile(new MList([new Symbol('env'), 1]));
+    }
+
+    public function testUndefRemovesBindingAndReturnsItsPreviousValue(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $env->set('value', 42);
+        $ast = new MList([new Symbol('undef'), new Symbol('value')]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(42, $program->execute($env));
+        $this->assertFalse($env->has('value'));
+    }
+
+    public function testUndefValidatesItsArgument(): void
+    {
+        $compiler = new PhpCompiler();
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('first argument to undef is not symbol');
+        $compiler->compile(new MList([new Symbol('undef'), 1]));
+    }
+
+    public function testWhileRepeatsUntilItsConditionBecomesFalse(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('do'),
+            new MList([new Symbol('def'), new Symbol('counter'), 3]),
+            new MList([
+                new Symbol('while'),
+                new Symbol('counter'),
+                new MList([
+                    new Symbol('def'),
+                    new Symbol('counter'),
+                    new MList([new Symbol('dec'), new Symbol('counter')]),
+                ]),
+                new Symbol('counter'),
+            ]),
+            new MList([new Symbol('undef'), new Symbol('counter')]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(0, $program->execute($env));
+        $this->assertFalse($env->has('counter'));
+    }
+
+    public function testWhileReturnsNullWhenItDoesNotRun(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('while'),
+            false,
+            new MList([new Symbol('def'), new Symbol('visited'), true]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertNull($program->execute($env));
+        $this->assertFalse($env->has('visited'));
+    }
+
+    public function testWhileRequiresAConditionAndBody(): void
+    {
+        $compiler = new PhpCompiler();
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('while requires at least 2 arguments');
+        $compiler->compile(new MList([new Symbol('while'), true]));
+    }
+
+    public function testTryCatchesThrowableAndEvaluatesAnArbitraryHandler(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('try'),
+            new MList([new Symbol('/'), 1, 0]),
+            new MList([
+                new Symbol('catch'),
+                new Symbol('error'),
+                new MList([
+                    new Symbol('do'),
+                    new MList([new Symbol('def'), new Symbol('handled'), true]),
+                    new Symbol('error'),
+                ]),
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+        $value = $program->execute($env);
+
+        $this->assertInstanceOf(\Throwable::class, $value);
+        $this->assertTrue($env->get('handled'));
+    }
+
+    public function testTryReturnsBodyResultWhenNoThrowableIsRaised(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('try'),
+            42,
+            new MList([new Symbol('catch'), new Symbol('error'), 0]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(42, $program->execute($env));
+    }
+
+    public function testTryValidatesItsCatchForm(): void
+    {
+        $compiler = new PhpCompiler();
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('invalid form for catch');
+        $compiler->compile(new MList([
+            new Symbol('try'),
+            1,
+            new MList([new Symbol('not-catch'), new Symbol('error'), 2]),
+        ]));
+    }
+
     public function testCompilesAndExecutesArithmetic(): void
     {
         $compiler = new PhpCompiler();
