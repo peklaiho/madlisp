@@ -7,6 +7,8 @@
 
 use PHPUnit\Framework\TestCase;
 
+use MadLisp\PhpCompiler;
+use MadLisp\PhpCompiledProgram;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Func;
@@ -27,6 +29,17 @@ class CoreTest extends TestCase
 
         $this->assertNull($env->get('__FILE__'));
         $this->assertNull($env->get('__DIR__'));
+    }
+
+    public function testCompile()
+    {
+        [$env] = $this->getEnv();
+        $ast = new MList([new Symbol('+'), 1, 2]);
+
+        $program = $env->get('compile')->call([$ast]);
+
+        $this->assertInstanceOf(PhpCompiledProgram::class, $program);
+        $this->assertSame(3, $program->execute($env));
     }
 
     public function testDebug()
@@ -244,10 +257,18 @@ class CoreTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
+        $compiler = new PhpCompiler();
         $printer = new Printer();
         $evaller = new Evaller($tokenizer, $reader, $printer, $safemode);
 
-        $core = new Core($tokenizer, $reader, $printer, $evaller, $safemode);
+        $core = new Core(
+            $tokenizer,
+            $reader,
+            $compiler,
+            $printer,
+            $evaller,
+            $safemode
+        );
 
         $env = new Env('test');
         $core->register($env);

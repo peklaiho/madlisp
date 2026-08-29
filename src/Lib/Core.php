@@ -2,7 +2,7 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 namespace MadLisp\Lib;
@@ -14,6 +14,7 @@ use MadLisp\Evaller;
 use MadLisp\Func;
 use MadLisp\MadLispUserException;
 use MadLisp\MList;
+use MadLisp\PhpCompiler;
 use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Symbol;
@@ -23,19 +24,15 @@ use MadLisp\Vector;
 
 class Core implements ILib
 {
-    protected Tokenizer $tokenizer;
-    protected Reader $reader;
-    protected Printer $printer;
-    protected Evaller $evaller;
-    protected bool $safemode;
+    public function __construct(
+        protected Tokenizer $tokenizer,
+        protected Reader $reader,
+        protected PhpCompiler $compiler,
+        protected Printer $printer,
+        protected Evaller $evaller,
+        protected bool $safemode
+    ) {
 
-    public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer, Evaller $evaller, bool $safemode)
-    {
-        $this->tokenizer = $tokenizer;
-        $this->reader = $reader;
-        $this->printer = $printer;
-        $this->evaller = $evaller;
-        $this->safemode = $safemode;
     }
 
     public function register(Env $env): void
@@ -45,6 +42,12 @@ class Core implements ILib
             $env->set('__FILE__', null);
             $env->set('__DIR__', null);
         }
+
+        $env->set('compile', new CoreFunc('compile', 'Compile Lisp code into PHP code.', 1, 1,
+            function ($ast) {
+                return $this->compiler->compile($ast);
+            }
+        ));
 
         if (!$this->safemode) {
             $env->set('debug', new CoreFunc('debug', 'Toggle debug mode.', 0, 0,

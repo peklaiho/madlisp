@@ -2,26 +2,32 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 namespace MadLisp;
 
 class Lisp
 {
-    protected Tokenizer $tokenizer;
-    protected Reader $reader;
-    protected Evaller $eval;
-    protected Printer $printer;
-    protected Env $env;
+    public function __construct(
+        protected Tokenizer $tokenizer,
+        protected Reader $reader,
+        protected PhpCompiler $compiler,
+        protected Evaller $eval,
+        protected Printer $printer,
+        protected Env $env
+    ) {
 
-    public function __construct(Tokenizer $tokenizer, Reader $reader, Evaller $eval, Printer $printer, Env $env)
+    }
+
+    public function compile($ast): PhpCompiledProgram
     {
-        $this->tokenizer = $tokenizer;
-        $this->reader = $reader;
-        $this->eval = $eval;
-        $this->printer = $printer;
-        $this->env = $env;
+        return $this->compiler->compile($ast);
+    }
+
+    public function execute(PhpCompiledProgram $program, ?Env $customEnv = null)
+    {
+        return $program->execute($customEnv ? $customEnv : $this->env);
     }
 
     public function getEnv(): Env
@@ -39,6 +45,11 @@ class Lisp
         return $this->printer->pstr($value, $printReadable);
     }
 
+    public function read(string $input)
+    {
+        return $this->reader->read($this->tokenizer->tokenize($input));
+    }
+
     public function readEval(string $input, ?Env $customEnv = null)
     {
         $tokens = $this->tokenizer->tokenize($input);
@@ -46,6 +57,17 @@ class Lisp
         $expr = $this->reader->read($tokens);
 
         return $this->eval->eval($expr, $customEnv ? $customEnv : $this->env);
+    }
+
+    public function readEvalCompiled(string $input, ?Env $customEnv = null)
+    {
+        $tokens = $this->tokenizer->tokenize($input);
+
+        $expr = $this->reader->read($tokens);
+
+        $program = $this->compiler->compile($expr);
+
+        return $program->execute($customEnv ? $customEnv : $this->env);
     }
 
     // read, eval, print

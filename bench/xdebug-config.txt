@@ -1,0 +1,5 @@
+pekka@heracles:/etc/php/conf.d$ cat xdebug.ini
+zend_extension=xdebug.so
+xdebug.mode=profile
+xdebug.start_with_request=trigger
+xdebug.output_dir=/tmp

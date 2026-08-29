@@ -1,0 +1,5 @@
+arithmetic          :  146 ms total,  15 ms/op,  68 ops/sec, peak memory  58 MB
+tail-recursion      :  157 ms total,  16 ms/op,  64 ops/sec, peak memory   2 MB
+collections         :  147 ms total,  15 ms/op,  68 ops/sec, peak memory   4 MB
+environment         :  180 ms total,  18 ms/op,  56 ops/sec, peak memory  58 MB
+fibonacci           :  408 ms total,  41 ms/op,  24 ops/sec, peak memory   2 MB

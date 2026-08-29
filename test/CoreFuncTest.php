@@ -36,6 +36,13 @@ class CoreFuncTest extends TestCase
         $fn->call($args);
     }
 
+    public function testInvokeForwardsArgumentsWithoutArityValidation()
+    {
+        $fn = new CoreFunc('name', 'doc', 2, 2, fn (...$args) => count($args));
+
+        $this->assertSame(3, $fn(1, 2, 3));
+    }
+
     public function testCall()
     {
         $closure = fn ($a, $b) => $a + $b;
