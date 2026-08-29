@@ -37,15 +37,20 @@ function ml_help()
     print("-p              :: Print out result" . PHP_EOL);
     print("-q              :: Skip the init file" . PHP_EOL);
     print("-r              :: Run the interactive REPL" . PHP_EOL);
+    print("-s              :: Show the compiled source code" . PHP_EOL);
     print("<file>          :: Evaluate file" . PHP_EOL);
     print("                :: Read from stdin" . PHP_EOL);
     exit(0);
 }
 
-function ml_eval(MadLisp\Lisp $lisp, string $input, bool $compiledMode)
+function ml_eval(MadLisp\Lisp $lisp, string $input, bool $compiledMode, bool $showSource)
 {
     if ($compiledMode) {
-        return $lisp->readEvalCompiled($input);
+        $program = $lisp->compile($lisp->read($input));
+        if ($showSource) {
+            echo $program->getSource() . PHP_EOL;
+        }
+        return $lisp->execute($program);
     }
 
     return $lisp->readEval($input);
@@ -76,7 +81,7 @@ function ml_repl(MadLisp\Lisp $lisp, bool $compiledMode)
         $input = readline('> ');
 
         try {
-            $lisp->print(ml_eval($lisp, $input, $compiledMode), true);
+            $lisp->print(ml_eval($lisp, $input, $compiledMode, false), true);
         } catch (MadLisp\MadLispUserException $ex) {
             print('error: ');
             $lisp->print($ex->getValue(), true);
@@ -116,6 +121,7 @@ $runRepl = false;
 $filename = null;
 $lastArg = null;
 $printResult = false;
+$showSource = false;
 
 // Arguments after -- are passed to the script
 $dividerFound = false;
@@ -142,6 +148,9 @@ for ($i = 1; $i < $argc; $i++) {
         $loadInit = false;
     } elseif ($a == '-r') {
         $runRepl = true;
+    } elseif ($a == '-s') {
+        $compiledMode = true;
+        $showSource = true;
     } else {
         if ($lastArg == '-e') {
             $evalCode = $a;
@@ -165,7 +174,7 @@ $lisp->setEnvValue('argv', new MadLisp\Vector($passedArgs));
 if ($loadInit) {
     $initfile = $_SERVER['HOME'] . DIRECTORY_SEPARATOR . '.madlisp_init';
     if (is_readable($initfile)) {
-        ml_eval($lisp, "(load \"$initfile\")", $compiledMode);
+        ml_eval($lisp, "(load \"$initfile\")", $compiledMode, false);
     }
 }
 
@@ -176,7 +185,7 @@ if ($debugMode) {
 
 // Eval code passed via -e
 if ($evalCode) {
-    $result = ml_eval($lisp, $evalCode, $compiledMode);
+    $result = ml_eval($lisp, $evalCode, $compiledMode, $showSource);
     if ($printResult) {
         $lisp->print($result, false);
     }
@@ -185,7 +194,7 @@ if ($evalCode) {
 // Eval file
 if ($filename) {
     if (is_readable($filename)) {
-        $result = ml_eval($lisp, "(load \"$filename\")", $compiledMode);
+        $result = ml_eval($lisp, "(load \"$filename\")", $compiledMode, $showSource);
         if ($printResult) {
             $lisp->print($result, false);
         }
@@ -203,7 +212,7 @@ if ($runRepl) {
 // Finally, if we had no other actions, read input from stdin
 if (!$evalCode && !$filename) {
     $input = file_get_contents('php://stdin');
-    $result = ml_eval($lisp, $input, $compiledMode);
+    $result = ml_eval($lisp, $input, $compiledMode, $showSource);
     if ($printResult) {
         $lisp->print($result, false);
     }
