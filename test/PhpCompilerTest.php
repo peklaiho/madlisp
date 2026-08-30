@@ -1082,6 +1082,51 @@ class PhpCompilerTest extends TestCase
         $this->assertSame(7, $program->execute($env));
     }
 
+    public function testDiscardedFunctionExpressionsAreNotEmitted(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $program = $compiler->compile(new MList([
+            new Symbol('do'),
+            new MList([
+                new Symbol('fn'),
+                new MList([new Symbol('value')]),
+                new Symbol('value'),
+            ]),
+            4,
+        ]));
+
+        $this->assertSame(4, $program->execute($env));
+        $this->assertStringNotContainsString('static function ($v0)', $program->getSource());
+    }
+
+    public function testDiscardedDoResultsDoNotNeedAssignments(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $observed = [];
+        $env->set('observe', function ($value) use (&$observed) {
+            $observed[] = $value;
+            return 'ignored';
+        });
+        $ast = new MList([
+            new Symbol('do'),
+            1,
+            new MList([new Symbol('observe'), 7]),
+            new MList([new Symbol('+'), 1, 2]),
+            4,
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(4, $program->execute($env));
+        $this->assertSame([7], $observed);
+        $this->assertStringContainsString('$t0(7);', $program->getSource());
+        $this->assertStringContainsString('1 + 2;', $program->getSource());
+        $this->assertStringNotContainsString('$t0 = $t0(7);', $program->getSource());
+        $this->assertStringNotContainsString('$t1 = 1 + 2;', $program->getSource());
+    }
+
     public function testCompilesFunctionWithParameters(): void
     {
         $compiler = new PhpCompiler();

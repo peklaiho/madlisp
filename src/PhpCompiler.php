@@ -50,8 +50,11 @@ class PhpCompiler
                 if ($index === (count($forms) - 1)) {
                     $this->compileExpression($form, $body, '$result', 1);
                 } else {
-                    $this->compileExpression($form, $body, $this->temporary(), 1);
-                    $body[] = '';
+                    $bodyLength = count($body);
+                    $this->compileExpression($form, $body, null, 1);
+                    if (count($body) > $bodyLength) {
+                        $body[] = '';
+                    }
                 }
             }
         } else {
@@ -77,12 +80,14 @@ class PhpCompiler
         return new PhpCompiledProgram($closure, $source);
     }
 
-    private function compileExpression($ast, array &$body, string $target, int $indent,
+    private function compileExpression($ast, array &$body, ?string $target, int $indent,
         array $metadata = []): void
     {
         // Simple PHP values are emitted with var_export
         if ($ast === null || is_bool($ast) || is_int($ast) || is_float($ast) || is_string($ast)) {
-            $this->emit($body, $indent, "$target = " . var_export($ast, true) . ';');
+            if ($target !== null) {
+                $this->emit($body, $indent, "$target = " . var_export($ast, true) . ';');
+            }
             return;
         }
 
@@ -90,9 +95,12 @@ class PhpCompiler
         if ($ast instanceof Symbol) {
             $local = $this->resolveLocal($ast->getName());
             if ($local !== null) {
-                $this->emit($body, $indent, "$target = $local;");
+                if ($target !== null) {
+                    $this->emit($body, $indent, "$target = $local;");
+                }
             } else {
-                $this->emit($body, $indent, "$target = \$env->get(" . var_export($ast->getName(), true) . ');');
+                $expression = "\$env->get(" . var_export($ast->getName(), true) . ')';
+                $this->emitResult($body, $indent, $target, $expression);
             }
             return;
         }
@@ -318,18 +326,19 @@ class PhpCompiler
     // Helpers for Vector and Hash
     // ---
 
-    private function compileVector(Vector $vector, array &$body, string $target, int $indent): void
+    private function compileVector(Vector $vector, array &$body, ?string $target, int $indent): void
     {
         $values = $this->compileArguments($vector->getData(), $body, $indent);
 
-        $this->emit(
+        $this->emitResult(
             $body,
             $indent,
-            "$target = new \\MadLisp\\Vector([" . implode(', ', $values) . ']);'
+            $target,
+            "new \\MadLisp\\Vector([" . implode(', ', $values) . '])'
         );
     }
 
-    private function compileHash(Hash $hash, array &$body, string $target, int $indent): void
+    private function compileHash(Hash $hash, array &$body, ?string $target, int $indent): void
     {
         $values = $this->compileArguments(array_values($hash->getData()), $body, $indent);
 
@@ -338,10 +347,11 @@ class PhpCompiler
             $items[] = var_export($key, true) . ' => ' . $values[$index];
         }
 
-        $this->emit(
+        $this->emitResult(
             $body,
             $indent,
-            "$target = new \\MadLisp\\Hash([" . implode(', ', $items) . ']);'
+            $target,
+            "new \\MadLisp\\Hash([" . implode(', ', $items) . '])'
         );
     }
 
@@ -349,11 +359,13 @@ class PhpCompiler
     // Helpers for special forms in alphabetical order
     // ---
 
-    private function compileAndOr(array $arguments, array &$body, string $target,
+    private function compileAndOr(array $arguments, array &$body, ?string $target,
         int $indent, bool $or): void
     {
         if (!$arguments) {
-            $this->emit($body, $indent, "$target = " . ($or ? 'false' : 'true') . ';');
+            if ($target !== null) {
+                $this->emit($body, $indent, $target . ' = ' . ($or ? 'false' : 'true') . ';');
+            }
             return;
         }
 
@@ -369,7 +381,9 @@ class PhpCompiler
             $this->compileExpression($argument, $body, $condition, $indent);
             $match = $or ? 'true' : 'false';
             $this->emit($body, $indent, "if ($condition == $match) {");
-            $this->emit($body, $indent + 1, "$target = $condition;");
+            if ($target !== null) {
+                $this->emit($body, $indent + 1, "$target = $condition;");
+            }
             $this->emit($body, $indent, '} else {');
             $indent++;
             $openBlocks++;
@@ -382,7 +396,7 @@ class PhpCompiler
     }
 
     private function compileCase(string $operator, array $arguments, array &$body,
-        string $target, int $indent): void
+        ?string $target, int $indent): void
     {
         if (count($arguments) < 2) {
             throw new MadLispException("$operator requires at least 2 arguments");
@@ -409,10 +423,12 @@ class PhpCompiler
     }
 
     private function compileCaseBranch(array $clauses, int $index, string $value,
-        string $comparison, array &$body, string $target, int $indent): void
+        string $comparison, array &$body, ?string $target, int $indent): void
     {
         if ($index === count($clauses)) {
-            $this->emit($body, $indent, "$target = null;");
+            if ($target !== null) {
+                $this->emit($body, $indent, "$target = null;");
+            }
             return;
         }
 
@@ -432,7 +448,7 @@ class PhpCompiler
         $this->emit($body, $indent, '}');
     }
 
-    private function compileCond(array $arguments, array &$body, string $target, int $indent): void
+    private function compileCond(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (!$arguments) {
             throw new MadLispException('cond requires at least 1 argument');
@@ -457,10 +473,12 @@ class PhpCompiler
     }
 
     private function compileCondBranch(array $clauses, int $index, array &$body,
-        string $target, int $indent): void
+        ?string $target, int $indent): void
     {
         if ($index === count($clauses)) {
-            $this->emit($body, $indent, "$target = null;");
+            if ($target !== null) {
+                $this->emit($body, $indent, "$target = null;");
+            }
             return;
         }
 
@@ -484,7 +502,7 @@ class PhpCompiler
         $this->emit($body, $indent, '}');
     }
 
-    private function compileDef(array $arguments, array &$body, string $target, int $indent): void
+    private function compileDef(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) !== 2) {
             throw new MadLispException('def requires exactly 2 arguments');
@@ -502,35 +520,45 @@ class PhpCompiler
         $this->compileExpression($arguments[1], $body, $value, $indent, [
             'definitionName' => $name,
         ]);
-        $this->emit($body, $indent, "$target = \$env->set(" . var_export($name, true) . ", $value);");
+        $this->emitResult(
+            $body,
+            $indent,
+            $target,
+            "\$env->set(" . var_export($name, true) . ", $value)"
+        );
     }
 
-    private function compileDo(array $arguments, array &$body, string $target, int $indent): void
+    private function compileDo(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (!$arguments) {
-            $this->emit($body, $indent, "$target = null;");
+            if ($target !== null) {
+                $this->emit($body, $indent, "$target = null;");
+            }
             return;
         }
 
         foreach ($arguments as $index => $argument) {
-            if ($index === (count($arguments) - 1)) {
-                $this->compileExpression($argument, $body, $target, $indent);
-            } else {
-                $this->compileExpression($argument, $body, $this->temporary(), $indent);
-            }
+            $this->compileExpression(
+                $argument,
+                $body,
+                ($index === (count($arguments) - 1)) ? $target : null,
+                $indent
+            );
         }
     }
 
-    private function compileEnv(array $arguments, array &$body, string $target, int $indent): void
+    private function compileEnv(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if ($arguments) {
             throw new MadLispException('env does not take arguments');
         }
 
-        $this->emit($body, $indent, "$target = \$env;");
+        if ($target !== null) {
+            $this->emit($body, $indent, "$target = \$env;");
+        }
     }
 
-    private function compileFn(array $arguments, array &$body, string $target, int $indent,
+    private function compileFn(array $arguments, array &$body, ?string $target, int $indent,
         array $metadata = []): void
     {
         if (count($arguments) !== 2) {
@@ -571,9 +599,10 @@ class PhpCompiler
         // Keep nested function contexts separate. A named function gets a
         // possible self-reference, but it is captured only if its body uses it.
         $definitionName = $metadata['definitionName'] ?? null;
+        $closureTarget = $target;
         $this->functionSelfContexts[] = [
             'name' => $definitionName,
-            'variable' => ($definitionName !== null) ? $target : null,
+            'variable' => ($definitionName !== null) ? $closureTarget : null,
             'used' => false,
         ];
 
@@ -593,6 +622,12 @@ class PhpCompiler
         array_pop($this->functionScopes);
         array_pop($this->scopes);
 
+        // A discarded anonymous function cannot be called or registered.
+        // Its body was still compiled above so compile-time validation occurs.
+        if ($target === null) {
+            return;
+        }
+
         $use = ['$env'];
         // The closure must capture its generated variable by reference so the
         // variable can be assigned the closure immediately after construction.
@@ -604,13 +639,13 @@ class PhpCompiler
         $this->emit(
             $body,
             $indent,
-            "$target = static function (" . implode(', ', $parameterVariables) . ") use (" . implode(', ', $use) . ') {'
+            "$closureTarget = static function (" . implode(', ', $parameterVariables) . ") use (" . implode(', ', $use) . ') {'
         );
         array_push($body, ...$functionBody);
         $this->emit($body, $indent, '};');
     }
 
-    private function compileIf(array $arguments, array &$body, string $target, int $indent): void
+    private function compileIf(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) < 2 || count($arguments) > 3) {
             throw new MadLispException('if requires 2 or 3 arguments');
@@ -627,14 +662,14 @@ class PhpCompiler
 
         if (isset($arguments[2])) {
             $this->compileExpression($arguments[2], $body, $target, $indent + 1);
-        } else {
+        } elseif ($target !== null) {
             $this->emit($body, $indent + 1, "$target = null;");
         }
 
         $this->emit($body, $indent, '}');
     }
 
-    private function compileLet(array $arguments, array &$body, string $target, int $indent): void
+    private function compileLet(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) < 2) {
             throw new MadLispException('let requires at least 2 arguments');
@@ -676,16 +711,16 @@ class PhpCompiler
         array_pop($this->scopes);
     }
 
-    private function compileQuote(array $arguments, array &$body, string $target, int $indent): void
+    private function compileQuote(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) !== 1) {
             throw new MadLispException('quote requires exactly 1 argument');
         }
 
-        $this->emit($body, $indent, "$target = " . $this->quotedValueExpression($arguments[0]) . ';');
+        $this->emitResult($body, $indent, $target, $this->quotedValueExpression($arguments[0]));
     }
 
-    private function compileTry(array $arguments, array &$body, string $target, int $indent): void
+    private function compileTry(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) !== 2) {
             throw new MadLispException('try requires exactly 2 arguments');
@@ -713,7 +748,7 @@ class PhpCompiler
         $this->emit($body, $indent, '}');
     }
 
-    private function compileUndef(array $arguments, array &$body, string $target, int $indent): void
+    private function compileUndef(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) !== 1) {
             throw new MadLispException('undef requires exactly 1 argument');
@@ -721,20 +756,23 @@ class PhpCompiler
             throw new MadLispException('first argument to undef is not symbol');
         }
 
-        $this->emit(
+        $this->emitResult(
             $body,
             $indent,
-            "$target = \$env->unset(" . var_export($arguments[0]->getName(), true) . ');'
+            $target,
+            "\$env->unset(" . var_export($arguments[0]->getName(), true) . ')'
         );
     }
 
-    private function compileWhile(array $arguments, array &$body, string $target, int $indent): void
+    private function compileWhile(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) < 2) {
             throw new MadLispException('while requires at least 2 arguments');
         }
 
-        $this->emit($body, $indent, "$target = null;");
+        if ($target !== null) {
+            $this->emit($body, $indent, "$target = null;");
+        }
         $this->emit($body, $indent, 'while (true) {');
 
         $condition = $this->compileSimpleExpression($arguments[0]);
@@ -784,24 +822,24 @@ class PhpCompiler
         throw new MadLispException('compiler encountered invalid quoted value: ' . $this->typeToString($value));
     }
 
-    private function compileCallExpression(array $data, array &$body, string $target, int $indent): void
+    private function compileCallExpression(array $data, array &$body, ?string $target, int $indent): void
     {
         $functionExpression = $data[0];
         $function = $this->temporary();
         $this->compileExpression($functionExpression, $body, $function, $indent);
         $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
-        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
+        $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
     }
 
-    private function compileCallLocal(array $data, array &$body, string $target, int $indent): void
+    private function compileCallLocal(array $data, array &$body, ?string $target, int $indent): void
     {
         $functionExpression = $data[0];
         $function = $this->resolveLocal($functionExpression->getName());
         $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
-        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
+        $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
     }
 
-    private function compileCallGlobal(string $name, array $arguments, array &$body, string $target,
+    private function compileCallGlobal(string $name, array $arguments, array &$body, ?string $target,
         int $indent): void
     {
         // Direct self-calls use the captured closure variable. All other
@@ -811,18 +849,18 @@ class PhpCompiler
             $this->functionSelfContexts[$functionIndex]['used'] = true;
             $values = $this->compileArguments($arguments, $body, $indent);
             $selfVariable = $this->functionSelfContexts[$functionIndex]['variable'];
-            $this->emit($body, $indent, "$target = $selfVariable(" . implode(', ', $values) . ');');
+            $this->emitResult($body, $indent, $target, "$selfVariable(" . implode(', ', $values) . ')');
             return;
         }
 
         $function = $this->temporary();
         $this->emit($body, $indent, "$function = \$env->get(" . var_export($name, true) . ');');
         $values = $this->compileArguments($arguments, $body, $indent);
-        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
+        $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
     }
 
     private function compileCallNative(array $arguments, array $functions, int $arity, string $lispName,
-        array &$body, string $target, int $indent): void
+        array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) !== $arity) {
             throw new MadLispException("$lispName requires exactly $arity argument" .
@@ -835,7 +873,7 @@ class PhpCompiler
             $expression = "$function($expression)";
         }
 
-        $this->emit($body, $indent, "$target = $expression;");
+        $this->emitResult($body, $indent, $target, $expression);
     }
 
     private function compileArguments(array $arguments, array &$body, int $indent): array
@@ -870,7 +908,7 @@ class PhpCompiler
     }
 
     private function compileArithmetic(array $arguments, string $operator, int $minArgs,
-        array &$body, string $target, int $indent): void
+        array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) < $minArgs) {
             throw new MadLispException("$operator requires at least $minArgs argument" .
@@ -880,15 +918,15 @@ class PhpCompiler
         $values = $this->compileArguments($arguments, $body, $indent);
 
         if ($operator === '-' && count($values) === 1) {
-            $this->emit($body, $indent, "$target = -{$values[0]};");
+            $this->emitResult($body, $indent, $target, "-{$values[0]}");
             return;
         }
 
-        $this->emit($body, $indent, "$target = " . implode(" $operator ", $values) . ';');
+        $this->emitResult($body, $indent, $target, implode(" $operator ", $values));
     }
 
     private function compileFormattedExpression(array $arguments, string $template, int $arity,
-        string $lispName, array &$body, string $target, int $indent): void
+        string $lispName, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) !== $arity) {
             throw new MadLispException("$lispName requires exactly $arity argument" .
@@ -897,10 +935,10 @@ class PhpCompiler
 
         $values = $this->compileArguments($arguments, $body, $indent);
         $expression = sprintf($template, ...$values);
-        $this->emit($body, $indent, "$target = $expression;");
+        $this->emitResult($body, $indent, $target, $expression);
     }
 
-    private function compileCons(array $arguments, array &$body, string $target, int $indent): void
+    private function compileCons(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) < 2) {
             throw new MadLispException('cons requires at least 2 arguments');
@@ -911,10 +949,11 @@ class PhpCompiler
         $prefix = array_slice($values, 0, -1);
         $data = implode(', ', $prefix);
 
-        $this->emit(
+        $this->emitResult(
             $body,
             $indent,
-            "$target = {$sequence}::new(array_merge([$data], {$sequence}->getData()));"
+            $target,
+            "{$sequence}::new(array_merge([$data], {$sequence}->getData()))"
         );
     }
 
@@ -951,6 +990,11 @@ class PhpCompiler
         }
 
         return gettype($value);
+    }
+
+    private function emitResult(array &$body, int $indent, ?string $target, string $expression): void
+    {
+        $this->emit($body, $indent, ($target === null ? '' : "$target = ") . $expression . ';');
     }
 
     private function emit(array &$body, int $indent, string $statement): void
