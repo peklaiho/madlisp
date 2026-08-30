@@ -472,8 +472,11 @@ class PhpCompiler
             return;
         }
 
-        $condition = $this->temporary();
-        $this->compileExpression($test, $body, $condition, $indent);
+        $condition = $this->compileSimpleExpression($test);
+        if ($condition === null) {
+            $condition = $this->temporary();
+            $this->compileExpression($test, $body, $condition, $indent);
+        }
         $this->emit($body, $indent, "if ($condition) {");
         $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
         $this->emit($body, $indent, '} else {');
@@ -613,8 +616,11 @@ class PhpCompiler
             throw new MadLispException('if requires 2 or 3 arguments');
         }
 
-        $condition = $this->temporary();
-        $this->compileExpression($arguments[0], $body, $condition, $indent);
+        $condition = $this->compileSimpleExpression($arguments[0]);
+        if ($condition === null) {
+            $condition = $this->temporary();
+            $this->compileExpression($arguments[0], $body, $condition, $indent);
+        }
         $this->emit($body, $indent, "if ($condition) {");
         $this->compileExpression($arguments[1], $body, $target, $indent + 1);
         $this->emit($body, $indent, '} else {');
@@ -658,9 +664,9 @@ class PhpCompiler
             if ($simple !== null) {
                 $this->emit($body, $indent, "$local = $simple;");
             } else {
-                $value = $this->temporary();
-                $this->compileExpression($bindingData[$i + 1], $body, $value, $indent);
-                $this->emit($body, $indent, "$local = $value;");
+                // The binding is not visible until after its initializer has
+                // been compiled, so the final local is a safe destination.
+                $this->compileExpression($bindingData[$i + 1], $body, $local, $indent);
             }
 
             $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
@@ -731,8 +737,11 @@ class PhpCompiler
         $this->emit($body, $indent, "$target = null;");
         $this->emit($body, $indent, 'while (true) {');
 
-        $condition = $this->temporary();
-        $this->compileExpression($arguments[0], $body, $condition, $indent + 1);
+        $condition = $this->compileSimpleExpression($arguments[0]);
+        if ($condition === null) {
+            $condition = $this->temporary();
+            $this->compileExpression($arguments[0], $body, $condition, $indent + 1);
+        }
         $this->emit($body, $indent + 1, "if (!$condition) {");
         $this->emit($body, $indent + 2, 'break;');
         $this->emit($body, $indent + 1, '}');

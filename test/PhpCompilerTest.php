@@ -397,6 +397,43 @@ class PhpCompilerTest extends TestCase
         $compiler->compile(new MList([new Symbol('cond'), true]));
     }
 
+    public function testSimpleConditionsSkipTemporaryVariables(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $if = $compiler->compile(new MList([
+            new Symbol('let'),
+            new MList([new Symbol('condition'), true]),
+            new MList([new Symbol('if'), new Symbol('condition'), 1, 2]),
+        ]));
+        $this->assertSame(1, $if->execute($env));
+        $this->assertStringContainsString('if ($v0) {', $if->getSource());
+        $this->assertStringNotContainsString('$t0 = $v0;', $if->getSource());
+
+        $cond = $compiler->compile(new MList([
+            new Symbol('let'),
+            new MList([new Symbol('condition'), false]),
+            new MList([
+                new Symbol('cond'),
+                new MList([new Symbol('condition'), 1]),
+                new MList([new Symbol('else'), 2]),
+            ]),
+        ]));
+        $this->assertSame(2, $cond->execute($env));
+        $this->assertStringContainsString('if ($v0) {', $cond->getSource());
+        $this->assertStringNotContainsString('$t0 = $v0;', $cond->getSource());
+
+        $while = $compiler->compile(new MList([
+            new Symbol('let'),
+            new MList([new Symbol('condition'), false]),
+            new MList([new Symbol('while'), new Symbol('condition'), 1]),
+        ]));
+        $this->assertNull($while->execute($env));
+        $this->assertStringContainsString('if (!$v0) {', $while->getSource());
+        $this->assertStringNotContainsString('$t0 = $v0;', $while->getSource());
+    }
+
     public function testCaseEvaluatesTestOnceAndReturnsMatchingClauseResult(): void
     {
         $compiler = new PhpCompiler();
@@ -966,6 +1003,26 @@ class PhpCompilerTest extends TestCase
 
         $this->assertInstanceOf(PhpCompiledProgram::class, $program);
         $this->assertSame(36, $program->execute($env));
+    }
+
+    public function testLetUsesLocalAsDestinationForComplexInitializer(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([
+                new Symbol('value'),
+                new MList([new Symbol('+'), 1, 2]),
+            ]),
+            new Symbol('value'),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(3, $program->execute($env));
+        $this->assertStringContainsString('$v0 = 1 + 2;', $program->getSource());
+        $this->assertStringNotContainsString('$t0 = 1 + 2;', $program->getSource());
     }
 
     public function testCompilesAndExecutesLetWithShadowing(): void
