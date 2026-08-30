@@ -419,32 +419,33 @@ class PhpCompiler
         $value = $this->temporary();
         $this->compileExpression($arguments[0], $body, $value, $indent);
         $comparison = ($operator === 'case-strict') ? '===' : '==';
-        $this->compileCaseBranch($clauses, 0, $value, $comparison, $body, $target, $indent);
-    }
+        $first = true;
 
-    private function compileCaseBranch(array $clauses, int $index, string $value,
-        string $comparison, array &$body, ?string $target, int $indent): void
-    {
-        if ($index === count($clauses)) {
-            if ($target !== null) {
-                $this->emit($body, $indent, "$target = null;");
+        foreach ($clauses as $clause) {
+            $test = $clause[0];
+
+            if ($test instanceof Symbol && $test->getName() === 'else') {
+                if (!$first) {
+                    $this->emit($body, $indent, '} else {');
+                    $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
+                    $this->emit($body, $indent, '}');
+                } else {
+                    $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
+                }
+                return;
             }
-            return;
+
+            $match = $this->quotedValueExpression($test);
+            $keyword = $first ? 'if' : '} elseif';
+            $this->emit($body, $indent, "$keyword ($value $comparison $match) {");
+            $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
+            $first = false;
         }
 
-        $clause = $clauses[$index];
-        $test = $clause[0];
-
-        if ($test instanceof Symbol && $test->getName() === 'else') {
-            $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
-            return;
-        }
-
-        $match = $this->quotedValueExpression($test);
-        $this->emit($body, $indent, "if ($value $comparison $match) {");
-        $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
         $this->emit($body, $indent, '} else {');
-        $this->compileCaseBranch($clauses, $index + 1, $value, $comparison, $body, $target, $indent + 1);
+        if ($target !== null) {
+            $this->emit($body, $indent + 1, "$target = null;");
+        }
         $this->emit($body, $indent, '}');
     }
 
