@@ -194,7 +194,13 @@ if ($evalCode) {
 // Eval file
 if ($filename) {
     if (is_readable($filename)) {
-        $result = ml_eval($lisp, "(load \"$filename\")", $compiledMode, $showSource);
+        if ($compiledMode) {
+            $source = file_get_contents($filename);
+            $result = ml_eval($lisp, "(do $source)", true, $showSource);
+        } else {
+            $result = ml_eval($lisp, "(load \"$filename\")", $compiledMode, $showSource);
+        }
+
         if ($printResult) {
             $lisp->print($result, false);
         }
