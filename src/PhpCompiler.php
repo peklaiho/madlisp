@@ -9,12 +9,6 @@ namespace MadLisp;
 
 class PhpCompiler
 {
-    private const RESERVED_DEFINITION_NAMES = [
-        'if', 'let', 'do', 'fn', 'quote', 'def',
-        '+', '-', '*', '/', '%', '==', '=', '!=', '!==', '<', '<=', '>', '>=',
-        'inc', 'dec', 'not', 'zero?', 'one?', 'even?', 'odd?', 'empty?', 'len', '//',
-    ];
-
     private int $temporaryCount;
     private int $localCount;
     private array $scopes;
@@ -23,25 +17,32 @@ class PhpCompiler
 
     public function compile($ast): PhpCompiledProgram
     {
+        // Reset internal state
         $this->temporaryCount = 0;
         $this->localCount = 0;
         $this->scopes = [[]];
         $this->functionScopes = [];
         $this->functionCaptures = [];
+
+        // Collection of expressions
         $body = [];
+
+        // Compile the outer expression
         $this->compileExpression($ast, $body, '$result', 1);
 
+        // Check that everything was cleaned up properly
         if (count($this->scopes) !== 1 || $this->functionScopes || $this->functionCaptures) {
-            throw new MadLispException('php compiler scope cleanup failed');
+            throw new MadLispException('compiler scope cleanup failed');
         }
 
+        // Build the source code
         $source = implode("\n", array_merge(
             ['return static function (\\MadLisp\\Env $env) {'],
             $body,
             ['    return $result;', '};']
         ));
 
-        /** @var \Closure $closure */
+        // Eval it to create a PHP closure
         $closure = eval($source);
 
         return new PhpCompiledProgram($closure, $source);
@@ -49,212 +50,248 @@ class PhpCompiler
 
     private function compileExpression($ast, array &$body, string $target, int $indent): void
     {
+        // Simple PHP values are emitted with var_export
         if ($ast === null || is_bool($ast) || is_int($ast) || is_float($ast) || is_string($ast)) {
             $this->emit($body, $indent, "$target = " . var_export($ast, true) . ';');
             return;
         }
 
+        // Symbol is a local or global lookup
         if ($ast instanceof Symbol) {
             $local = $this->resolveLocal($ast->getName());
             if ($local !== null) {
                 $this->emit($body, $indent, "$target = $local;");
             } else {
-                $this->emit(
-                    $body,
-                    $indent,
-                    "$target = \$env->get(" . var_export($ast->getName(), true) . ');'
-                );
+                $this->emit($body, $indent, "$target = \$env->get(" . var_export($ast->getName(), true) . ');');
             }
             return;
         }
 
+        // Compilation of Vector, Hash
         if ($ast instanceof Vector) {
             $this->compileVector($ast, $body, $target, $indent);
             return;
-        }
-
-        if ($ast instanceof Hash) {
+        } elseif ($ast instanceof Hash) {
             $this->compileHash($ast, $body, $target, $indent);
             return;
         }
 
+        // We should have a list if we get here
         if (!($ast instanceof MList)) {
-            throw new MadLispException('php compiler does not support this value');
+            throw new MadLispException('compiler does not support value: ' . $this->typeToString($ast));
         }
 
         $data = $ast->getData();
+
+        // Unquoted empty list is an error
         if (!$data) {
-            throw new MadLispException('php compiler requires a supported operator');
+            throw new MadLispException('attempt to compile empty unquoted list');
         }
 
+        // A non-symbol in function position is an expression
+        // that evaluates to a callable.
         if (!($data[0] instanceof Symbol)) {
-            $this->compileCall($data, $body, $target, $indent);
+            $this->compileCallExpression($data, $body, $target, $indent);
             return;
         }
+
+        // If we get here, we have a non-empty list with a symbol
+        // as the first item. We are dealing with either a special
+        // form or a function call!
 
         $operator = $data[0]->getName();
         $arguments = array_slice($data, 1);
 
-        if ($operator === 'and') {
-            $this->compileAnd($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'or') {
-            $this->compileOr($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'cond') {
-            $this->compileCond($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'case' || $operator === 'case-strict') {
-            $this->compileCase($operator, $arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'env') {
-            $this->compileEnv($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'undef') {
-            $this->compileUndef($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'while') {
-            $this->compileWhile($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'try') {
-            $this->compileTry($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'quote') {
-            $this->compileQuote($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'def') {
-            $this->compileDef($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'if') {
-            $this->compileIf($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'let') {
-            $this->compileLet($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'do') {
-            $this->compileDo($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($operator === 'fn') {
-            $this->compileFn($arguments, $body, $target, $indent);
-            return;
-        }
-
-        if ($this->resolveLocal($operator) !== null) {
-            $this->compileCall($data, $body, $target, $indent);
-            return;
-        }
-
-        if (!in_array($operator, self::RESERVED_DEFINITION_NAMES, true)) {
-            $this->compileDynamicCall($operator, $arguments, $body, $target, $indent);
-            return;
-        }
-
-        $values = $this->compileArguments($arguments, $body, $indent);
-
+        // Handle special forms first: They are syntax and always
+        // take precedence over local and global bindings.
         switch ($operator) {
+            case 'and':
+                $this->compileAndOr($arguments, $body, $target, $indent, false);
+                return;
+            case 'case':
+            case 'case-strict':
+                $this->compileCase($operator, $arguments, $body, $target, $indent);
+                return;
+            case 'cond':
+                $this->compileCond($arguments, $body, $target, $indent);
+                return;
+            case 'def':
+                $this->compileDef($arguments, $body, $target, $indent);
+                return;
+            case 'do':
+                $this->compileDo($arguments, $body, $target, $indent);
+                return;
+            case 'env':
+                $this->compileEnv($arguments, $body, $target, $indent);
+                return;
+            case 'fn':
+                $this->compileFn($arguments, $body, $target, $indent);
+                return;
+            case 'if':
+                $this->compileIf($arguments, $body, $target, $indent);
+                return;
+            case 'let':
+                $this->compileLet($arguments, $body, $target, $indent);
+                return;
+            case 'or':
+                $this->compileAndOr($arguments, $body, $target, $indent, true);
+                return;
+            case 'quote':
+                $this->compileQuote($arguments, $body, $target, $indent);
+                return;
+            case 'try':
+                $this->compileTry($arguments, $body, $target, $indent);
+                return;
+            case 'undef':
+                $this->compileUndef($arguments, $body, $target, $indent);
+                return;
+            case 'while':
+                $this->compileWhile($arguments, $body, $target, $indent);
+                return;
+        }
+
+        // Resolve local functions next so local bindings can
+        // shadow fast-path functions
+        if ($this->resolveLocal($operator) !== null) {
+            $this->compileCallLocal($data, $body, $target, $indent);
+            return;
+        }
+
+        // Use optimized implementations for recognized built-in operations
+        switch ($operator) {
+            // Math operators
             case '+':
-                $this->compileArithmetic($values, '+', 1, false, $body, $target, $indent);
+                $this->compileArithmetic($arguments, '+', 1, $body, $target, $indent);
                 return;
             case '-':
-                $this->compileArithmetic($values, '-', 1, true, $body, $target, $indent);
+                $this->compileArithmetic($arguments, '-', 1, $body, $target, $indent);
                 return;
             case '*':
-                $this->compileArithmetic($values, '*', 1, false, $body, $target, $indent);
+                $this->compileArithmetic($arguments, '*', 2, $body, $target, $indent);
                 return;
             case '/':
-                $this->compileArithmetic($values, '/', 1, false, $body, $target, $indent);
+                $this->compileArithmetic($arguments, '/', 2, $body, $target, $indent);
                 return;
             case '//':
-                $this->compileSimpleCall($values, 'intdiv', 2, '// requires exactly 2 arguments', $body, $target, $indent);
+                $this->compileCallNative($arguments, ['intdiv'], 2, '//', $body, $target, $indent);
                 return;
             case '%':
-                $this->compileArithmetic($values, '%', 2, false, $body, $target, $indent);
-                return;
-            case '==':
-                $this->compileBinary($values, '===', '== requires exactly 2 arguments', $body, $target, $indent);
-                return;
-            case '=':
-                $this->compileBinary($values, '==', '= requires exactly 2 arguments', $body, $target, $indent);
-                return;
-            case '!=':
-                $this->compileBinary($values, '!=', '!= requires exactly 2 arguments', $body, $target, $indent);
-                return;
-            case '!==':
-                $this->compileBinary($values, '!==', '!== requires exactly 2 arguments', $body, $target, $indent);
-                return;
-            case '<':
-                $this->compileBinary($values, '<', '< requires exactly 2 arguments', $body, $target, $indent);
-                return;
-            case '<=':
-                $this->compileBinary($values, '<=', '<= requires exactly 2 arguments', $body, $target, $indent);
-                return;
-            case '>':
-                $this->compileBinary($values, '>', '> requires exactly 2 arguments', $body, $target, $indent);
-                return;
-            case '>=':
-                $this->compileBinary($values, '>=', '>= requires exactly 2 arguments', $body, $target, $indent);
+                $this->compileArithmetic($arguments, '%', 2, $body, $target, $indent);
                 return;
             case 'inc':
-                $this->compileUnary($values, '+ 1', 'inc requires exactly 1 argument', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s + 1', 1, 'inc', $body, $target, $indent);
                 return;
             case 'dec':
-                $this->compileUnary($values, '- 1', 'dec requires exactly 1 argument', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s - 1', 1, 'dec', $body, $target, $indent);
                 return;
+
+            // Math other
             case 'not':
-                $this->compileUnary($values, '!', 'not requires exactly 1 argument', $body, $target, $indent, true);
+                $this->compileFormattedExpression($arguments, '!%s', 1, 'not', $body, $target, $indent);
                 return;
+            case 'abs':
+                $this->compileCallNative($arguments, ['abs'], 1, 'abs', $body, $target, $indent);
+                return;
+            case 'floor':
+                $this->compileCallNative($arguments, ['intval', 'floor'], 1, 'floor', $body, $target, $indent);
+                return;
+            case 'ceil':
+                $this->compileCallNative($arguments, ['intval', 'ceil'], 1, 'ceil', $body, $target, $indent);
+                return;
+            case 'pow':
+                $this->compileCallNative($arguments, ['pow'], 2, 'pow', $body, $target, $indent);
+                return;
+            case 'sqrt':
+                $this->compileCallNative($arguments, ['sqrt'], 1, 'sqrt', $body, $target, $indent);
+                return;
+
+            // Comparisons
+            case '==':
+                $this->compileFormattedExpression($arguments, '%s === %s', 2, '==', $body, $target, $indent);
+                return;
+            case '=':
+                $this->compileFormattedExpression($arguments, '%s == %s', 2, '=', $body, $target, $indent);
+                return;
+            case '!=':
+                $this->compileFormattedExpression($arguments, '%s != %s', 2, '!=', $body, $target, $indent);
+                return;
+            case '!==':
+                $this->compileFormattedExpression($arguments, '%s !== %s', 2, '!==', $body, $target, $indent);
+                return;
+            case '<':
+                $this->compileFormattedExpression($arguments, '%s < %s', 2, '<', $body, $target, $indent);
+                return;
+            case '<=':
+                $this->compileFormattedExpression($arguments, '%s <= %s', 2, '<=', $body, $target, $indent);
+                return;
+            case '>':
+                $this->compileFormattedExpression($arguments, '%s > %s', 2, '>', $body, $target, $indent);
+                return;
+            case '>=':
+                $this->compileFormattedExpression($arguments, '%s >= %s', 2, '>=', $body, $target, $indent);
+                return;
+
+            // Predicates
             case 'zero?':
-                $this->compileUnary($values, '=== 0', 'zero? requires exactly 1 argument', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s === 0', 1, 'zero?', $body, $target, $indent);
                 return;
             case 'one?':
-                $this->compileUnary($values, '=== 1', 'one? requires exactly 1 argument', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s === 1', 1, 'one?', $body, $target, $indent);
                 return;
             case 'even?':
-                $this->compileUnary($values, '% 2 === 0', 'even? requires exactly 1 argument', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s %% 2 === 0', 1, 'even?', $body, $target, $indent);
                 return;
             case 'odd?':
-                $this->compileUnary($values, '% 2 !== 0', 'odd? requires exactly 1 argument', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s %% 2 !== 0', 1, 'odd?', $body, $target, $indent);
                 return;
+
+            // Collections
             case 'empty?':
-                $this->compileUnary($values, '->count() === 0', 'empty? requires exactly 1 argument', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s->count() === 0', 1, 'empty?', $body, $target, $indent);
                 return;
             case 'len':
-                $this->compileUnary($values, '->count()', 'len requires exactly 1 argument', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s->count()', 1, 'len', $body, $target, $indent);
                 return;
-            default:
-                throw new MadLispException("php compiler does not support $operator");
+            case 'car':
+                $this->compileFormattedExpression($arguments, '%s->getData()[0]', 1, 'car', $body, $target, $indent);
+                return;
+            case 'cdr':
+                // Positional sprintf placeholder reuses the argument without compiling it twice.
+                $this->compileFormattedExpression($arguments, '%1$s::new(array_slice(%1$s->getData(), 1))', 1, 'cdr', $body, $target, $indent);
+                return;
+            case 'cons':
+                $this->compileCons($arguments, $body, $target, $indent);
+                return;
+            case 'last':
+                // Positional sprintf placeholder reuses the argument without compiling it twice.
+                $this->compileFormattedExpression($arguments, '%1$s->getData()[%1$s->count() - 1]', 1, 'last', $body, $target, $indent);
+                return;
+            case 'get':
+                $this->compileFormattedExpression($arguments, '%s->get(%s)', 2, 'get', $body, $target, $indent);
+                return;
+            case 'key?':
+                $this->compileFormattedExpression($arguments, '%s->has(%s)', 2, 'key?', $body, $target, $indent);
+                return;
+
+            // Strings
+            case 'strlen':
+                $this->compileCallNative($arguments, ['strlen'], 1, 'strlen', $body, $target, $indent);
+                return;
         }
+
+        // No special form, local function, or fast path matched
+        // Resolve the function from the global environment
+        $this->compileCallGlobal($operator, $arguments, $body, $target, $indent);
     }
+
+    // ---
+    // Helpers for Vector and Hash
+    // ---
 
     private function compileVector(Vector $vector, array &$body, string $target, int $indent): void
     {
         $values = $this->compileArguments($vector->getData(), $body, $indent);
+
         $this->emit(
             $body,
             $indent,
@@ -265,6 +302,7 @@ class PhpCompiler
     private function compileHash(Hash $hash, array &$body, string $target, int $indent): void
     {
         $values = $this->compileArguments(array_values($hash->getData()), $body, $indent);
+
         $items = [];
         foreach (array_keys($hash->getData()) as $index => $key) {
             $items[] = var_export($key, true) . ' => ' . $values[$index];
@@ -277,23 +315,13 @@ class PhpCompiler
         );
     }
 
-    private function compileAnd(array $arguments, array &$body, string $target, int $indent): void
-    {
-        $this->compileShortCircuit($arguments, false, $body, $target, $indent);
-    }
+    // ---
+    // Helpers for special forms in alphabetical order
+    // ---
 
-    private function compileOr(array $arguments, array &$body, string $target, int $indent): void
+    private function compileAndOr(array $arguments, array &$body, string $target,
+        int $indent, bool $or): void
     {
-        $this->compileShortCircuit($arguments, true, $body, $target, $indent);
-    }
-
-    private function compileShortCircuit(
-        array $arguments,
-        bool $or,
-        array &$body,
-        string $target,
-        int $indent
-    ): void {
         if (!$arguments) {
             $this->emit($body, $indent, "$target = " . ($or ? 'false' : 'true') . ';');
             return;
@@ -301,6 +329,7 @@ class PhpCompiler
 
         $openBlocks = 0;
         $last = count($arguments) - 1;
+
         foreach ($arguments as $index => $argument) {
             if ($index === $last) {
                 $this->compileExpression($argument, $body, $target, $indent);
@@ -323,135 +352,9 @@ class PhpCompiler
         }
     }
 
-    private function compileCond(array $arguments, array &$body, string $target, int $indent): void
+    private function compileCase(string $operator, array $arguments, array &$body,
+        string $target, int $indent): void
     {
-        if (!$arguments) {
-            throw new MadLispException('cond requires at least 1 argument');
-        }
-
-        $clauses = [];
-        foreach ($arguments as $argument) {
-            if (!($argument instanceof Seq)) {
-                throw new MadLispException('argument to cond is not seq');
-            }
-
-            $data = $argument->getData();
-            if (count($data) < 2) {
-                throw new MadLispException('clause for cond requires at least 2 arguments');
-            }
-
-            $clauses[] = $data;
-        }
-
-        $this->compileCondBranch($clauses, 0, $body, $target, $indent);
-    }
-
-    private function compileCondBranch(
-        array $clauses,
-        int $index,
-        array &$body,
-        string $target,
-        int $indent
-    ): void {
-        if ($index === count($clauses)) {
-            $this->emit($body, $indent, "$target = null;");
-            return;
-        }
-
-        $clause = $clauses[$index];
-        $test = $clause[0];
-        if ($test instanceof Symbol && $test->getName() === 'else') {
-            $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
-            return;
-        }
-
-        $condition = $this->temporary();
-        $this->compileExpression($test, $body, $condition, $indent);
-        $this->emit($body, $indent, "if ($condition) {");
-        $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
-        $this->emit($body, $indent, '} else {');
-        $this->compileCondBranch($clauses, $index + 1, $body, $target, $indent + 1);
-        $this->emit($body, $indent, '}');
-    }
-
-    private function compileEnv(array $arguments, array &$body, string $target, int $indent): void
-    {
-        if ($arguments) {
-            throw new MadLispException('env does not take arguments');
-        }
-
-        $this->emit($body, $indent, "$target = \$env;");
-    }
-
-    private function compileUndef(array $arguments, array &$body, string $target, int $indent): void
-    {
-        if (count($arguments) !== 1) {
-            throw new MadLispException('undef requires exactly 1 argument');
-        }
-        if (!($arguments[0] instanceof Symbol)) {
-            throw new MadLispException('first argument to undef is not symbol');
-        }
-
-        $this->emit(
-            $body,
-            $indent,
-            "$target = \$env->unset(" . var_export($arguments[0]->getName(), true) . ');'
-        );
-    }
-
-    private function compileWhile(array $arguments, array &$body, string $target, int $indent): void
-    {
-        if (count($arguments) < 2) {
-            throw new MadLispException('while requires at least 2 arguments');
-        }
-
-        $this->emit($body, $indent, "$target = null;");
-        $this->emit($body, $indent, 'while (true) {');
-
-        $condition = $this->temporary();
-        $this->compileExpression($arguments[0], $body, $condition, $indent + 1);
-        $this->emit($body, $indent + 1, "if (!$condition) {");
-        $this->emit($body, $indent + 2, 'break;');
-        $this->emit($body, $indent + 1, '}');
-        $this->compileDo(array_slice($arguments, 1), $body, $target, $indent + 1);
-        $this->emit($body, $indent, '}');
-    }
-
-    private function compileTry(array $arguments, array &$body, string $target, int $indent): void
-    {
-        if (count($arguments) !== 2) {
-            throw new MadLispException('try requires exactly 2 arguments');
-        }
-        if (!($arguments[1] instanceof Seq)) {
-            throw new MadLispException('second argument to try is not seq');
-        }
-
-        $catch = $arguments[1]->getData();
-        if (count($catch) !== 3 || !($catch[0] instanceof Symbol) ||
-            $catch[0]->getName() !== 'catch' || !($catch[1] instanceof Symbol)) {
-            throw new MadLispException('invalid form for catch');
-        }
-
-        $this->emit($body, $indent, 'try {');
-        $this->compileExpression($arguments[0], $body, $target, $indent + 1);
-        $this->emit($body, $indent, '} catch (\\Throwable $exception) {');
-
-        $exceptionVariable = '$v' . $this->localCount++;
-        $this->scopes[] = [$catch[1]->getName() => $exceptionVariable];
-        $this->emit($body, $indent + 1, "$exceptionVariable = \$exception;");
-        $this->compileExpression($catch[2], $body, $target, $indent + 1);
-        array_pop($this->scopes);
-
-        $this->emit($body, $indent, '}');
-    }
-
-    private function compileCase(
-        string $operator,
-        array $arguments,
-        array &$body,
-        string $target,
-        int $indent
-    ): void {
         if (count($arguments) < 2) {
             throw new MadLispException("$operator requires at least 2 arguments");
         }
@@ -472,19 +375,13 @@ class PhpCompiler
 
         $value = $this->temporary();
         $this->compileExpression($arguments[0], $body, $value, $indent);
-        $comparison = $operator === 'case-strict' ? '===' : '==';
+        $comparison = ($operator === 'case-strict') ? '===' : '==';
         $this->compileCaseBranch($clauses, 0, $value, $comparison, $body, $target, $indent);
     }
 
-    private function compileCaseBranch(
-        array $clauses,
-        int $index,
-        string $value,
-        string $comparison,
-        array &$body,
-        string $target,
-        int $indent
-    ): void {
+    private function compileCaseBranch(array $clauses, int $index, string $value,
+        string $comparison, array &$body, string $target, int $indent): void
+    {
         if ($index === count($clauses)) {
             $this->emit($body, $indent, "$target = null;");
             return;
@@ -492,6 +389,7 @@ class PhpCompiler
 
         $clause = $clauses[$index];
         $test = $clause[0];
+
         if ($test instanceof Symbol && $test->getName() === 'else') {
             $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
             return;
@@ -505,106 +403,72 @@ class PhpCompiler
         $this->emit($body, $indent, '}');
     }
 
-    private function compileQuote(array $arguments, array &$body, string $target, int $indent): void
+    private function compileCond(array $arguments, array &$body, string $target, int $indent): void
     {
-        if (count($arguments) !== 1) {
-            throw new MadLispException('quote requires exactly 1 argument');
+        if (!$arguments) {
+            throw new MadLispException('cond requires at least 1 argument');
         }
 
-        $this->emit($body, $indent, "$target = " . $this->quotedValueExpression($arguments[0]) . ';');
+        $clauses = [];
+
+        foreach ($arguments as $argument) {
+            if (!($argument instanceof Seq)) {
+                throw new MadLispException('argument to cond is not seq');
+            }
+
+            $data = $argument->getData();
+            if (count($data) < 2) {
+                throw new MadLispException('clause for cond requires at least 2 arguments');
+            }
+
+            $clauses[] = $data;
+        }
+
+        $this->compileCondBranch($clauses, 0, $body, $target, $indent);
+    }
+
+    private function compileCondBranch(array $clauses, int $index, array &$body,
+        string $target, int $indent): void
+    {
+        if ($index === count($clauses)) {
+            $this->emit($body, $indent, "$target = null;");
+            return;
+        }
+
+        $clause = $clauses[$index];
+        $test = $clause[0];
+
+        if ($test instanceof Symbol && $test->getName() === 'else') {
+            $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
+            return;
+        }
+
+        $condition = $this->temporary();
+        $this->compileExpression($test, $body, $condition, $indent);
+        $this->emit($body, $indent, "if ($condition) {");
+        $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
+        $this->emit($body, $indent, '} else {');
+        $this->compileCondBranch($clauses, $index + 1, $body, $target, $indent + 1);
+        $this->emit($body, $indent, '}');
     }
 
     private function compileDef(array $arguments, array &$body, string $target, int $indent): void
     {
         if (count($arguments) !== 2) {
             throw new MadLispException('def requires exactly 2 arguments');
-        }
-        if (!($arguments[0] instanceof Symbol)) {
+        } elseif (!($arguments[0] instanceof Symbol)) {
             throw new MadLispException('first argument to def is not symbol');
         }
 
         $name = $arguments[0]->getName();
+
         if ($name === '__FILE__' || $name === '__DIR__') {
             throw new MadLispException("cannot define reserved name $name");
-        }
-        if (in_array($name, self::RESERVED_DEFINITION_NAMES, true)) {
-            throw new MadLispException("cannot redefine core operator $name");
         }
 
         $value = $this->temporary();
         $this->compileExpression($arguments[1], $body, $value, $indent);
         $this->emit($body, $indent, "$target = \$env->set(" . var_export($name, true) . ", $value);");
-    }
-
-    private function quotedValueExpression($value): string
-    {
-        if ($value === null || is_bool($value) || is_int($value) || is_float($value) || is_string($value)) {
-            return var_export($value, true);
-        }
-        if ($value instanceof Symbol) {
-            return 'new \\MadLisp\\Symbol(' . var_export($value->getName(), true) . ')';
-        }
-        if ($value instanceof MList) {
-            return 'new \\MadLisp\\MList([' . implode(', ', array_map(
-                fn ($item) => $this->quotedValueExpression($item),
-                $value->getData()
-            )) . '])';
-        }
-        if ($value instanceof Vector) {
-            return 'new \\MadLisp\\Vector([' . implode(', ', array_map(
-                fn ($item) => $this->quotedValueExpression($item),
-                $value->getData()
-            )) . '])';
-        }
-        if ($value instanceof Hash) {
-            $items = [];
-            foreach ($value->getData() as $key => $item) {
-                $items[] = var_export($key, true) . ' => ' . $this->quotedValueExpression($item);
-            }
-            return 'new \\MadLisp\\Hash([' . implode(', ', $items) . '])';
-        }
-
-        throw new MadLispException('php compiler does not support this quoted value');
-    }
-
-    private function compileLet(array $arguments, array &$body, string $target, int $indent): void
-    {
-        if (count($arguments) < 2) {
-            throw new MadLispException('let requires at least 2 arguments');
-        }
-
-        $bindings = $arguments[0];
-        if (!($bindings instanceof Seq)) {
-            throw new MadLispException('first argument to let is not seq');
-        }
-
-        $bindingData = $bindings->getData();
-        if (count($bindingData) % 2 !== 0) {
-            throw new MadLispException('uneven number of bindings for let');
-        }
-
-        $this->scopes[] = [];
-
-        for ($i = 0; $i < count($bindingData); $i += 2) {
-            if (!($bindingData[$i] instanceof Symbol)) {
-                throw new MadLispException('binding key for let is not symbol');
-            }
-
-            // Compile the value before adding the name to the scope.
-            $local = '$v' . $this->localCount++;
-            $simple = $this->compileSimpleExpression($bindingData[$i + 1]);
-            if ($simple !== null) {
-                $this->emit($body, $indent, "$local = $simple;");
-            } else {
-                $value = $this->temporary();
-                $this->compileExpression($bindingData[$i + 1], $body, $value, $indent);
-                $this->emit($body, $indent, "$local = $value;");
-            }
-            $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
-        }
-
-        $this->compileDo(array_slice($arguments, 1), $body, $target, $indent);
-        array_pop($this->scopes);
     }
 
     private function compileDo(array $arguments, array &$body, string $target, int $indent): void
@@ -615,10 +479,20 @@ class PhpCompiler
         }
 
         $last = array_key_last($arguments);
+
         foreach ($arguments as $index => $argument) {
             $expressionTarget = $index === $last ? $target : $this->temporary();
             $this->compileExpression($argument, $body, $expressionTarget, $indent);
         }
+    }
+
+    private function compileEnv(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if ($arguments) {
+            throw new MadLispException('env does not take arguments');
+        }
+
+        $this->emit($body, $indent, "$target = \$env;");
     }
 
     private function compileFn(array $arguments, array &$body, string $target, int $indent): void
@@ -628,22 +502,24 @@ class PhpCompiler
         }
 
         $parameters = $arguments[0];
+
         if (!($parameters instanceof Seq)) {
             throw new MadLispException('first argument to fn is not seq');
         }
 
         $parameterNames = [];
         $parameterVariables = [];
+
         foreach ($parameters->getData() as $parameter) {
             if (!($parameter instanceof Symbol)) {
                 throw new MadLispException('parameter for fn is not symbol');
             }
 
             $name = $parameter->getName();
+
             if ($name === '&') {
                 throw new MadLispException('variadic parameters are not supported for compiled fn');
-            }
-            if (array_key_exists($name, $parameterNames)) {
+            } elseif (array_key_exists($name, $parameterNames)) {
                 throw new MadLispException("duplicate parameter $name for fn");
             }
 
@@ -657,10 +533,12 @@ class PhpCompiler
         $this->functionCaptures[] = [];
 
         $functionBody = [];
+
         $this->compileExpression($arguments[1], $functionBody, '$result', $indent + 1);
         $this->emit($functionBody, $indent + 1, 'return $result;');
 
         $captures = array_values($this->functionCaptures[array_key_last($this->functionCaptures)]);
+
         array_pop($this->functionCaptures);
         array_pop($this->functionScopes);
         array_pop($this->scopes);
@@ -696,36 +574,194 @@ class PhpCompiler
         $this->emit($body, $indent, '}');
     }
 
-    private function compileDynamicCall(
-        string $name,
-        array $arguments,
-        array &$body,
-        string $target,
-        int $indent
-    ): void {
+    private function compileLet(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) < 2) {
+            throw new MadLispException('let requires at least 2 arguments');
+        }
+
+        $bindings = $arguments[0];
+        if (!($bindings instanceof Seq)) {
+            throw new MadLispException('first argument to let is not seq');
+        }
+
+        $bindingData = $bindings->getData();
+        if (count($bindingData) % 2 !== 0) {
+            throw new MadLispException('uneven number of bindings for let');
+        }
+
+        $this->scopes[] = [];
+
+        for ($i = 0; $i < count($bindingData); $i += 2) {
+            if (!($bindingData[$i] instanceof Symbol)) {
+                throw new MadLispException('binding key for let is not symbol');
+            }
+
+            // Compile the value before adding the name to the scope.
+            $local = '$v' . $this->localCount++;
+            $simple = $this->compileSimpleExpression($bindingData[$i + 1]);
+
+            if ($simple !== null) {
+                $this->emit($body, $indent, "$local = $simple;");
+            } else {
+                $value = $this->temporary();
+                $this->compileExpression($bindingData[$i + 1], $body, $value, $indent);
+                $this->emit($body, $indent, "$local = $value;");
+            }
+
+            $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
+        }
+
+        $this->compileDo(array_slice($arguments, 1), $body, $target, $indent);
+        array_pop($this->scopes);
+    }
+
+    private function compileQuote(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== 1) {
+            throw new MadLispException('quote requires exactly 1 argument');
+        }
+
+        $this->emit($body, $indent, "$target = " . $this->quotedValueExpression($arguments[0]) . ';');
+    }
+
+    private function compileTry(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== 2) {
+            throw new MadLispException('try requires exactly 2 arguments');
+        } elseif (!($arguments[1] instanceof Seq)) {
+            throw new MadLispException('second argument to try is not seq');
+        }
+
+        $catch = $arguments[1]->getData();
+
+        if (count($catch) !== 3 || !($catch[0] instanceof Symbol) ||
+            $catch[0]->getName() !== 'catch' || !($catch[1] instanceof Symbol)) {
+            throw new MadLispException('invalid form for catch');
+        }
+
+        $this->emit($body, $indent, 'try {');
+        $this->compileExpression($arguments[0], $body, $target, $indent + 1);
+        $this->emit($body, $indent, '} catch (\\Throwable $exception) {');
+
+        $exceptionVariable = '$v' . $this->localCount++;
+        $this->scopes[] = [$catch[1]->getName() => $exceptionVariable];
+        $this->emit($body, $indent + 1, "$exceptionVariable = \$exception;");
+        $this->compileExpression($catch[2], $body, $target, $indent + 1);
+        array_pop($this->scopes);
+
+        $this->emit($body, $indent, '}');
+    }
+
+    private function compileUndef(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== 1) {
+            throw new MadLispException('undef requires exactly 1 argument');
+        } elseif (!($arguments[0] instanceof Symbol)) {
+            throw new MadLispException('first argument to undef is not symbol');
+        }
+
+        $this->emit(
+            $body,
+            $indent,
+            "$target = \$env->unset(" . var_export($arguments[0]->getName(), true) . ');'
+        );
+    }
+
+    private function compileWhile(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) < 2) {
+            throw new MadLispException('while requires at least 2 arguments');
+        }
+
+        $this->emit($body, $indent, "$target = null;");
+        $this->emit($body, $indent, 'while (true) {');
+
+        $condition = $this->temporary();
+        $this->compileExpression($arguments[0], $body, $condition, $indent + 1);
+        $this->emit($body, $indent + 1, "if (!$condition) {");
+        $this->emit($body, $indent + 2, 'break;');
+        $this->emit($body, $indent + 1, '}');
+        $this->compileDo(array_slice($arguments, 1), $body, $target, $indent + 1);
+        $this->emit($body, $indent, '}');
+    }
+
+    // ---
+    // Other helpers
+    // ---
+
+    private function quotedValueExpression($value): string
+    {
+        if ($value === null || is_bool($value) || is_int($value) || is_float($value) || is_string($value)) {
+            return var_export($value, true);
+        }
+        if ($value instanceof Symbol) {
+            return 'new \\MadLisp\\Symbol(' . var_export($value->getName(), true) . ')';
+        }
+        if ($value instanceof MList) {
+            return 'new \\MadLisp\\MList([' . implode(', ', array_map(
+                fn ($item) => $this->quotedValueExpression($item),
+                $value->getData()
+            )) . '])';
+        }
+        if ($value instanceof Vector) {
+            return 'new \\MadLisp\\Vector([' . implode(', ', array_map(
+                fn ($item) => $this->quotedValueExpression($item),
+                $value->getData()
+            )) . '])';
+        }
+        if ($value instanceof Hash) {
+            $items = [];
+            foreach ($value->getData() as $key => $item) {
+                $items[] = var_export($key, true) . ' => ' . $this->quotedValueExpression($item);
+            }
+            return 'new \\MadLisp\\Hash([' . implode(', ', $items) . '])';
+        }
+
+        throw new MadLispException('compiler encountered invalid quoted value: ' . $this->typeToString($value));
+    }
+
+    private function compileCallExpression(array $data, array &$body, string $target, int $indent): void
+    {
+        $functionExpression = $data[0];
+        $function = $this->temporary();
+        $this->compileExpression($functionExpression, $body, $function, $indent);
+        $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
+        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
+    }
+
+    private function compileCallLocal(array $data, array &$body, string $target, int $indent): void
+    {
+        $functionExpression = $data[0];
+        $function = $this->resolveLocal($functionExpression->getName());
+        $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
+        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
+    }
+
+    private function compileCallGlobal(string $name, array $arguments, array &$body, string $target,
+        int $indent): void
+    {
         $function = $this->temporary();
         $this->emit($body, $indent, "$function = \$env->get(" . var_export($name, true) . ');');
         $values = $this->compileArguments($arguments, $body, $indent);
         $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
     }
 
-    private function compileCall(array $data, array &$body, string $target, int $indent): void
+    private function compileCallNative(array $arguments, array $functions, int $arity, string $lispName,
+        array &$body, string $target, int $indent): void
     {
-        $functionExpression = $data[0];
-        if ($functionExpression instanceof Symbol) {
-            $function = $this->resolveLocal($functionExpression->getName());
-            if ($function === null) {
-                throw new MadLispException(
-                    "php compiler does not support calls to global function {$functionExpression->getName()}"
-                );
-            }
-        } else {
-            $function = $this->temporary();
-            $this->compileExpression($functionExpression, $body, $function, $indent);
+        if (count($arguments) !== $arity) {
+            throw new MadLispException("$lispName requires exactly $arity argument" .
+                (($arity === 1) ? '' : 's'));
         }
 
-        $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
-        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
+        $values = $this->compileArguments($arguments, $body, $indent);
+        $expression = implode(', ', $values);
+        foreach (array_reverse($functions) as $function) {
+            $expression = "$function($expression)";
+        }
+
+        $this->emit($body, $indent, "$target = $expression;");
     }
 
     private function compileArguments(array $arguments, array &$body, int $indent): array
@@ -759,36 +795,17 @@ class PhpCompiler
         return null;
     }
 
-    private function compileSimpleCall(
-        array $values,
-        string $function,
-        int $arity,
-        string $error,
-        array &$body,
-        string $target,
-        int $indent
-    ): void {
-        if (count($values) !== $arity) {
-            throw new MadLispException($error);
+    private function compileArithmetic(array $arguments, string $operator, int $minArgs,
+        array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) < $minArgs) {
+            throw new MadLispException("$operator requires at least $minArgs argument" .
+                (($minArgs === 1) ? '' : 's'));
         }
 
-        $this->emit($body, $indent, "$target = $function(" . implode(', ', $values) . ');');
-    }
+        $values = $this->compileArguments($arguments, $body, $indent);
 
-    private function compileArithmetic(
-        array $values,
-        string $operator,
-        int $minimum,
-        bool $allowUnary,
-        array &$body,
-        string $target,
-        int $indent
-    ): void {
-        if (count($values) < $minimum || (!$allowUnary && !$values)) {
-            throw new MadLispException("$operator requires at least $minimum argument");
-        }
-
-        if ($allowUnary && count($values) === 1) {
+        if ($operator === '-' && count($values) === 1) {
             $this->emit($body, $indent, "$target = -{$values[0]};");
             return;
         }
@@ -796,38 +813,35 @@ class PhpCompiler
         $this->emit($body, $indent, "$target = " . implode(" $operator ", $values) . ';');
     }
 
-    private function compileBinary(
-        array $values,
-        string $operator,
-        string $error,
-        array &$body,
-        string $target,
-        int $indent
-    ): void {
-        if (count($values) !== 2) {
-            throw new MadLispException($error);
+    private function compileFormattedExpression(array $arguments, string $template, int $arity,
+        string $lispName, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) !== $arity) {
+            throw new MadLispException("$lispName requires exactly $arity argument" .
+                (($arity === 1) ? '' : 's'));
         }
 
-        $this->emit($body, $indent, "$target = {$values[0]} $operator {$values[1]};");
+        $values = $this->compileArguments($arguments, $body, $indent);
+        $expression = sprintf($template, ...$values);
+        $this->emit($body, $indent, "$target = $expression;");
     }
 
-    private function compileUnary(
-        array $values,
-        string $operator,
-        string $error,
-        array &$body,
-        string $target,
-        int $indent,
-        bool $prefix = false
-    ): void {
-        if (count($values) !== 1) {
-            throw new MadLispException($error);
+    private function compileCons(array $arguments, array &$body, string $target, int $indent): void
+    {
+        if (count($arguments) < 2) {
+            throw new MadLispException('cons requires at least 2 arguments');
         }
 
-        $expression = $prefix
-            ? "$operator{$values[0]}"
-            : "{$values[0]} $operator";
-        $this->emit($body, $indent, "$target = $expression;");
+        $values = $this->compileArguments($arguments, $body, $indent);
+        $sequence = $values[count($values) - 1];
+        $prefix = array_slice($values, 0, -1);
+        $data = implode(', ', $prefix);
+
+        $this->emit(
+            $body,
+            $indent,
+            "$target = {$sequence}::new(array_merge([$data], {$sequence}->getData()));"
+        );
     }
 
     private function temporary(): string
@@ -853,6 +867,16 @@ class PhpCompiler
         }
 
         return null;
+    }
+
+    private function typeToString($value): string
+    {
+        if (is_object($value)) {
+            $class = get_class($value);
+            return "<object<$class>>";
+        }
+
+        return gettype($value);
     }
 
     private function emit(array &$body, int $indent, string $statement): void

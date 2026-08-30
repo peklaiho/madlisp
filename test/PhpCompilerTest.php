@@ -572,6 +572,144 @@ class PhpCompilerTest extends TestCase
         $compiler->compile(new MList([new Symbol('len')]));
     }
 
+    public function testCompilesCarAndMathBuiltinsDirectly(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $cases = [
+            ['car', new MList([new Symbol('quote'), new MList([9, 10])]), 9, 'getData()[0]'],
+            ['abs', -5, 5, 'abs(-5)'],
+            ['floor', 2.9, 2, 'intval(floor(2.9))'],
+            ['ceil', 2.1, 3, 'intval(ceil(2.1))'],
+            ['pow', 2, null, 'pow(2'],
+            ['sqrt', 9, 3.0, 'sqrt(9)'],
+        ];
+
+        foreach ($cases as [$operator, $argument, $expected, $source]) {
+            $arguments = [$argument];
+            if ($operator === 'pow') {
+                $arguments[] = 3;
+                $expected = 8;
+            }
+
+            $program = $compiler->compile(new MList([
+                new Symbol($operator),
+                ...$arguments,
+            ]));
+
+            $this->assertStringContainsString($source, $program->getSource());
+            $this->assertSame($expected, $program->execute($env));
+        }
+    }
+
+    public function testCompilesStringLengthAndLastDirectly(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $strlen = $compiler->compile(new MList([
+            new Symbol('strlen'),
+            'MadLisp',
+        ]));
+        $this->assertStringContainsString("strlen('MadLisp')", $strlen->getSource());
+        $this->assertSame(7, $strlen->execute($env));
+
+        $last = $compiler->compile(new MList([
+            new Symbol('last'),
+            new MList([new Symbol('quote'), new MList([1, 2, 3])]),
+        ]));
+        $this->assertStringContainsString('getData()[', $last->getSource());
+        $this->assertStringContainsString('->count() - 1]', $last->getSource());
+        $this->assertSame(3, $last->execute($env));
+    }
+
+    public function testCompilesConsDirectly(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $list = $compiler->compile(new MList([
+            new Symbol('cons'),
+            1,
+            2,
+            new MList([new Symbol('quote'), new MList([3, 4])]),
+        ]));
+
+        $this->assertStringContainsString('::new(array_merge([1, 2]', $list->getSource());
+        $this->assertSame([1, 2, 3, 4], $list->execute($env)->getData());
+
+        $vector = $compiler->compile(new MList([
+            new Symbol('cons'),
+            1,
+            new Vector([2, 3]),
+        ]));
+
+        $this->assertSame(Vector::class, get_class($vector->execute($env)));
+        $this->assertSame([1, 2, 3], $vector->execute($env)->getData());
+    }
+
+    public function testCompilesCdrDirectly(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $program = $compiler->compile(new MList([
+            new Symbol('cdr'),
+            new MList([new Symbol('quote'), new MList([1, 2, 3])]),
+        ]));
+
+        $this->assertStringContainsString('::new(array_slice(', $program->getSource());
+        $this->assertSame([2, 3], $program->execute($env)->getData());
+    }
+
+    public function testCompilesGetAndKeyPredicateDirectly(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+
+        $get = $compiler->compile(new MList([
+            new Symbol('get'),
+            new Vector([10, 20, 30]),
+            1,
+        ]));
+        $this->assertStringContainsString('->get(1)', $get->getSource());
+        $this->assertSame(20, $get->execute($env));
+
+        $key = $compiler->compile(new MList([
+            new Symbol('key?'),
+            new Hash(['name' => 'MadLisp']),
+            'name',
+        ]));
+        $this->assertStringContainsString('->has(\'name\')', $key->getSource());
+        $this->assertTrue($key->execute($env));
+    }
+
+    public function testFastPathBuiltinsValidateArity(): void
+    {
+        $compiler = new PhpCompiler();
+
+        foreach ([
+            ['car', 0, 'car requires exactly 1 argument'],
+            ['cdr', 0, 'cdr requires exactly 1 argument'],
+            ['cons', 1, 'cons requires at least 2 arguments'],
+            ['last', 0, 'last requires exactly 1 argument'],
+            ['get', 1, 'get requires exactly 2 arguments'],
+            ['key?', 1, 'key? requires exactly 2 arguments'],
+            ['abs', 0, 'abs requires exactly 1 argument'],
+            ['floor', 0, 'floor requires exactly 1 argument'],
+            ['ceil', 0, 'ceil requires exactly 1 argument'],
+            ['pow', 1, 'pow requires exactly 2 arguments'],
+            ['sqrt', 0, 'sqrt requires exactly 1 argument'],
+            ['strlen', 0, 'strlen requires exactly 1 argument'],
+        ] as [$operator, $argumentCount, $message]) {
+            $this->expectException(MadLispException::class);
+            $this->expectExceptionMessage($message);
+            $compiler->compile(new MList(array_merge(
+                [new Symbol($operator)],
+                array_fill(0, $argumentCount, 1)
+            )));
+        }
+    }
+
     public function testCompilesNumericPredicates(): void
     {
         $compiler = new PhpCompiler();
