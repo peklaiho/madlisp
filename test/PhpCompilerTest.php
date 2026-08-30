@@ -1300,6 +1300,56 @@ class PhpCompilerTest extends TestCase
         $this->assertNull($program->execute($env));
     }
 
+    public function testRecursiveDefinitionCapturesItselfWithoutEnvironmentLookup(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('def'),
+            new Symbol('count-down'),
+            new MList([
+                new Symbol('fn'),
+                new MList([new Symbol('n')]),
+                new MList([
+                    new Symbol('if'),
+                    new MList([new Symbol('='), new Symbol('n'), 0]),
+                    0,
+                    new MList([
+                        new Symbol('count-down'),
+                        new MList([new Symbol('dec'), new Symbol('n')]),
+                    ]),
+                ]),
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+        $function = $program->execute($env);
+
+        $this->assertSame(0, $function(20));
+        $this->assertStringNotContainsString('$env->get(\'count-down\')', $program->getSource());
+        $this->assertStringContainsString('&$', $program->getSource());
+    }
+
+    public function testNonRecursiveDefinitionDoesNotCaptureItself(): void
+    {
+        $compiler = new PhpCompiler();
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('def'),
+            new Symbol('identity'),
+            new MList([
+                new Symbol('fn'),
+                new MList([new Symbol('value')]),
+                new Symbol('value'),
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(42, $program->execute($env)(42));
+        $this->assertStringNotContainsString('&$', $program->getSource());
+    }
+
     public function testLooksUpUnboundSymbolInEnvironment(): void
     {
         $compiler = new PhpCompiler();

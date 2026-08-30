@@ -9,11 +9,23 @@ namespace MadLisp;
 
 class PhpCompiler
 {
+    // Counts generated temporary variables so each emitted name is unique.
     private int $temporaryCount;
+
+    // Counts generated local variables so lexical bindings have unique names.
     private int $localCount;
+
+    // Tracks lexical scopes so symbols can resolve to generated local variables.
     private array $scopes;
+
+    // Tracks function boundaries so captured locals are identified correctly.
     private array $functionScopes;
+
+    // Stores captured outer locals needed by generated nested closures.
     private array $functionCaptures;
+
+    // Tracks named function contexts so direct self-calls avoid environment lookups.
+    private array $functionSelfContexts;
 
     public function compile($ast): PhpCompiledProgram
     {
@@ -23,6 +35,7 @@ class PhpCompiler
         $this->scopes = [[]];
         $this->functionScopes = [];
         $this->functionCaptures = [];
+        $this->functionSelfContexts = [];
 
         // Collection of expressions
         $body = [];
@@ -64,7 +77,8 @@ class PhpCompiler
         return new PhpCompiledProgram($closure, $source);
     }
 
-    private function compileExpression($ast, array &$body, string $target, int $indent): void
+    private function compileExpression($ast, array &$body, string $target, int $indent,
+        array $metadata = []): void
     {
         // Simple PHP values are emitted with var_export
         if ($ast === null || is_bool($ast) || is_int($ast) || is_float($ast) || is_string($ast)) {
@@ -141,7 +155,7 @@ class PhpCompiler
                 $this->compileEnv($arguments, $body, $target, $indent);
                 return;
             case 'fn':
-                $this->compileFn($arguments, $body, $target, $indent);
+                $this->compileFn($arguments, $body, $target, $indent, $metadata);
                 return;
             case 'if':
                 $this->compileIf($arguments, $body, $target, $indent);
@@ -482,7 +496,9 @@ class PhpCompiler
         }
 
         $value = $this->temporary();
-        $this->compileExpression($arguments[1], $body, $value, $indent);
+        $this->compileExpression($arguments[1], $body, $value, $indent, [
+            'definitionName' => $name,
+        ]);
         $this->emit($body, $indent, "$target = \$env->set(" . var_export($name, true) . ", $value);");
     }
 
@@ -511,7 +527,8 @@ class PhpCompiler
         $this->emit($body, $indent, "$target = \$env;");
     }
 
-    private function compileFn(array $arguments, array &$body, string $target, int $indent): void
+    private function compileFn(array $arguments, array &$body, string $target, int $indent,
+        array $metadata = []): void
     {
         if (count($arguments) !== 2) {
             throw new MadLispException('fn requires exactly 2 arguments');
@@ -548,18 +565,39 @@ class PhpCompiler
         $this->functionScopes[] = count($this->scopes) - 1;
         $this->functionCaptures[] = [];
 
+        // Keep nested function contexts separate. A named function gets a
+        // possible self-reference, but it is captured only if its body uses it.
+        $definitionName = $metadata['definitionName'] ?? null;
+        $this->functionSelfContexts[] = [
+            'name' => $definitionName,
+            'variable' => ($definitionName !== null) ? $target : null,
+            'used' => false,
+        ];
+
         $functionBody = [];
 
         $this->compileExpression($arguments[1], $functionBody, '$result', $indent + 1);
         $this->emit($functionBody, $indent + 1, 'return $result;');
 
+        $functionIndex = array_key_last($this->functionSelfContexts);
+        $selfContext = $this->functionSelfContexts[$functionIndex];
+        $selfUsed = $selfContext['used'];
+        $selfVariable = $selfContext['variable'];
         $captures = array_values($this->functionCaptures[array_key_last($this->functionCaptures)]);
 
+        array_pop($this->functionSelfContexts);
         array_pop($this->functionCaptures);
         array_pop($this->functionScopes);
         array_pop($this->scopes);
 
-        $use = array_merge(['$env'], $captures);
+        $use = ['$env'];
+        // The closure must capture its generated variable by reference so the
+        // variable can be assigned the closure immediately after construction.
+        if ($selfUsed) {
+            $this->emit($body, $indent, "$selfVariable = null;");
+            $use[] = '&' . $selfVariable;
+        }
+        $use = array_merge($use, $captures);
         $this->emit(
             $body,
             $indent,
@@ -757,6 +795,17 @@ class PhpCompiler
     private function compileCallGlobal(string $name, array $arguments, array &$body, string $target,
         int $indent): void
     {
+        // Direct self-calls use the captured closure variable. All other
+        // global calls retain their dynamic environment lookup.
+        $functionIndex = array_key_last($this->functionSelfContexts);
+        if ($functionIndex !== null && $this->functionSelfContexts[$functionIndex]['name'] === $name) {
+            $this->functionSelfContexts[$functionIndex]['used'] = true;
+            $values = $this->compileArguments($arguments, $body, $indent);
+            $selfVariable = $this->functionSelfContexts[$functionIndex]['variable'];
+            $this->emit($body, $indent, "$target = $selfVariable(" . implode(', ', $values) . ');');
+            return;
+        }
+
         $function = $this->temporary();
         $this->emit($body, $indent, "$function = \$env->get(" . var_export($name, true) . ');');
         $values = $this->compileArguments($arguments, $body, $indent);
