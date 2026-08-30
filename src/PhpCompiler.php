@@ -27,8 +27,24 @@ class PhpCompiler
         // Collection of expressions
         $body = [];
 
-        // Compile the outer expression
-        $this->compileExpression($ast, $body, '$result', 1);
+        // Compile top-level do forms separately so the generated
+        // source has a blank line between forms.
+        if ($ast instanceof MList && count($ast->getData()) > 1 &&
+            $ast->getData()[0] instanceof Symbol && $ast->getData()[0]->getName() === 'do') {
+            $forms = array_slice($ast->getData(), 1);
+
+            foreach ($forms as $index => $form) {
+                if ($index === (count($forms) - 1)) {
+                    $this->compileExpression($form, $body, '$result', 1);
+                } else {
+                    $this->compileExpression($form, $body, $this->temporary(), 1);
+                    $body[] = '';
+                }
+            }
+        } else {
+            // Compile the outer expression
+            $this->compileExpression($ast, $body, '$result', 1);
+        }
 
         // Check that everything was cleaned up properly
         if (count($this->scopes) !== 1 || $this->functionScopes || $this->functionCaptures) {
@@ -36,7 +52,7 @@ class PhpCompiler
         }
 
         // Build the source code
-        $source = implode("\n", array_merge(
+        $source = implode(PHP_EOL, array_merge(
             ['return static function (\\MadLisp\\Env $env) {'],
             $body,
             ['    return $result;', '};']
@@ -328,10 +344,9 @@ class PhpCompiler
         }
 
         $openBlocks = 0;
-        $last = count($arguments) - 1;
 
         foreach ($arguments as $index => $argument) {
-            if ($index === $last) {
+            if ($index === (count($arguments) - 1)) {
                 $this->compileExpression($argument, $body, $target, $indent);
                 break;
             }
@@ -478,11 +493,12 @@ class PhpCompiler
             return;
         }
 
-        $last = array_key_last($arguments);
-
         foreach ($arguments as $index => $argument) {
-            $expressionTarget = $index === $last ? $target : $this->temporary();
-            $this->compileExpression($argument, $body, $expressionTarget, $indent);
+            if ($index === (count($arguments) - 1)) {
+                $this->compileExpression($argument, $body, $target, $indent);
+            } else {
+                $this->compileExpression($argument, $body, $this->temporary(), $indent);
+            }
         }
     }
 
