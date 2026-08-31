@@ -12,6 +12,7 @@ use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Func;
+use MadLisp\MacroExpander;
 use MadLisp\MadLispUserException;
 use MadLisp\MList;
 use MadLisp\PhpCompiler;
@@ -26,6 +27,7 @@ class Core implements ILib
     public function __construct(
         protected Tokenizer $tokenizer,
         protected Reader $reader,
+        protected MacroExpander $macroExpander,
         protected PhpCompiler $compiler,
         protected Printer $printer,
         protected Evaller $evaller,

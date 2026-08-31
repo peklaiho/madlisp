@@ -13,6 +13,7 @@ class LispFactory
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
+        $macroExpander = new MacroExpander();
         $compiler = new PhpCompiler();
         $printer = new Printer();
         $eval = new Evaller($tokenizer, $reader, $printer, $safemode);
@@ -24,6 +25,7 @@ class LispFactory
         (new Lib\Core(
             $tokenizer,
             $reader,
+            $macroExpander,
             $compiler,
             $printer,
             $eval,
@@ -57,7 +59,7 @@ class LispFactory
             (new Lib\IO())->register($env);
         }
 
-        $lisp = new Lisp($tokenizer, $reader, $compiler, $eval, $printer, $env);
+        $lisp = new Lisp($tokenizer, $reader, $macroExpander, $compiler, $eval, $printer, $env);
 
         // Add some built-in macros
         $lisp->readEval('(def defn (macro (name args body) (quasiquote (def (unquote name) (fn (unquote args) (unquote body))))))');

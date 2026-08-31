@@ -14,6 +14,7 @@ use MadLisp\Evaller;
 use MadLisp\Func;
 use MadLisp\MadLispUserException;
 use MadLisp\MList;
+use MadLisp\MacroExpander;
 use MadLisp\Printer;
 use MadLisp\Reader;
 use MadLisp\Symbol;
@@ -257,6 +258,7 @@ class CoreTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
+        $macroExpander = new MacroExpander();
         $compiler = new PhpCompiler();
         $printer = new Printer();
         $evaller = new Evaller($tokenizer, $reader, $printer, $safemode);
@@ -264,6 +266,7 @@ class CoreTest extends TestCase
         $core = new Core(
             $tokenizer,
             $reader,
+            $macroExpander,
             $compiler,
             $printer,
             $evaller,

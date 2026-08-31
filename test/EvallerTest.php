@@ -14,6 +14,7 @@ use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Hash;
 use MadLisp\MadLispException;
+use MadLisp\MacroExpander;
 use MadLisp\MList;
 use MadLisp\Printer;
 use MadLisp\Reader;
@@ -1808,6 +1809,7 @@ class EvallerTest extends TestCase
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
+        $macroExpander = new MacroExpander();
         $compiler = new PhpCompiler();
         $printer = new Printer();
 
@@ -1827,6 +1829,7 @@ class EvallerTest extends TestCase
         $lib = new Core(
             $tokenizer,
             $reader,
+            $macroExpander,
             $compiler,
             $printer,
             $evaller,

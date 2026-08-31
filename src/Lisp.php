@@ -12,6 +12,7 @@ class Lisp
     public function __construct(
         protected Tokenizer $tokenizer,
         protected Reader $reader,
+        protected MacroExpander $macroExpander,
         protected PhpCompiler $compiler,
         protected Evaller $eval,
         protected Printer $printer,
@@ -20,8 +21,10 @@ class Lisp
 
     }
 
-    public function compile($ast): PhpCompiledProgram
+    public function compile($ast, ?Env $customEnv = null): PhpCompiledProgram
     {
+        $ast = $this->macroExpander->expand($ast, $customEnv ? $customEnv : $this->env);
+
         return $this->compiler->compile($ast);
     }
 
@@ -63,9 +66,9 @@ class Lisp
     {
         $tokens = $this->tokenizer->tokenize($input);
 
-        $expr = $this->reader->read($tokens);
+        $ast = $this->reader->read($tokens);
 
-        $program = $this->compiler->compile($expr);
+        $program = $this->compile($ast, $customEnv);
 
         return $program->execute($customEnv ? $customEnv : $this->env);
     }
