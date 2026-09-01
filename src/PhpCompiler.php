@@ -246,16 +246,16 @@ class PhpCompiler
 
             // Comparisons
             case '==':
-                $this->compileFormattedExpression($arguments, '%s === %s', 2, '==', $body, $target, $indent);
+                $this->compileComparisonExpression($arguments, '===', 2, '==', $body, $target, $indent);
                 return;
             case '=':
-                $this->compileFormattedExpression($arguments, '%s == %s', 2, '=', $body, $target, $indent);
+                $this->compileComparisonExpression($arguments, '==', 2, '=', $body, $target, $indent);
                 return;
             case '!=':
-                $this->compileFormattedExpression($arguments, '%s != %s', 2, '!=', $body, $target, $indent);
+                $this->compileComparisonExpression($arguments, '!=', 2, '!=', $body, $target, $indent);
                 return;
             case '!==':
-                $this->compileFormattedExpression($arguments, '%s !== %s', 2, '!==', $body, $target, $indent);
+                $this->compileComparisonExpression($arguments, '!==', 2, '!==', $body, $target, $indent);
                 return;
             case '<':
                 $this->compileFormattedExpression($arguments, '%s < %s', 2, '<', $body, $target, $indent);
@@ -438,7 +438,14 @@ class PhpCompiler
 
             $match = $this->quotedValueExpression($test);
             $keyword = $first ? 'if' : '} elseif';
-            $this->emit($body, $indent, "$keyword ($value $comparison $match) {");
+
+            if ($this->options->compileSimpleComparisons) {
+                $testExpr = "$value $comparison $match";
+            } else {
+                $testExpr = "\\MadLisp\\Util::valueForCompare($value) $comparison \\MadLisp\\Util::valueForCompare($match)";
+            }
+
+            $this->emit($body, $indent, "$keyword ($testExpr) {");
             $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
             $first = false;
         }
@@ -938,6 +945,18 @@ class PhpCompiler
         $values = $this->compileArguments($arguments, $body, $indent);
         $expression = sprintf($template, ...$values);
         $this->emitResult($body, $indent, $target, $expression);
+    }
+
+    private function compileComparisonExpression(array $arguments, string $phpOperator, int $arity,
+        string $lispName, array &$body, ?string $target, int $indent): void
+    {
+        if ($this->options->compileSimpleComparisons) {
+            $template = "%s $phpOperator %s";
+        } else {
+            $template = "\\MadLisp\\Util::valueForCompare(%s) $phpOperator \\MadLisp\\Util::valueForCompare(%s)";
+        }
+
+        $this->compileFormattedExpression($arguments, $template, $arity, $lispName, $body, $target, $indent);
     }
 
     private function compileCons(array $arguments, array &$body, ?string $target, int $indent): void
