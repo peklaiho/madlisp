@@ -9,14 +9,14 @@ namespace MadLisp;
 
 class LispFactory
 {
-    public function make(bool $safemode = false): Lisp
+    public function make(Options $options): Lisp
     {
         $tokenizer = new Tokenizer();
         $reader = new Reader();
         $macroExpander = new MacroExpander();
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler($options);
         $printer = new Printer();
-        $eval = new Evaller($tokenizer, $reader, $printer, $safemode);
+        $eval = new Evaller($tokenizer, $reader, $printer, $options);
 
         // Root environment
         $env = new Env('root');
@@ -29,7 +29,7 @@ class LispFactory
             $compiler,
             $printer,
             $eval,
-            $safemode
+            $options
         ))->register($env);
 
         // Register core libraries
@@ -49,7 +49,7 @@ class LispFactory
         (new Lib\Types())->register($env);
 
         // Register unsafe libraries if not in safe-mode
-        if (!$safemode) {
+        if (!$options->safemode) {
             if (extension_loaded('PDO')) {
                 (new Lib\Database())->register($env);
             }

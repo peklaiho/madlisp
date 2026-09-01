@@ -14,6 +14,7 @@ use MadLisp\MadLispException;
 use MadLisp\MList;
 use MadLisp\PhpCompiledProgram;
 use MadLisp\PhpCompiler;
+use MadLisp\Options;
 use MadLisp\Symbol;
 use MadLisp\Vector;
 
@@ -21,7 +22,7 @@ class PhpCompilerTest extends TestCase
 {
     public function testCompilesQuotedSymbolWithoutEnvironmentLookup(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([new Symbol('quote'), new Symbol('+')]);
 
@@ -34,7 +35,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesAndEvaluatesVectorLiteral(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new Vector([
             1,
@@ -55,7 +56,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesAndEvaluatesHashLiteral(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new Hash([
             'answer' => new MList([new Symbol('+'), 40, 2]),
@@ -75,7 +76,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesQuotedNestedListAsData(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('quote'),
@@ -101,7 +102,7 @@ class PhpCompilerTest extends TestCase
 
     public function testQuotedValueCanBeReturnedFromFunction(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new MList([
@@ -120,7 +121,7 @@ class PhpCompilerTest extends TestCase
 
     public function testDefStoresValueInExecutionEnvironment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('do'),
@@ -136,7 +137,7 @@ class PhpCompilerTest extends TestCase
 
     public function testDefEvaluatesInitializerBeforeAssignment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('value', 10);
         $ast = new MList([
@@ -154,7 +155,7 @@ class PhpCompilerTest extends TestCase
     public function testDefRejectsReservedNamesAndCoreOperators(): void
     {
         foreach (['__FILE__', '__DIR__', '+'] as $name) {
-            $compiler = new PhpCompiler();
+            $compiler = new PhpCompiler(new Options());
             $ast = new MList([new Symbol('def'), new Symbol($name), 1]);
 
             $this->expectException(MadLispException::class);
@@ -164,7 +165,7 @@ class PhpCompilerTest extends TestCase
 
     public function testQuoteAndDefValidateTheirArguments(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
 
         $this->expectExceptionMessage('quote requires exactly 1 argument');
         $compiler->compile(new MList([new Symbol('quote')]));
@@ -172,7 +173,7 @@ class PhpCompilerTest extends TestCase
 
     public function testDefRequiresSymbolName(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
 
         $this->expectExceptionMessage('first argument to def is not symbol');
         $compiler->compile(new MList([new Symbol('def'), 1, 2]));
@@ -180,7 +181,7 @@ class PhpCompilerTest extends TestCase
 
     public function testMapsAndReducesUsingGeneratedFunctionAndCoreFunctions(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('map', new CoreFunc(
             'map',
@@ -236,7 +237,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCallsCoreFuncFromEnvironment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('triple', new CoreFunc('triple', 'doc', 1, 1, fn ($value) => $value * 3));
         $ast = new MList([new Symbol('triple'), 14]);
@@ -248,7 +249,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCallsGeneratedClosureFromEnvironment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('double', fn ($value) => $value * 2);
         $ast = new MList([new Symbol('double'), 21]);
@@ -260,7 +261,7 @@ class PhpCompilerTest extends TestCase
 
     public function testDynamicCallEvaluatesArgumentsInOrder(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('collect', new CoreFunc('collect', 'doc', 0, -1, fn (...$args) => $args));
         $ast = new MList([
@@ -277,7 +278,7 @@ class PhpCompilerTest extends TestCase
 
     public function testAndReturnsFirstFalseyValueAndShortCircuits(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('and'),
@@ -293,7 +294,7 @@ class PhpCompilerTest extends TestCase
 
     public function testOrReturnsFirstTruthyValueAndShortCircuits(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('or'),
@@ -309,7 +310,7 @@ class PhpCompilerTest extends TestCase
 
     public function testAndAndOrReturnTheirLastArgumentWhenNoEarlierMatchExists(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $and = $compiler->compile(new MList([new Symbol('and'), 1, 'result']))->execute($env);
@@ -321,7 +322,7 @@ class PhpCompilerTest extends TestCase
 
     public function testAndAndOrUseTheirEmptyFormValues(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $and = $compiler->compile(new MList([new Symbol('and')]))->execute($env);
@@ -333,7 +334,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCondEvaluatesMatchingClauseExpressionsInOrder(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('cond'),
@@ -361,7 +362,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCondShortCircuitsLaterClausesAndReturnsNullWithoutMatch(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $ast = new MList([
@@ -376,7 +377,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCondSupportsElseClause(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('cond'),
@@ -391,7 +392,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCondRequiresSequenceClausesWithAtLeastTwoItems(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('argument to cond is not seq');
         $compiler->compile(new MList([new Symbol('cond'), true]));
@@ -399,7 +400,7 @@ class PhpCompilerTest extends TestCase
 
     public function testSimpleConditionsSkipTemporaryVariables(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $if = $compiler->compile(new MList([
@@ -436,7 +437,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCaseEvaluatesTestOnceAndReturnsMatchingClauseResult(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('case'),
@@ -467,7 +468,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCaseEvaluatesIntermediateExpressionsAndReturnsNullWithoutMatch(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('case'),
@@ -488,7 +489,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCaseAndCaseStrictUseDifferentRawComparisons(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $case = $compiler->compile(new MList([
@@ -508,7 +509,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCaseRequiresSequenceClausesWithAtLeastTwoItems(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('argument to case is not seq');
         $compiler->compile(new MList([new Symbol('case'), 1, true]));
@@ -516,7 +517,7 @@ class PhpCompilerTest extends TestCase
 
     public function testEnvReturnsTheExecutionEnvironment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([new Symbol('env')]));
@@ -526,7 +527,7 @@ class PhpCompilerTest extends TestCase
 
     public function testEnvReturnsTheExecutionEnvironmentInsideAFunction(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('fn'),
@@ -542,7 +543,7 @@ class PhpCompilerTest extends TestCase
 
     public function testEnvRejectsArguments(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('env does not take arguments');
         $compiler->compile(new MList([new Symbol('env'), 1]));
@@ -550,7 +551,7 @@ class PhpCompilerTest extends TestCase
 
     public function testUndefRemovesBindingAndReturnsItsPreviousValue(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('value', 42);
         $ast = new MList([new Symbol('undef'), new Symbol('value')]);
@@ -563,7 +564,7 @@ class PhpCompilerTest extends TestCase
 
     public function testUndefValidatesItsArgument(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
 
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('first argument to undef is not symbol');
@@ -572,7 +573,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesEmptyAndLenForCollections(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $cases = [
@@ -594,7 +595,7 @@ class PhpCompilerTest extends TestCase
 
     public function testEmptyAndLenRejectUnsupportedValues(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $this->expectException(Error::class);
@@ -603,7 +604,7 @@ class PhpCompilerTest extends TestCase
 
     public function testEmptyAndLenRequireExactlyOneArgument(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('len requires exactly 1 argument');
         $compiler->compile(new MList([new Symbol('len')]));
@@ -611,7 +612,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesCarAndMathBuiltinsDirectly(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $cases = [
@@ -642,7 +643,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesStringLengthAndLastDirectly(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $strlen = $compiler->compile(new MList([
@@ -663,7 +664,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesConsDirectly(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $list = $compiler->compile(new MList([
             new Symbol('cons'),
@@ -687,7 +688,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesCdrDirectly(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $program = $compiler->compile(new MList([
             new Symbol('cdr'),
@@ -700,7 +701,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesGetAndKeyPredicateDirectly(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $get = $compiler->compile(new MList([
@@ -722,7 +723,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFastPathBuiltinsValidateArity(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
 
         foreach ([
             ['car', 0, 'car requires exactly 1 argument'],
@@ -749,7 +750,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesNumericPredicates(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $values = [
@@ -788,7 +789,7 @@ class PhpCompilerTest extends TestCase
 
     public function testNumericPredicatesRequireExactlyOneArgument(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('zero? requires exactly 1 argument');
         $compiler->compile(new MList([new Symbol('zero?')]));
@@ -796,7 +797,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesModuloWithMultipleArguments(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('%'),
@@ -812,7 +813,7 @@ class PhpCompilerTest extends TestCase
 
     public function testModuloRequiresAtLeastTwoArguments(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('% requires at least 2 argument');
         $compiler->compile(new MList([new Symbol('%'), 1]));
@@ -820,7 +821,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesLooseAndStrictInequality(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $loose = $compiler->compile(new MList([
@@ -840,7 +841,7 @@ class PhpCompilerTest extends TestCase
 
     public function testInequalityFormsRequireExactlyTwoArguments(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
 
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('!= requires exactly 2 arguments');
@@ -849,7 +850,7 @@ class PhpCompilerTest extends TestCase
 
     public function testWhileRepeatsUntilItsConditionBecomesFalse(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('do'),
@@ -875,7 +876,7 @@ class PhpCompilerTest extends TestCase
 
     public function testWhileReturnsNullWhenItDoesNotRun(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('while'),
@@ -891,7 +892,7 @@ class PhpCompilerTest extends TestCase
 
     public function testWhileRequiresAConditionAndBody(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('while requires at least 2 arguments');
         $compiler->compile(new MList([new Symbol('while'), true]));
@@ -899,7 +900,7 @@ class PhpCompilerTest extends TestCase
 
     public function testTryCatchesThrowableAndEvaluatesAnArbitraryHandler(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('try'),
@@ -924,7 +925,7 @@ class PhpCompilerTest extends TestCase
 
     public function testTryReturnsBodyResultWhenNoThrowableIsRaised(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('try'),
@@ -939,7 +940,7 @@ class PhpCompilerTest extends TestCase
 
     public function testTryValidatesItsCatchForm(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('invalid form for catch');
         $compiler->compile(new MList([
@@ -951,7 +952,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesIntegerDivisionWithIntdiv(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([new Symbol('//'), 7, 2]);
 
@@ -963,7 +964,7 @@ class PhpCompilerTest extends TestCase
 
     public function testIntegerDivisionRequiresExactlyTwoArguments(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
 
         $this->expectException(MadLispException::class);
         $this->expectExceptionMessage('// requires exactly 2 arguments');
@@ -972,7 +973,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesAndExecutesArithmetic(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('+'),
@@ -988,7 +989,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesAndExecutesLetWithVariables(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('let'),
@@ -1007,7 +1008,7 @@ class PhpCompilerTest extends TestCase
 
     public function testLetUsesLocalAsDestinationForComplexInitializer(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('let'),
@@ -1027,7 +1028,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesAndExecutesLetWithShadowing(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('let'),
@@ -1047,7 +1048,7 @@ class PhpCompilerTest extends TestCase
 
     public function testLetScopeDoesNotLeakIntoLaterDoExpressions(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('value', 99);
         $ast = new MList([
@@ -1067,7 +1068,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesAndExecutesDoWithMultipleExpressions(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('do'),
@@ -1084,7 +1085,7 @@ class PhpCompilerTest extends TestCase
 
     public function testDiscardedFunctionExpressionsAreNotEmitted(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $program = $compiler->compile(new MList([
             new Symbol('do'),
@@ -1102,7 +1103,7 @@ class PhpCompilerTest extends TestCase
 
     public function testDiscardedDoResultsDoNotNeedAssignments(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $observed = [];
         $env->set('observe', function ($value) use (&$observed) {
@@ -1129,7 +1130,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesFunctionWithParameters(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('fn'),
@@ -1146,7 +1147,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFunctionParametersShadowEnvironmentBindings(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('x', 100);
         $ast = new MList([
@@ -1163,7 +1164,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFunctionCapturesOuterLetBinding(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('let'),
@@ -1183,7 +1184,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFunctionSupportsNestedLetIfAndDo(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new MList([
@@ -1213,7 +1214,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCallsFunctionLiteralFromLispCode(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new MList([
@@ -1231,7 +1232,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCallsFunctionStoredInLocalBinding(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('let'),
@@ -1253,7 +1254,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFunctionCapturesMultipleOuterBindings(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('let'),
@@ -1281,7 +1282,7 @@ class PhpCompilerTest extends TestCase
 
     public function testInnerLetShadowsCapturedOuterBinding(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('let'),
@@ -1305,7 +1306,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFunctionParameterShadowsCapturedOuterBinding(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('let'),
@@ -1325,7 +1326,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFunctionReadsGlobalBindingFromParentEnvironment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $parent = new Env('parent');
         $env = new Env('child', $parent);
         $parent->set('value', 42);
@@ -1343,7 +1344,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCallsFunctionWithTwoArguments(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new MList([
@@ -1362,7 +1363,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFunctionCanReadGlobalEnvironmentBindings(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('offset', 5);
         $ast = new MList([
@@ -1379,7 +1380,7 @@ class PhpCompilerTest extends TestCase
 
     public function testFunctionRejectsDuplicateParameters(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $ast = new MList([
             new Symbol('fn'),
             new MList([new Symbol('x'), new Symbol('x')]),
@@ -1393,7 +1394,7 @@ class PhpCompilerTest extends TestCase
 
     public function testCompilesAndExecutesEmptyDoAsNull(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
 
         $program = $compiler->compile(new MList([new Symbol('do')]));
@@ -1404,7 +1405,7 @@ class PhpCompilerTest extends TestCase
 
     public function testRecursiveDefinitionCapturesItselfWithoutEnvironmentLookup(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('def'),
@@ -1434,7 +1435,7 @@ class PhpCompilerTest extends TestCase
 
     public function testNonRecursiveDefinitionDoesNotCaptureItself(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $ast = new MList([
             new Symbol('def'),
@@ -1454,7 +1455,7 @@ class PhpCompilerTest extends TestCase
 
     public function testLooksUpUnboundSymbolInEnvironment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('value', 42);
 
@@ -1465,7 +1466,7 @@ class PhpCompilerTest extends TestCase
 
     public function testLooksUpUnboundSymbolInParentEnvironment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $parent = new Env('parent');
         $env = new Env('child', $parent);
         $parent->set('value', 42);
@@ -1477,7 +1478,7 @@ class PhpCompilerTest extends TestCase
 
     public function testThrowsWhenUnboundSymbolIsMissingFromEnvironment(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $program = $compiler->compile(new Symbol('missing'));
 
@@ -1488,7 +1489,7 @@ class PhpCompilerTest extends TestCase
 
     public function testLocalLetBindingShadowsEnvironmentBinding(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('value', 10);
         $ast = new MList([
@@ -1504,7 +1505,7 @@ class PhpCompilerTest extends TestCase
 
     public function testLetInitializerCanReadEnvironmentBinding(): void
     {
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
         $env->set('value', 10);
         $ast = new MList([

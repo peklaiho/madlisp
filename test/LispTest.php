@@ -8,6 +8,7 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\PhpCompiler;
+use MadLisp\Options;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\Lisp;
@@ -267,9 +268,9 @@ class LispTest extends TestCase
         $tokenizer = new Tokenizer();
         $reader = new Reader();
         $macroExpander = new MacroExpander();
-        $compiler = new PhpCompiler();
+        $compiler = new PhpCompiler(new Options());
         $printer = new Printer();
-        $evaller = new Evaller($tokenizer, $reader, $printer, false);
+        $evaller = new Evaller($tokenizer, $reader, $printer, new Options());
 
         // Define some math functions for testing
         $env = new Env('env');

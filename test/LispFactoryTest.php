@@ -11,6 +11,7 @@ use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Lisp;
 use MadLisp\LispFactory;
+use MadLisp\Options;
 use MadLisp\UserFunc;
 use MadLisp\Vector;
 
@@ -20,14 +21,14 @@ class LispFactoryTest extends TestCase
     {
         $factory = new LispFactory();
 
-        $lisp = $factory->make();
+        $lisp = $factory->make(new Options());
 
         $this->assertInstanceOf(Lisp::class, $lisp);
     }
 
     public function testEnv()
     {
-        $lisp = (new LispFactory())->make();
+        $lisp = (new LispFactory())->make(new Options());
         $userEnv = $lisp->getEnv();
 
         $this->assertInstanceOf(Env::class, $userEnv);
@@ -43,7 +44,7 @@ class LispFactoryTest extends TestCase
 
     public function testUserDefInUserEnv()
     {
-        $lisp = (new LispFactory())->make();
+        $lisp = (new LispFactory())->make(new Options());
         $userEnv = $lisp->getEnv();
         $rootEnv = $userEnv->getParent();
 
@@ -55,7 +56,7 @@ class LispFactoryTest extends TestCase
 
     public function testDefn()
     {
-        $lisp = (new LispFactory())->make();
+        $lisp = (new LispFactory())->make(new Options());
 
         $lisp->readEval('(defn add (a b) (+ a b))');
 
@@ -64,7 +65,7 @@ class LispFactoryTest extends TestCase
 
     public function testBuiltInMacros()
     {
-        $lisp = (new LispFactory())->make();
+        $lisp = (new LispFactory())->make(new Options());
 
         $this->assertSame(10, $lisp->readEval('(when true 10)'));
         $this->assertNull($lisp->readEval('(when false 10)'));
@@ -74,7 +75,7 @@ class LispFactoryTest extends TestCase
 
     public function testBasicEvaluation()
     {
-        $lisp = (new LispFactory())->make();
+        $lisp = (new LispFactory())->make(new Options());
 
         $result = $lisp->readEval('(map (fn (x) (* x 2)) [1 2 3])');
 
@@ -84,7 +85,7 @@ class LispFactoryTest extends TestCase
 
     public function testRep()
     {
-        $lisp = (new LispFactory())->make();
+        $lisp = (new LispFactory())->make(new Options());
 
         ob_start();
         $lisp->rep('(list (+ 1 2) [4 5])', true);
@@ -95,8 +96,10 @@ class LispFactoryTest extends TestCase
 
     public function testSafeMode()
     {
-        $normal = (new LispFactory())->make();
-        $safe = (new LispFactory())->make(true);
+        $normal = (new LispFactory())->make(new Options());
+        $safeOptions = new Options();
+        $safeOptions->safemode = true;
+        $safe = (new LispFactory())->make($safeOptions);
 
         $normalRoot = $normal->getEnv()->getParent();
         $safeRoot = $safe->getEnv()->getParent();

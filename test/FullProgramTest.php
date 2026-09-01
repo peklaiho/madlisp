@@ -8,6 +8,7 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\LispFactory;
+use MadLisp\Options;
 
 class FullProgramTest extends TestCase
 {
@@ -21,7 +22,7 @@ class FullProgramTest extends TestCase
 
     private function runFile($programFile, $resultFile)
     {
-        $lisp = (new LispFactory())->make();
+        $lisp = (new LispFactory())->make(new Options());
 
         ob_start();
 

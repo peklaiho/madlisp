@@ -2,30 +2,26 @@
 /**
  * MadLisp language
  * @link http://madlisp.com/
- * @copyright Copyright (c) 2020 Pekka Laiho
+ * @copyright Copyright (c) 2026 Pekka Laiho
  */
 
 namespace MadLisp;
 
 class Evaller
 {
-    protected Tokenizer $tokenizer;
-    protected Reader $reader;
-    protected Printer $printer;
-    protected bool $safemode;
-
     protected bool $debug = false;
 
     // Keep cache of macro names so we can skip
     // macro expansion when possible.
     protected array $macros = [];
 
-    public function __construct(Tokenizer $tokenizer, Reader $reader, Printer $printer, bool $safemode)
-    {
-        $this->tokenizer = $tokenizer;
-        $this->reader = $reader;
-        $this->printer = $printer;
-        $this->safemode = $safemode;
+    public function __construct(
+        protected Tokenizer $tokenizer,
+        protected Reader $reader,
+        protected Printer $printer,
+        protected Options $options
+    ) {
+
     }
 
     public function eval($ast, Env $env, int $depth = 1)
@@ -298,7 +294,7 @@ class Evaller
                     $ast = $astData[$astLength - 1];
                     $env = $newEnv;
                     continue; // tco
-                } elseif (!$this->safemode && $symbolName == 'load') {
+                } elseif (!$this->options->safemode && $symbolName == 'load') {
                     // Load is here because we want to load into
                     // current $env which is hard otherwise.
 

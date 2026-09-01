@@ -8,6 +8,7 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\PhpCompiler;
+use MadLisp\Options;
 use MadLisp\PhpCompiledProgram;
 use MadLisp\Env;
 use MadLisp\Evaller;
@@ -259,9 +260,11 @@ class CoreTest extends TestCase
         $tokenizer = new Tokenizer();
         $reader = new Reader();
         $macroExpander = new MacroExpander();
-        $compiler = new PhpCompiler();
+        $options = new Options();
+        $options->safemode = $safemode;
+        $compiler = new PhpCompiler($options);
         $printer = new Printer();
-        $evaller = new Evaller($tokenizer, $reader, $printer, $safemode);
+        $evaller = new Evaller($tokenizer, $reader, $printer, $options);
 
         $core = new Core(
             $tokenizer,
@@ -270,7 +273,7 @@ class CoreTest extends TestCase
             $compiler,
             $printer,
             $evaller,
-            $safemode
+            $options
         );
 
         $env = new Env('test');

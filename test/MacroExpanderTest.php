@@ -8,13 +8,14 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\LispFactory;
+use MadLisp\Options;
 use MadLisp\MacroExpander;
 
 class MacroExpanderTest extends TestCase
 {
     private function getLispAndExpander(): array
     {
-        $lisp = (new LispFactory())->make();
+        $lisp = (new LispFactory())->make(new Options());
         $macroExpander = new MacroExpander();
 
         return [$lisp, $macroExpander];

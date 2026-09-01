@@ -11,21 +11,22 @@ class PhpCompiler
 {
     // Counts generated temporary variables so each emitted name is unique.
     private int $temporaryCount;
-
     // Counts generated local variables so lexical bindings have unique names.
     private int $localCount;
-
     // Tracks lexical scopes so symbols can resolve to generated local variables.
     private array $scopes;
-
     // Tracks function boundaries so captured locals are identified correctly.
     private array $functionScopes;
-
     // Stores captured outer locals needed by generated nested closures.
     private array $functionCaptures;
-
     // Tracks named function contexts so direct self-calls avoid environment lookups.
     private array $functionSelfContexts;
+
+    public function __construct(
+        protected Options $options
+    ) {
+
+    }
 
     public function compile($ast): PhpCompiledProgram
     {

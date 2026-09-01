@@ -8,6 +8,7 @@
 use PHPUnit\Framework\TestCase;
 
 use MadLisp\PhpCompiler;
+use MadLisp\Options;
 use MadLisp\Env;
 use MadLisp\Evaller;
 use MadLisp\MacroExpander;
@@ -278,14 +279,16 @@ class EvallerTailCallTest extends TestCase
         $tokenizer = new Tokenizer();
         $reader = new Reader();
         $macroExpander = new MacroExpander();
-        $compiler = new PhpCompiler();
+        $options = new Options();
+        $options->safemode = $safemode;
+        $compiler = new PhpCompiler($options);
         $printer = new Printer();
 
         $evaller = new Evaller(
             $tokenizer,
             $reader,
             $printer,
-            $safemode
+            $options
         );
 
         $env = new Env('root');
@@ -301,7 +304,7 @@ class EvallerTailCallTest extends TestCase
             $compiler,
             $printer,
             $evaller,
-            $safemode
+            $options
         );
         $lib->register($env);
         $lib = new Collections();

@@ -15,6 +15,7 @@ use MadLisp\Func;
 use MadLisp\MacroExpander;
 use MadLisp\MadLispUserException;
 use MadLisp\MList;
+use MadLisp\Options;
 use MadLisp\PhpCompiler;
 use MadLisp\Printer;
 use MadLisp\Reader;
@@ -31,7 +32,7 @@ class Core implements ILib
         protected PhpCompiler $compiler,
         protected Printer $printer,
         protected Evaller $evaller,
-        protected bool $safemode
+        protected Options $options
     ) {
 
     }
@@ -39,7 +40,7 @@ class Core implements ILib
     public function register(Env $env): void
     {
         // Register special constants
-        if (!$this->safemode) {
+        if (!$this->options->safemode) {
             $env->set('__FILE__', null);
             $env->set('__DIR__', null);
         }
@@ -50,7 +51,7 @@ class Core implements ILib
             }
         ));
 
-        if (!$this->safemode) {
+        if (!$this->options->safemode) {
             $env->set('debug', new CoreFunc('debug', 'Toggle debug mode.', 0, 0,
                 function () {
                     $val = !$this->evaller->getDebug();
@@ -71,7 +72,7 @@ class Core implements ILib
             }
         ));
 
-        if (!$this->safemode) {
+        if (!$this->options->safemode) {
             $env->set('exit', new CoreFunc('exit', 'Terminate the script with given exit code.', 0, 1,
                 function (int $status = 0) {
                     exit($status);
@@ -87,7 +88,7 @@ class Core implements ILib
             fn () => phpversion()
         ));
 
-        if (!$this->safemode) {
+        if (!$this->options->safemode) {
             $env->set('print', new CoreFunc('print', 'Print arguments.', 0, -1,
                 function (...$args) {
                     foreach ($args as $a) {
@@ -98,7 +99,7 @@ class Core implements ILib
             ));
         }
 
-        if (!$this->safemode) {
+        if (!$this->options->safemode) {
             $env->set('printr', new CoreFunc('printr', 'Print argument in readable format.', 1, 1,
                 function ($a) {
                     $this->printer->print($a, true);
@@ -117,7 +118,7 @@ class Core implements ILib
             fn (string $a) => $this->reader->read($this->tokenizer->tokenize($a))
         ));
 
-        if (!$this->safemode) {
+        if (!$this->options->safemode) {
             $env->set('sleep', new CoreFunc('sleep', 'Sleep (wait) for the specified time in milliseconds.', 1, 1,
                 function (int $time) {
                     usleep($time * 1000);
@@ -126,7 +127,7 @@ class Core implements ILib
             ));
         }
 
-        if (!$this->safemode) {
+        if (!$this->options->safemode) {
             $env->set('system', new CoreFunc('system', 'Execute a command on the system.', 1, 1,
                 function (string $command) {
                     // Use passthru to capture the raw output

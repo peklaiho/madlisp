@@ -163,8 +163,9 @@ for ($i = 1; $i < $argc; $i++) {
 }
 
 // Create the Lisp interpreter
+$options = new MadLisp\Options();
 $factory = new MadLisp\LispFactory();
-$lisp = $factory->make();
+$lisp = $factory->make($options);
 
 // Pass command line arguments
 $lisp->setEnvValue('argc', count($passedArgs));

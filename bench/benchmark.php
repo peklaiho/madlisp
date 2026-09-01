@@ -5,6 +5,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use MadLisp\Lisp;
 use MadLisp\LispFactory;
+use MadLisp\Options;
 
 $workloadDir = __DIR__ . '/lisp';
 $workloads = [
@@ -47,7 +48,7 @@ if (isset($options['source'])) {
             throw new RuntimeException('Unable to read workload ' . $workloads[$workloadName]['file']);
         }
 
-        $lisp = (new LispFactory())->make(true);
+        $lisp = (new LispFactory())->make(new Options());
         $program = $lisp->compile($lisp->read($source));
 
         if (count($sourceWorkloads) > 1) {
@@ -125,7 +126,7 @@ function runWorkload(string $workloadName, array $workload, string $workloadDir,
         throw new RuntimeException('Unable to read workload ' . $workload['file']);
     }
 
-    $lisp = (new LispFactory())->make(true);
+    $lisp = (new LispFactory())->make(new Options());
 
     if ($compile) {
         // Record compilation time separately
