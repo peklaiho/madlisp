@@ -1403,7 +1403,7 @@ class PhpCompilerTest extends TestCase
         $this->assertNull($program->execute($env));
     }
 
-    public function testRecursiveDefinitionCapturesItselfWithoutEnvironmentLookup(): void
+    public function testRecursiveDefinitionUsesACompiledLoopWithoutSelfCapture(): void
     {
         $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
@@ -1430,7 +1430,9 @@ class PhpCompilerTest extends TestCase
 
         $this->assertSame(0, $function(20));
         $this->assertStringNotContainsString('$env->get(\'count-down\')', $program->getSource());
-        $this->assertStringContainsString('&$', $program->getSource());
+        $this->assertStringContainsString('while (true)', $program->getSource());
+        $this->assertStringContainsString('continue;', $program->getSource());
+        $this->assertStringNotContainsString('&$', $program->getSource());
     }
 
     public function testNonRecursiveDefinitionDoesNotCaptureItself(): void

@@ -82,7 +82,7 @@ class PhpCompiler
     }
 
     private function compileExpression($ast, array &$body, ?string $target, int $indent,
-        array $metadata = []): void
+        bool $tailPosition = false, array $metadata = []): void
     {
         // Simple PHP values are emitted with var_export
         if ($ast === null || is_bool($ast) || is_int($ast) || is_float($ast) || is_string($ast)) {
@@ -158,7 +158,7 @@ class PhpCompiler
                 $this->compileDef($arguments, $body, $target, $indent);
                 return;
             case 'do':
-                $this->compileDo($arguments, $body, $target, $indent);
+                $this->compileDo($arguments, $body, $target, $indent, $tailPosition);
                 return;
             case 'env':
                 $this->compileEnv($arguments, $body, $target, $indent);
@@ -167,7 +167,7 @@ class PhpCompiler
                 $this->compileFn($arguments, $body, $target, $indent, $metadata);
                 return;
             case 'if':
-                $this->compileIf($arguments, $body, $target, $indent);
+                $this->compileIf($arguments, $body, $target, $indent, $tailPosition);
                 return;
             case 'let':
                 $this->compileLet($arguments, $body, $target, $indent);
@@ -320,7 +320,7 @@ class PhpCompiler
 
         // No special form, local function, or fast path matched
         // Resolve the function from the global environment
-        $this->compileCallGlobal($operator, $arguments, $body, $target, $indent);
+        $this->compileCallGlobal($operator, $arguments, $body, $target, $indent, $tailPosition);
     }
 
     // ---
@@ -526,7 +526,7 @@ class PhpCompiler
         }
 
         $value = $this->temporary();
-        $this->compileExpression($arguments[1], $body, $value, $indent, [
+        $this->compileExpression($arguments[1], $body, $value, $indent, false, [
             'definitionName' => $name,
         ]);
         $this->emitResult(
@@ -537,7 +537,8 @@ class PhpCompiler
         );
     }
 
-    private function compileDo(array $arguments, array &$body, ?string $target, int $indent): void
+    private function compileDo(array $arguments, array &$body, ?string $target, int $indent,
+        bool $tailPosition = false): void
     {
         if (!$arguments) {
             if ($target !== null) {
@@ -547,11 +548,13 @@ class PhpCompiler
         }
 
         foreach ($arguments as $index => $argument) {
+            $last = $index === (count($arguments) - 1);
             $this->compileExpression(
                 $argument,
                 $body,
-                ($index === (count($arguments) - 1)) ? $target : null,
-                $indent
+                $last ? $target : null,
+                $indent,
+                $last && $tailPosition
             );
         }
     }
@@ -613,11 +616,26 @@ class PhpCompiler
             'name' => $definitionName,
             'variable' => ($definitionName !== null) ? $closureTarget : null,
             'used' => false,
+            'tailUsed' => false,
+            'parameterVariables' => $parameterVariables,
         ];
 
         $functionBody = [];
 
-        $this->compileExpression($arguments[1], $functionBody, '$result', $indent + 1);
+        // Compile the function body in tail position so direct self-calls can
+        // become parameter updates and continue instead of closure calls.
+        $this->compileExpression($arguments[1], $functionBody, '$result', $indent + 1, true);
+
+        $functionIndex = array_key_last($this->functionSelfContexts);
+        $selfContext = $this->functionSelfContexts[$functionIndex];
+        if ($selfContext['tailUsed']) {
+            // The body was compiled before we knew whether a loop was needed.
+            // Add one indentation level and put it inside the restart loop.
+            $functionBody = array_map(fn ($line) => '    ' . $line, $functionBody);
+            array_unshift($functionBody, str_repeat('    ', $indent + 1) . 'while (true) {');
+            $functionBody[] = str_repeat('    ', $indent + 2) . 'break;';
+            $functionBody[] = str_repeat('    ', $indent + 1) . '}';
+        }
         $this->emit($functionBody, $indent + 1, 'return $result;');
 
         $functionIndex = array_key_last($this->functionSelfContexts);
@@ -654,7 +672,8 @@ class PhpCompiler
         $this->emit($body, $indent, '};');
     }
 
-    private function compileIf(array $arguments, array &$body, ?string $target, int $indent): void
+    private function compileIf(array $arguments, array &$body, ?string $target, int $indent,
+        bool $tailPosition = false): void
     {
         if (count($arguments) < 2 || count($arguments) > 3) {
             throw new MadLispException('if requires 2 or 3 arguments');
@@ -666,11 +685,11 @@ class PhpCompiler
             $this->compileExpression($arguments[0], $body, $condition, $indent);
         }
         $this->emit($body, $indent, "if ($condition) {");
-        $this->compileExpression($arguments[1], $body, $target, $indent + 1);
+        $this->compileExpression($arguments[1], $body, $target, $indent + 1, $tailPosition);
         $this->emit($body, $indent, '} else {');
 
         if (isset($arguments[2])) {
-            $this->compileExpression($arguments[2], $body, $target, $indent + 1);
+            $this->compileExpression($arguments[2], $body, $target, $indent + 1, $tailPosition);
         } elseif ($target !== null) {
             $this->emit($body, $indent + 1, "$target = null;");
         }
@@ -849,16 +868,47 @@ class PhpCompiler
     }
 
     private function compileCallGlobal(string $name, array $arguments, array &$body, ?string $target,
-        int $indent): void
+        int $indent, bool $tailPosition = false): void
     {
-        // Direct self-calls use the captured closure variable. All other
-        // global calls retain their dynamic environment lookup.
+        // Direct self-calls use the captured closure variable. Tail-position
+        // self-calls instead update the parameters and restart the function.
         $functionIndex = array_key_last($this->functionSelfContexts);
         if ($functionIndex !== null && $this->functionSelfContexts[$functionIndex]['name'] === $name) {
-            $this->functionSelfContexts[$functionIndex]['used'] = true;
+            $context = &$this->functionSelfContexts[$functionIndex];
+
+            // Compile every argument before changing any parameter. Besides
+            // preserving evaluation order, this makes argument swapping safe.
             $values = $this->compileArguments($arguments, $body, $indent);
-            $selfVariable = $this->functionSelfContexts[$functionIndex]['variable'];
+
+            if ($tailPosition) {
+                if (count($values) !== count($context['parameterVariables'])) {
+                    throw new MadLispException("$name requires exactly " .
+                        count($context['parameterVariables']) . ' argument' .
+                        (count($context['parameterVariables']) === 1 ? '' : 's'));
+                }
+
+                $context['tailUsed'] = true;
+
+                // Copy the evaluated values first, then replace all parameters
+                // simultaneously from those copies before restarting the loop.
+                $temporaries = [];
+                foreach ($values as $value) {
+                    $temporary = $this->temporary();
+                    $temporaries[] = $temporary;
+                    $this->emit($body, $indent, "$temporary = $value;");
+                }
+                foreach ($temporaries as $index => $temporary) {
+                    $this->emit($body, $indent, $context['parameterVariables'][$index] . " = $temporary;");
+                }
+                $this->emit($body, $indent, 'continue;');
+                unset($context);
+                return;
+            }
+
+            $context['used'] = true;
+            $selfVariable = $context['variable'];
             $this->emitResult($body, $indent, $target, "$selfVariable(" . implode(', ', $values) . ')');
+            unset($context);
             return;
         }
 
