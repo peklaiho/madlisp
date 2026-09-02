@@ -1435,6 +1435,34 @@ class PhpCompilerTest extends TestCase
         $this->assertStringNotContainsString('&$', $program->getSource());
     }
 
+    public function testNamedLetCompilesAsARecursiveLoop(): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('let'),
+            new Symbol('loop'),
+            new MList([new Symbol('n'), 20, new Symbol('acc'), 0]),
+            new MList([
+                new Symbol('if'),
+                new MList([new Symbol('='), new Symbol('n'), 0]),
+                new Symbol('acc'),
+                new MList([
+                    new Symbol('loop'),
+                    new MList([new Symbol('dec'), new Symbol('n')]),
+                    new MList([new Symbol('+'), new Symbol('acc'), new Symbol('n')]),
+                ]),
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(210, $program->execute($env));
+        $this->assertStringContainsString('while (true)', $program->getSource());
+        $this->assertStringContainsString('continue;', $program->getSource());
+        $this->assertStringNotContainsString('$env->get(\'loop\')', $program->getSource());
+    }
+
     public function testNonRecursiveDefinitionDoesNotCaptureItself(): void
     {
         $compiler = new PhpCompiler(new Options());

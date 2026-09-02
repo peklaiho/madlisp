@@ -19,8 +19,8 @@ class PhpCompiler
     private array $functionScopes;
     // Stores captured outer locals needed by generated nested closures.
     private array $functionCaptures;
-    // Tracks named function contexts so direct self-calls avoid environment lookups.
-    private array $functionSelfContexts;
+    // Tracks active function and named-let restart targets.
+    private array $tailContexts;
 
     public function __construct(
         protected Options $options
@@ -36,7 +36,7 @@ class PhpCompiler
         $this->scopes = [[]];
         $this->functionScopes = [];
         $this->functionCaptures = [];
-        $this->functionSelfContexts = [];
+        $this->tailContexts = [];
 
         // Collection of expressions
         $body = [];
@@ -170,7 +170,7 @@ class PhpCompiler
                 $this->compileIf($arguments, $body, $target, $indent, $tailPosition);
                 return;
             case 'let':
-                $this->compileLet($arguments, $body, $target, $indent);
+                $this->compileLet($arguments, $body, $target, $indent, $tailPosition);
                 return;
             case 'or':
                 $this->compileAndOr($arguments, $body, $target, $indent, true);
@@ -612,7 +612,8 @@ class PhpCompiler
         // possible self-reference, but it is captured only if its body uses it.
         $definitionName = $metadata['definitionName'] ?? null;
         $closureTarget = $target;
-        $this->functionSelfContexts[] = [
+        $this->tailContexts[] = [
+            'kind' => 'function',
             'name' => $definitionName,
             'variable' => ($definitionName !== null) ? $closureTarget : null,
             'used' => false,
@@ -626,25 +627,20 @@ class PhpCompiler
         // become parameter updates and continue instead of closure calls.
         $this->compileExpression($arguments[1], $functionBody, '$result', $indent + 1, true);
 
-        $functionIndex = array_key_last($this->functionSelfContexts);
-        $selfContext = $this->functionSelfContexts[$functionIndex];
+        $functionIndex = array_key_last($this->tailContexts);
+        $selfContext = $this->tailContexts[$functionIndex];
         if ($selfContext['tailUsed']) {
-            // The body was compiled before we knew whether a loop was needed.
-            // Add one indentation level and put it inside the restart loop.
-            $functionBody = array_map(fn ($line) => '    ' . $line, $functionBody);
-            array_unshift($functionBody, str_repeat('    ', $indent + 1) . 'while (true) {');
-            $functionBody[] = str_repeat('    ', $indent + 2) . 'break;';
-            $functionBody[] = str_repeat('    ', $indent + 1) . '}';
+            $functionBody = $this->wrapTailLoop($functionBody, $indent + 1);
         }
         $this->emit($functionBody, $indent + 1, 'return $result;');
 
-        $functionIndex = array_key_last($this->functionSelfContexts);
-        $selfContext = $this->functionSelfContexts[$functionIndex];
+        $functionIndex = array_key_last($this->tailContexts);
+        $selfContext = $this->tailContexts[$functionIndex];
         $selfUsed = $selfContext['used'];
         $selfVariable = $selfContext['variable'];
         $captures = array_values($this->functionCaptures[array_key_last($this->functionCaptures)]);
 
-        array_pop($this->functionSelfContexts);
+        array_pop($this->tailContexts);
         array_pop($this->functionCaptures);
         array_pop($this->functionScopes);
         array_pop($this->scopes);
@@ -697,8 +693,14 @@ class PhpCompiler
         $this->emit($body, $indent, '}');
     }
 
-    private function compileLet(array $arguments, array &$body, ?string $target, int $indent): void
+    private function compileLet(array $arguments, array &$body, ?string $target, int $indent,
+        bool $tailPosition = false): void
     {
+        if (isset($arguments[0]) && $arguments[0] instanceof Symbol) {
+            $this->compileNamedLet($arguments, $body, $target, $indent);
+            return;
+        }
+
         if (count($arguments) < 2) {
             throw new MadLispException('let requires at least 2 arguments');
         }
@@ -735,7 +737,65 @@ class PhpCompiler
             $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
         }
 
-        $this->compileDo(array_slice($arguments, 1), $body, $target, $indent);
+        $this->compileDo(array_slice($arguments, 1), $body, $target, $indent, $tailPosition);
+        array_pop($this->scopes);
+    }
+
+    private function compileNamedLet(array $arguments, array &$body, ?string $target, int $indent): void
+    {
+        if (count($arguments) < 3) {
+            throw new MadLispException('named let requires a name, bindings, and body');
+        }
+
+        $name = $arguments[0]->getName();
+        $bindings = $arguments[1];
+        if (!($bindings instanceof Seq)) {
+            throw new MadLispException('second argument to named let is not seq');
+        }
+
+        $bindingData = $bindings->getData();
+        if (count($bindingData) % 2 !== 0) {
+            throw new MadLispException('uneven number of bindings for named let');
+        }
+
+        $this->scopes[] = [];
+        $parameterVariables = [];
+        for ($i = 0; $i < count($bindingData); $i += 2) {
+            if (!($bindingData[$i] instanceof Symbol)) {
+                throw new MadLispException('binding key for named let is not symbol');
+            }
+
+            $local = '$v' . $this->localCount++;
+            $simple = $this->compileSimpleExpression($bindingData[$i + 1]);
+            if ($simple !== null) {
+                $this->emit($body, $indent, "$local = $simple;");
+            } else {
+                $this->compileExpression($bindingData[$i + 1], $body, $local, $indent);
+            }
+
+            $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
+            $parameterVariables[] = $local;
+        }
+
+        $this->tailContexts[] = [
+            'kind' => 'named-let',
+            'name' => $name,
+            'variable' => null,
+            'used' => false,
+            'tailUsed' => false,
+            'parameterVariables' => $parameterVariables,
+        ];
+
+        $loopBody = [];
+        $this->compileDo(array_slice($arguments, 2), $loopBody, $target, $indent + 1, true);
+        $contextIndex = array_key_last($this->tailContexts);
+        $context = $this->tailContexts[$contextIndex];
+        if ($context['tailUsed']) {
+            $loopBody = $this->wrapTailLoop($loopBody, $indent);
+        }
+        array_push($body, ...$loopBody);
+
+        array_pop($this->tailContexts);
         array_pop($this->scopes);
     }
 
@@ -867,14 +927,38 @@ class PhpCompiler
         $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
     }
 
+    private function wrapTailLoop(array $loopBody, int $indent): array
+    {
+        // The body is emitted one level inside the restart loop. A normal
+        // completion falls through to break; a tail transition emits continue.
+        $loopBody = array_map(fn ($line) => '    ' . $line, $loopBody);
+        array_unshift($loopBody, str_repeat('    ', $indent) . 'while (true) {');
+        $loopBody[] = str_repeat('    ', $indent + 1) . 'break;';
+        $loopBody[] = str_repeat('    ', $indent) . '}';
+        return $loopBody;
+    }
+
     private function compileCallGlobal(string $name, array $arguments, array &$body, ?string $target,
         int $indent, bool $tailPosition = false): void
     {
-        // Direct self-calls use the captured closure variable. Tail-position
-        // self-calls instead update the parameters and restart the function.
-        $functionIndex = array_key_last($this->functionSelfContexts);
-        if ($functionIndex !== null && $this->functionSelfContexts[$functionIndex]['name'] === $name) {
-            $context = &$this->functionSelfContexts[$functionIndex];
+        // Resolve the innermost named-let target or current function target.
+        $contextIndex = null;
+        for ($i = count($this->tailContexts) - 1; $i >= 0; $i--) {
+            if ($this->tailContexts[$i]['kind'] === 'named-let' &&
+                $this->tailContexts[$i]['name'] === $name) {
+                $contextIndex = $i;
+                break;
+            }
+            if ($this->tailContexts[$i]['kind'] === 'function') {
+                if ($this->tailContexts[$i]['name'] === $name) {
+                    $contextIndex = $i;
+                }
+                break;
+            }
+        }
+
+        if ($contextIndex !== null) {
+            $context = &$this->tailContexts[$contextIndex];
 
             // Compile every argument before changing any parameter. Besides
             // preserving evaluation order, this makes argument swapping safe.
@@ -903,6 +987,11 @@ class PhpCompiler
                 $this->emit($body, $indent, 'continue;');
                 unset($context);
                 return;
+            }
+
+            if ($context['kind'] === 'named-let') {
+                unset($context);
+                throw new MadLispException("named let $name can only be called in tail position");
             }
 
             $context['used'] = true;
