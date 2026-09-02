@@ -500,7 +500,7 @@ class PhpCompiler
             return;
         }
 
-        $condition = $this->compileSimpleExpression($test);
+        $condition = $this->compileInlineExpression($test);
         if ($condition === null) {
             $condition = $this->temporary();
             $this->compileExpression($test, $body, $condition, $indent);
@@ -676,7 +676,7 @@ class PhpCompiler
             throw new MadLispException('if requires 2 or 3 arguments');
         }
 
-        $condition = $this->compileSimpleExpression($arguments[0]);
+        $condition = $this->compileInlineExpression($arguments[0]);
         if ($condition === null) {
             $condition = $this->temporary();
             $this->compileExpression($arguments[0], $body, $condition, $indent);
@@ -864,7 +864,7 @@ class PhpCompiler
         }
         $this->emit($body, $indent, 'while (true) {');
 
-        $condition = $this->compileSimpleExpression($arguments[0]);
+        $condition = $this->compileInlineExpression($arguments[0]);
         if ($condition === null) {
             $condition = $this->temporary();
             $this->compileExpression($arguments[0], $body, $condition, $indent + 1);
@@ -1054,6 +1054,90 @@ class PhpCompiler
         }
 
         return null;
+    }
+
+    private function compileInlineExpression($ast): ?string
+    {
+        $simple = $this->compileSimpleExpression($ast);
+        if ($simple !== null) {
+            return $simple;
+        }
+
+        if (!($ast instanceof MList)) {
+            return null;
+        }
+
+        $data = $ast->getData();
+        if (!$data || !($data[0] instanceof Symbol)) {
+            return null;
+        }
+
+        $operator = $data[0]->getName();
+        $arguments = array_slice($data, 1);
+        $values = [];
+        foreach ($arguments as $argument) {
+            $value = $this->compileInlineExpression($argument);
+            if ($value === null) {
+                return null;
+            }
+            // Parenthesize nested forms so PHP operator precedence cannot
+            // change the meaning of the generated expression.
+            $values[] = $argument instanceof MList ? "($value)" : $value;
+        }
+
+        $binaryOperators = [
+            '+' => [1, '+'],
+            '-' => [1, '-'],
+            '*' => [2, '*'],
+            '/' => [2, '/'],
+            '%' => [2, '%'],
+            '<' => [2, '<'],
+            '<=' => [2, '<='],
+            '>' => [2, '>'],
+            '>=' => [2, '>='],
+        ];
+        if (isset($binaryOperators[$operator])) {
+            [$minimum, $phpOperator] = $binaryOperators[$operator];
+            if (count($values) < $minimum) {
+                return null;
+            }
+            if ($operator === '-' && count($values) === 1) {
+                return "-{$values[0]}";
+            }
+            return implode(" $phpOperator ", $values);
+        }
+
+        $comparisons = [
+            '=' => '==',
+            '==' => '===',
+            '!=' => '!=',
+            '!==' => '!==',
+        ];
+        if (isset($comparisons[$operator])) {
+            if (count($values) !== 2) {
+                return null;
+            }
+            $comparison = $comparisons[$operator];
+            if ($this->options->compileSimpleComparisons) {
+                return "$values[0] $comparison $values[1]";
+            }
+            return "\\MadLisp\\Util::valueForCompare($values[0]) $comparison " .
+                "\\MadLisp\\Util::valueForCompare($values[1])";
+        }
+
+        $formatted = [
+            'inc' => [1, '%s + 1'],
+            'dec' => [1, '%s - 1'],
+            'not' => [1, '!%s'],
+            'zero?' => [1, '%s === 0'],
+            'one?' => [1, '%s === 1'],
+            '//' => [2, 'intdiv(%s, %s)'],
+        ];
+        if (!isset($formatted[$operator]) || count($values) !== $formatted[$operator][0]) {
+            return null;
+        }
+
+        return sprintf($formatted[$operator][1], ...$values);
     }
 
     private function compileArithmetic(array $arguments, string $operator, int $minArgs,

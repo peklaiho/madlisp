@@ -435,6 +435,33 @@ class PhpCompilerTest extends TestCase
         $this->assertStringNotContainsString('$t0 = $v0;', $while->getSource());
     }
 
+    public function testInlineExpressionConditionsRenderNestedNativeOperations(): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([new Symbol('value'), 4]),
+            new MList([
+                new Symbol('if'),
+                new MList([
+                    new Symbol('<'),
+                    new MList([new Symbol('+'), new Symbol('value'), 1]),
+                    10,
+                ]),
+                1,
+                2,
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(1, $program->execute($env));
+        $this->assertStringContainsString('if (($v0 + 1) < 10) {', $program->getSource());
+        $this->assertStringNotContainsString('$t0 = $v0 + 1;', $program->getSource());
+        $this->assertStringNotContainsString('$t1 = $t0 < 10;', $program->getSource());
+    }
+
     public function testCaseEvaluatesTestOnceAndReturnsMatchingClauseResult(): void
     {
         $compiler = new PhpCompiler(new Options());
