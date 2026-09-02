@@ -1086,6 +1086,32 @@ class EvallerTest extends TestCase
         $this->assertSame(36, $evaller->eval($input, $env));
     }
 
+    public function testNamedLetUsesExistingTailCallLoop()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+
+        // (let loop (n 10000 acc 0)
+        //   (if (= n 0) acc (loop (dec n) (+ acc n))))
+        $input = $this->buildForm([
+            'let', 'loop', ['n', 10000, 'acc', 0],
+            ['if', ['=', 'n', 0], 'acc', ['loop', ['dec', 'n'], ['+', 'acc', 'n']]],
+        ]);
+
+        $this->assertSame(50005000, $evaller->eval($input, $env));
+        $this->assertFalse($env->has('loop'));
+    }
+
+    public function testNamedLetEvaluatesMultipleBodyExpressions()
+    {
+        list($env, $evaller) = $this->getEnvAndEvaller();
+        $input = $this->buildForm([
+            'let', 'loop', ['n', 2],
+            ['if', ['=', 'n', 0], 42, ['do', ['dec', 'n'], ['loop', ['dec', 'n']]]],
+        ]);
+
+        $this->assertSame(42, $evaller->eval($input, $env));
+    }
+
     public function testLetScope()
     {
         list($env, $evaller) = $this->getEnvAndEvaller();

@@ -260,21 +260,26 @@ class Evaller
                         return null;
                     }
                 } elseif ($symbolName == 'let') {
-                    if ($astLength < 3) {
+                    $isNamed = isset($astData[1]) && $astData[1] instanceof Symbol;
+                    $bindingIndex = $isNamed ? 2 : 1;
+                    $bodyIndex = $isNamed ? 3 : 2;
+
+                    if ($astLength < $bodyIndex + 1) {
                         throw new MadLispException("let requires at least 2 arguments");
-                    } elseif (!($astData[1] instanceof Seq)) {
+                    } elseif (!($astData[$bindingIndex] instanceof Seq)) {
                         throw new MadLispException("first argument to let is not seq");
                     }
 
-                    $bindings = $astData[1]->getData();
+                    $bindings = $astData[$bindingIndex]->getData();
 
                     if (count($bindings) % 2 == 1) {
                         throw new MadLispException("uneven number of bindings for let");
                     }
 
                     $newEnv = new Env('let', $env);
+                    $parameterBindings = [];
 
-                    for ($i = 0; $i < count($bindings) - 1; $i += 2) {
+                    for ($i = 0; $i < count($bindings); $i += 2) {
                         $key = $bindings[$i];
 
                         if (!($key instanceof Symbol)) {
@@ -283,10 +288,35 @@ class Evaller
 
                         $val = $this->eval($bindings[$i + 1], $newEnv, $depth + 1);
                         $newEnv->set($key->getName(), $val);
+                        if ($isNamed) {
+                            $parameterBindings[] = $key;
+                        }
+                    }
+
+                    // Handle named let
+                    if ($isNamed) {
+                        $name = $astData[1]->getName();
+
+                        if (count($astData) === $bodyIndex + 1) {
+                            $body = $astData[$bodyIndex];
+                        } else {
+                            $body = new MList(array_merge(
+                                [new Symbol('do')],
+                                array_slice($astData, $bodyIndex)
+                            ));
+                        }
+
+                        $closure = function (...$args) use ($parameterBindings, $newEnv, $body, $depth) {
+                            $callEnv = new Env('closure', $newEnv);
+                            Util::bindArguments($callEnv, $parameterBindings, $args);
+                            return $this->eval($body, $callEnv, $depth + 1);
+                        };
+
+                        $newEnv->set($name, new UserFunc($closure, $body, $newEnv, new MList($parameterBindings)));
                     }
 
                     // Eval interval expressions
-                    for ($i = 2; $i < $astLength - 1; $i++) {
+                    for ($i = $bodyIndex; $i < $astLength - 1; $i++) {
                         $this->eval($astData[$i], $newEnv, $depth + 1);
                     }
 
