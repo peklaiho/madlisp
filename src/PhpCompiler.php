@@ -145,14 +145,14 @@ class PhpCompiler
         // take precedence over local and global bindings.
         switch ($operator) {
             case 'and':
-                $this->compileAndOr($arguments, $body, $target, $indent, false);
+                $this->compileAndOr($arguments, $body, $target, $indent, false, $tailPosition);
                 return;
             case 'case':
             case 'case-strict':
-                $this->compileCase($operator, $arguments, $body, $target, $indent);
+                $this->compileCase($operator, $arguments, $body, $target, $indent, $tailPosition);
                 return;
             case 'cond':
-                $this->compileCond($arguments, $body, $target, $indent);
+                $this->compileCond($arguments, $body, $target, $indent, $tailPosition);
                 return;
             case 'def':
                 $this->compileDef($arguments, $body, $target, $indent);
@@ -173,7 +173,7 @@ class PhpCompiler
                 $this->compileLet($arguments, $body, $target, $indent, $tailPosition);
                 return;
             case 'or':
-                $this->compileAndOr($arguments, $body, $target, $indent, true);
+                $this->compileAndOr($arguments, $body, $target, $indent, true, $tailPosition);
                 return;
             case 'quote':
                 $this->compileQuote($arguments, $body, $target, $indent);
@@ -361,7 +361,7 @@ class PhpCompiler
     // ---
 
     private function compileAndOr(array $arguments, array &$body, ?string $target,
-        int $indent, bool $or): void
+        int $indent, bool $or, bool $tailPosition = false): void
     {
         if (!$arguments) {
             if ($target !== null) {
@@ -374,7 +374,7 @@ class PhpCompiler
 
         foreach ($arguments as $index => $argument) {
             if ($index === (count($arguments) - 1)) {
-                $this->compileExpression($argument, $body, $target, $indent);
+                $this->compileExpression($argument, $body, $target, $indent, $tailPosition);
                 break;
             }
 
@@ -397,7 +397,7 @@ class PhpCompiler
     }
 
     private function compileCase(string $operator, array $arguments, array &$body,
-        ?string $target, int $indent): void
+        ?string $target, int $indent, bool $tailPosition = false): void
     {
         if (count($arguments) < 2) {
             throw new MadLispException("$operator requires at least 2 arguments");
@@ -428,10 +428,10 @@ class PhpCompiler
             if ($test instanceof Symbol && $test->getName() === 'else') {
                 if (!$first) {
                     $this->emit($body, $indent, '} else {');
-                    $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
+                    $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1, $tailPosition);
                     $this->emit($body, $indent, '}');
                 } else {
-                    $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
+                    $this->compileDo(array_slice($clause, 1), $body, $target, $indent, $tailPosition);
                 }
                 return;
             }
@@ -446,7 +446,7 @@ class PhpCompiler
             }
 
             $this->emit($body, $indent, "$keyword ($testExpr) {");
-            $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
+            $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1, $tailPosition);
             $first = false;
         }
 
@@ -457,7 +457,8 @@ class PhpCompiler
         $this->emit($body, $indent, '}');
     }
 
-    private function compileCond(array $arguments, array &$body, ?string $target, int $indent): void
+    private function compileCond(array $arguments, array &$body, ?string $target, int $indent,
+        bool $tailPosition = false): void
     {
         if (!$arguments) {
             throw new MadLispException('cond requires at least 1 argument');
@@ -478,11 +479,11 @@ class PhpCompiler
             $clauses[] = $data;
         }
 
-        $this->compileCondBranch($clauses, 0, $body, $target, $indent);
+        $this->compileCondBranch($clauses, 0, $body, $target, $indent, $tailPosition);
     }
 
     private function compileCondBranch(array $clauses, int $index, array &$body,
-        ?string $target, int $indent): void
+        ?string $target, int $indent, bool $tailPosition = false): void
     {
         if ($index === count($clauses)) {
             if ($target !== null) {
@@ -495,7 +496,7 @@ class PhpCompiler
         $test = $clause[0];
 
         if ($test instanceof Symbol && $test->getName() === 'else') {
-            $this->compileDo(array_slice($clause, 1), $body, $target, $indent);
+            $this->compileDo(array_slice($clause, 1), $body, $target, $indent, $tailPosition);
             return;
         }
 
@@ -505,9 +506,9 @@ class PhpCompiler
             $this->compileExpression($test, $body, $condition, $indent);
         }
         $this->emit($body, $indent, "if ($condition) {");
-        $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1);
+        $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1, $tailPosition);
         $this->emit($body, $indent, '} else {');
-        $this->compileCondBranch($clauses, $index + 1, $body, $target, $indent + 1);
+        $this->compileCondBranch($clauses, $index + 1, $body, $target, $indent + 1, $tailPosition);
         $this->emit($body, $indent, '}');
     }
 

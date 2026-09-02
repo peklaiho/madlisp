@@ -1463,6 +1463,59 @@ class PhpCompilerTest extends TestCase
         $this->assertStringNotContainsString('$env->get(\'loop\')', $program->getSource());
     }
 
+    public function testTailCallsThroughControlFormsUseTheRestartLoop(): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $recursive = new MList([
+            new Symbol('if'),
+            new MList([new Symbol('='), new Symbol('n'), 0]),
+            0,
+            new MList([new Symbol('loop'), new MList([new Symbol('dec'), new Symbol('n')])]),
+        ]);
+        $forms = [
+            new MList([
+                new Symbol('cond'),
+                new MList([new MList([new Symbol('='), new Symbol('n'), 0]), 0]),
+                new MList([new Symbol('else'), $recursive]),
+            ]),
+            new MList([
+                new Symbol('case'),
+                new Symbol('n'),
+                new MList([0, 0]),
+                new MList([new Symbol('else'), $recursive]),
+            ]),
+            new MList([
+                new Symbol('case-strict'),
+                new Symbol('n'),
+                new MList([0, 0]),
+                new MList([new Symbol('else'), $recursive]),
+            ]),
+            new MList([
+                new Symbol('and'),
+                true,
+                $recursive,
+            ]),
+            new MList([
+                new Symbol('or'),
+                false,
+                $recursive,
+            ]),
+        ];
+
+        foreach ($forms as $form) {
+            $program = $compiler->compile(new MList([
+                new Symbol('let'),
+                new Symbol('loop'),
+                new MList([new Symbol('n'), 10000]),
+                $form,
+            ]));
+
+            $this->assertSame(0, $program->execute($env));
+            $this->assertStringContainsString('continue;', $program->getSource());
+        }
+    }
+
     public function testNonRecursiveDefinitionDoesNotCaptureItself(): void
     {
         $compiler = new PhpCompiler(new Options());
