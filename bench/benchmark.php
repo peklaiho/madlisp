@@ -11,6 +11,7 @@ $workloadDir = __DIR__ . '/lisp';
 $workloads = [
     'arithmetic' => ['file' => 'arithmetic.lisp', 'expected' => 12502500],
     'tail-recursion' => ['file' => 'tail-recursion.lisp', 'expected' => 0],
+    'named-let' => ['file' => 'named-let.lisp', 'expected' => 0],
     'collections' => ['file' => 'collections.lisp', 'expected' => 399980000],
     'environment' => ['file' => 'environment.lisp', 'expected' => 30000],
     'fibonacci' => ['file' => 'fibonacci.lisp', 'expected' => 6765],
