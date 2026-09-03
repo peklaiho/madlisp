@@ -726,7 +726,7 @@ class PhpCompiler
         ];
 
         $loopBody = [];
-        $this->compileDo(array_slice($arguments, 2), $loopBody, $target, $indent + 1, true);
+        $this->compileDo(array_slice($arguments, 2), $loopBody, $target, $indent, true);
         $contextIndex = array_key_last($this->tailContexts);
         $context = $this->tailContexts[$contextIndex];
         if ($context['tailUsed']) {
