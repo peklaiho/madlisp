@@ -500,11 +500,7 @@ class PhpCompiler
             return;
         }
 
-        $condition = $this->compileInlineExpression($test);
-        if ($condition === null) {
-            $condition = $this->temporary();
-            $this->compileExpression($test, $body, $condition, $indent);
-        }
+        $condition = $this->compileConditionExpression($test, $body, $indent);
         $this->emit($body, $indent, "if ($condition) {");
         $this->compileDo(array_slice($clause, 1), $body, $target, $indent + 1, $tailPosition);
         $this->emit($body, $indent, '} else {');
@@ -676,11 +672,7 @@ class PhpCompiler
             throw new MadLispException('if requires 2 or 3 arguments');
         }
 
-        $condition = $this->compileInlineExpression($arguments[0]);
-        if ($condition === null) {
-            $condition = $this->temporary();
-            $this->compileExpression($arguments[0], $body, $condition, $indent);
-        }
+        $condition = $this->compileConditionExpression($arguments[0], $body, $indent);
         $this->emit($body, $indent, "if ($condition) {");
         $this->compileExpression($arguments[1], $body, $target, $indent + 1, $tailPosition);
         $this->emit($body, $indent, '} else {');
@@ -706,37 +698,8 @@ class PhpCompiler
             throw new MadLispException('let requires at least 2 arguments');
         }
 
-        $bindings = $arguments[0];
-        if (!($bindings instanceof Seq)) {
-            throw new MadLispException('first argument to let is not seq');
-        }
-
-        $bindingData = $bindings->getData();
-        if (count($bindingData) % 2 !== 0) {
-            throw new MadLispException('uneven number of bindings for let');
-        }
-
         $this->scopes[] = [];
-
-        for ($i = 0; $i < count($bindingData); $i += 2) {
-            if (!($bindingData[$i] instanceof Symbol)) {
-                throw new MadLispException('binding key for let is not symbol');
-            }
-
-            // Compile the value before adding the name to the scope.
-            $local = '$v' . $this->localCount++;
-            $simple = $this->compileSimpleExpression($bindingData[$i + 1]);
-
-            if ($simple !== null) {
-                $this->emit($body, $indent, "$local = $simple;");
-            } else {
-                // The binding is not visible until after its initializer has
-                // been compiled, so the final local is a safe destination.
-                $this->compileExpression($bindingData[$i + 1], $body, $local, $indent);
-            }
-
-            $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
-        }
+        $this->compileLetBindings($arguments[0], 'let', $body, $indent);
 
         $this->compileDo(array_slice($arguments, 1), $body, $target, $indent, $tailPosition);
         array_pop($this->scopes);
@@ -745,38 +708,13 @@ class PhpCompiler
     private function compileNamedLet(array $arguments, array &$body, ?string $target, int $indent): void
     {
         if (count($arguments) < 3) {
-            throw new MadLispException('named let requires a name, bindings, and body');
+            throw new MadLispException('named let requires name, bindings and body');
         }
 
         $name = $arguments[0]->getName();
-        $bindings = $arguments[1];
-        if (!($bindings instanceof Seq)) {
-            throw new MadLispException('second argument to named let is not seq');
-        }
-
-        $bindingData = $bindings->getData();
-        if (count($bindingData) % 2 !== 0) {
-            throw new MadLispException('uneven number of bindings for named let');
-        }
 
         $this->scopes[] = [];
-        $parameterVariables = [];
-        for ($i = 0; $i < count($bindingData); $i += 2) {
-            if (!($bindingData[$i] instanceof Symbol)) {
-                throw new MadLispException('binding key for named let is not symbol');
-            }
-
-            $local = '$v' . $this->localCount++;
-            $simple = $this->compileSimpleExpression($bindingData[$i + 1]);
-            if ($simple !== null) {
-                $this->emit($body, $indent, "$local = $simple;");
-            } else {
-                $this->compileExpression($bindingData[$i + 1], $body, $local, $indent);
-            }
-
-            $this->scopes[array_key_last($this->scopes)][$bindingData[$i]->getName()] = $local;
-            $parameterVariables[] = $local;
-        }
+        $parameterVariables = $this->compileLetBindings($arguments[1], 'named let', $body, $indent);
 
         $this->tailContexts[] = [
             'kind' => 'named-let',
@@ -798,6 +736,46 @@ class PhpCompiler
 
         array_pop($this->tailContexts);
         array_pop($this->scopes);
+    }
+
+    private function compileLetBindings($bindings, string $formName, array &$body, int $indent): array
+    {
+        if (!($bindings instanceof Seq)) {
+            $errorArg = ($formName === 'let') ? 'first' : 'second';
+            throw new MadLispException("$errorArg argument to $formName is not seq");
+        }
+
+        $bindingData = $bindings->getData();
+        if (count($bindingData) % 2 !== 0) {
+            throw new MadLispException("uneven number of bindings for $formName");
+        }
+
+        $variables = [];
+        foreach ($bindingData as $index => $binding) {
+            if ($index % 2 !== 0) {
+                continue;
+            }
+            if (!($binding instanceof Symbol)) {
+                throw new MadLispException("binding key for $formName is not symbol");
+            }
+
+            // Compile the value before adding the name to the scope.
+            $local = '$v' . $this->localCount++;
+            $value = $bindingData[$index + 1];
+            $simple = $this->compileSimpleExpression($value);
+            if ($simple !== null) {
+                $this->emit($body, $indent, "$local = $simple;");
+            } else {
+                // The binding is not visible until after its initializer has
+                // been compiled, so the final local is a safe destination.
+                $this->compileExpression($value, $body, $local, $indent);
+            }
+
+            $this->scopes[array_key_last($this->scopes)][$binding->getName()] = $local;
+            $variables[] = $local;
+        }
+
+        return $variables;
     }
 
     private function compileQuote(array $arguments, array &$body, ?string $target, int $indent): void
@@ -864,11 +842,7 @@ class PhpCompiler
         }
         $this->emit($body, $indent, 'while (true) {');
 
-        $condition = $this->compileInlineExpression($arguments[0]);
-        if ($condition === null) {
-            $condition = $this->temporary();
-            $this->compileExpression($arguments[0], $body, $condition, $indent + 1);
-        }
+        $condition = $this->compileConditionExpression($arguments[0], $body, $indent + 1);
         $this->emit($body, $indent + 1, "if (!$condition) {");
         $this->emit($body, $indent + 2, 'break;');
         $this->emit($body, $indent + 1, '}');
@@ -1041,6 +1015,18 @@ class PhpCompiler
         }
 
         return $values;
+    }
+
+    private function compileConditionExpression($ast, array &$body, int $indent): string
+    {
+        $condition = $this->compileInlineExpression($ast);
+        if ($condition !== null) {
+            return $condition;
+        }
+
+        $condition = $this->temporary();
+        $this->compileExpression($ast, $body, $condition, $indent);
+        return $condition;
     }
 
     private function compileSimpleExpression($ast): ?string
