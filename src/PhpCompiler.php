@@ -948,17 +948,16 @@ class PhpCompiler
 
                 $context['tailUsed'] = true;
 
-                // Copy the evaluated values first, then replace all parameters
-                // simultaneously from those copies before restarting the loop.
-                $temporaries = [];
-                foreach ($values as $value) {
-                    $temporary = $this->temporary();
-                    $temporaries[] = $temporary;
-                    $this->emit($body, $indent, "$temporary = $value;");
-                }
-                foreach ($temporaries as $index => $temporary) {
-                    $this->emit($body, $indent, $context['parameterVariables'][$index] . " = $temporary;");
-                }
+                // Evaluate all arguments before changing any parameters. The
+                // resulting values are then assigned in a dependency-safe
+                // order, using an extra temporary only for cycles such as a
+                // two-parameter swap.
+                $this->compileTailAssignments(
+                    $values,
+                    $context['parameterVariables'],
+                    $body,
+                    $indent
+                );
                 $this->emit($body, $indent, 'continue;');
                 unset($context);
                 return;
@@ -980,6 +979,44 @@ class PhpCompiler
         $this->emit($body, $indent, "$function = \$env->get(" . var_export($name, true) . ');');
         $values = $this->compileArguments($arguments, $body, $indent);
         $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
+    }
+
+    private function compileTailAssignments(array $values, array $parameters, array &$body, int $indent): void
+    {
+        $pending = [];
+        foreach ($parameters as $index => $parameter) {
+            if ($values[$index] !== $parameter) {
+                $pending[$index] = [$parameter, $values[$index]];
+            }
+        }
+
+        while ($pending) {
+            $sources = array_column($pending, 1);
+            $progress = false;
+
+            foreach ($pending as $index => [$parameter, $value]) {
+                // A parameter may be assigned now if no remaining assignment
+                // still needs its old value as a source.
+                if (!in_array($parameter, $sources, true)) {
+                    $this->emit($body, $indent, "$parameter = $value;");
+                    unset($pending[$index]);
+                    $progress = true;
+                    break;
+                }
+            }
+
+            if ($progress) {
+                continue;
+            }
+
+            // The remaining assignments form a cycle. Preserve one source,
+            // then the dependency ordering above can finish the cycle.
+            $index = array_key_first($pending);
+            [$parameter, $value] = $pending[$index];
+            $temporary = $this->temporary();
+            $this->emit($body, $indent, "$temporary = $value;");
+            $pending[$index][1] = $temporary;
+        }
     }
 
     private function compileCallNative(array $arguments, array $functions, int $arity, string $lispName,

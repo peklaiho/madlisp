@@ -1462,6 +1462,86 @@ class PhpCompilerTest extends TestCase
         $this->assertStringNotContainsString('&$', $program->getSource());
     }
 
+    public function testTailCallAssignmentsReuseEvaluatedValues(): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('do'),
+            new MList([
+                new Symbol('def'),
+                new Symbol('fib-rec'),
+                new MList([
+                    new Symbol('fn'),
+                    new MList([
+                        new Symbol('i'),
+                        new Symbol('n'),
+                        new Symbol('a'),
+                        new Symbol('b'),
+                    ]),
+                    new MList([
+                        new Symbol('if'),
+                        new MList([new Symbol('='), new Symbol('i'), new Symbol('n')]),
+                        new MList([new Symbol('+'), new Symbol('a'), new Symbol('b')]),
+                        new MList([
+                            new Symbol('fib-rec'),
+                            new MList([new Symbol('inc'), new Symbol('i')]),
+                            new Symbol('n'),
+                            new Symbol('b'),
+                            new MList([new Symbol('+'), new Symbol('a'), new Symbol('b')]),
+                        ]),
+                    ]),
+                ]),
+            ]),
+            new MList([new Symbol('fib-rec'), 2, 10, 0, 1]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(55, $program->execute($env));
+        $this->assertStringContainsString('$v0 = $t1;', $program->getSource());
+        $this->assertStringContainsString('$v2 = $v3;', $program->getSource());
+        $this->assertStringContainsString('$v3 = $t2;', $program->getSource());
+        $this->assertStringNotContainsString('$t3 = $t1;', $program->getSource());
+        $this->assertStringNotContainsString('$t4 = $v1;', $program->getSource());
+        $this->assertStringNotContainsString('$t5 = $v3;', $program->getSource());
+        $this->assertStringNotContainsString('$t6 = $t2;', $program->getSource());
+    }
+
+    public function testTailCallAssignmentsUseTemporaryForParameterCycles(): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('let'),
+            new Symbol('swap'),
+            new MList([
+                new Symbol('n'), 3,
+                new Symbol('a'), 1,
+                new Symbol('b'), 2,
+            ]),
+            new MList([
+                new Symbol('if'),
+                new MList([new Symbol('='), new Symbol('n'), 0]),
+                new Vector([
+                    new Symbol('a'),
+                    new Symbol('b'),
+                ]),
+                new MList([
+                    new Symbol('swap'),
+                    new MList([new Symbol('dec'), new Symbol('n')]),
+                    new Symbol('b'),
+                    new Symbol('a'),
+                ]),
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame([2, 1], $program->execute($env)->getData());
+        $this->assertMatchesRegularExpression('/\$t\d+ = \$v\d+;/', $program->getSource());
+    }
+
     public function testNamedLetCompilesAsARecursiveLoop(): void
     {
         $compiler = new PhpCompiler(new Options());
