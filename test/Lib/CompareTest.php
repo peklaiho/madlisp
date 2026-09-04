@@ -15,7 +15,7 @@ use MadLisp\Lib\Compare;
 
 class CompareTest extends TestCase
 {
-    public function equalProvider(): array
+    public static function equalProvider(): array
     {
         return [
             [1, 1, true],
@@ -44,7 +44,7 @@ class CompareTest extends TestCase
         ];
     }
 
-    /** @dataProvider equalProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('equalProvider')]
     public function testEqual($a, $b, bool $expected): void
     {
         // test = and != together because they are opposite
@@ -53,7 +53,7 @@ class CompareTest extends TestCase
         $this->assertSame(!$expected, $this->getEnv()->get('!=')->call([$a, $b]));
     }
 
-    public function strictEqualProvider(): array
+    public static function strictEqualProvider(): array
     {
         return [
             [1, 1, true],
@@ -82,7 +82,7 @@ class CompareTest extends TestCase
         ];
     }
 
-    /** @dataProvider strictEqualProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('strictEqualProvider')]
     public function testStrictEqual($a, $b, bool $expected): void
     {
         // test == and !== together because they are opposite
@@ -91,7 +91,7 @@ class CompareTest extends TestCase
         $this->assertSame(!$expected, $this->getEnv()->get('!==')->call([$a, $b]));
     }
 
-    public function lessMoreProvider(): array
+    public static function lessMoreProvider(): array
     {
         return [
             //         <      <=     >      =>
@@ -105,7 +105,7 @@ class CompareTest extends TestCase
         ];
     }
 
-    /** @dataProvider lessMoreProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('lessMoreProvider')]
     public function testLessMore($a, $b, bool $e1, bool $e2, bool $e3, bool $e4): void
     {
         $this->assertSame($e1, $this->getEnv()->get('<')->call([$a, $b]));

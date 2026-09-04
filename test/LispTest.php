@@ -27,12 +27,12 @@ class LispTest extends TestCase
         $env = new Env('env');
 
         $lisp = new Lisp(
-            $this->createMock(Tokenizer::class),
-            $this->createMock(Reader::class),
-            $this->createMock(MacroExpander::class),
-            $this->createMock(PhpCompiler::class),
-            $this->createMock(Evaller::class),
-            $this->createMock(Printer::class),
+            $this->createStub(Tokenizer::class),
+            $this->createStub(Reader::class),
+            $this->createStub(MacroExpander::class),
+            $this->createStub(PhpCompiler::class),
+            $this->createStub(Evaller::class),
+            $this->createStub(Printer::class),
             $env
         );
 
@@ -41,7 +41,7 @@ class LispTest extends TestCase
 
     public function testCompile(): void
     {
-        $macroExpander = $this->createMock(MacroExpander::class);
+        $macroExpander = $this->createStub(MacroExpander::class);
         $macroExpander->method('expand')->willReturnArgument(0);
         $compiler = $this->createMock(PhpCompiler::class);
         $program = new \MadLisp\PhpCompiledProgram(static fn (Env $env) => 'result', '');
@@ -53,12 +53,12 @@ class LispTest extends TestCase
             ->willReturn($program);
 
         $lisp = new Lisp(
-            $this->createMock(Tokenizer::class),
-            $this->createMock(Reader::class),
+            $this->createStub(Tokenizer::class),
+            $this->createStub(Reader::class),
             $macroExpander,
             $compiler,
-            $this->createMock(Evaller::class),
-            $this->createMock(Printer::class),
+            $this->createStub(Evaller::class),
+            $this->createStub(Printer::class),
             new Env('env')
         );
 
@@ -71,12 +71,12 @@ class LispTest extends TestCase
         $env = new Env('env');
 
         $lisp = new Lisp(
-            $this->createMock(Tokenizer::class),
-            $this->createMock(Reader::class),
-            $this->createMock(MacroExpander::class),
-            $this->createMock(PhpCompiler::class),
-            $this->createMock(Evaller::class),
-            $this->createMock(Printer::class),
+            $this->createStub(Tokenizer::class),
+            $this->createStub(Reader::class),
+            $this->createStub(MacroExpander::class),
+            $this->createStub(PhpCompiler::class),
+            $this->createStub(Evaller::class),
+            $this->createStub(Printer::class),
             new Env('default')
         );
 
@@ -85,12 +85,12 @@ class LispTest extends TestCase
 
     public function testPrint()
     {
-        $tokenizer = $this->createMock(Tokenizer::class);
-        $reader = $this->createMock(Reader::class);
-        $macroExpander = $this->createMock(MacroExpander::class);
-        $compiler = $this->createMock(PhpCompiler::class);
+        $tokenizer = $this->createStub(Tokenizer::class);
+        $reader = $this->createStub(Reader::class);
+        $macroExpander = $this->createStub(MacroExpander::class);
+        $compiler = $this->createStub(PhpCompiler::class);
         $printer = $this->createMock(Printer::class);
-        $evaller = $this->createMock(Evaller::class);
+        $evaller = $this->createStub(Evaller::class);
 
         $printer->expects($this->once())
             ->method('print')
@@ -103,12 +103,12 @@ class LispTest extends TestCase
 
     public function testPstr()
     {
-        $tokenizer = $this->createMock(Tokenizer::class);
-        $reader = $this->createMock(Reader::class);
-        $macroExpander = $this->createMock(MacroExpander::class);
-        $compiler = $this->createMock(PhpCompiler::class);
+        $tokenizer = $this->createStub(Tokenizer::class);
+        $reader = $this->createStub(Reader::class);
+        $macroExpander = $this->createStub(MacroExpander::class);
+        $compiler = $this->createStub(PhpCompiler::class);
         $printer = $this->createMock(Printer::class);
-        $evaller = $this->createMock(Evaller::class);
+        $evaller = $this->createStub(Evaller::class);
 
         $printer->expects($this->once())
             ->method('pstr')
@@ -124,9 +124,9 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $macroExpander = $this->createMock(MacroExpander::class);
-        $compiler = $this->createMock(PhpCompiler::class);
-        $printer = $this->createMock(Printer::class);
+        $macroExpander = $this->createStub(MacroExpander::class);
+        $compiler = $this->createStub(PhpCompiler::class);
+        $printer = $this->createStub(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
         $tokenizer->expects($this->once())
@@ -147,7 +147,7 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $macroExpander = $this->createMock(MacroExpander::class);
+        $macroExpander = $this->createStub(MacroExpander::class);
         $macroExpander->method('expand')->willReturnArgument(0);
         $compiler = $this->createMock(PhpCompiler::class);
         $evaller = $this->createMock(Evaller::class);
@@ -181,7 +181,7 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $macroExpander = $this->createMock(MacroExpander::class);
+        $macroExpander = $this->createStub(MacroExpander::class);
         $macroExpander->method('expand')->willReturnArgument(0);
         $compiler = $this->createMock(PhpCompiler::class);
         $evaller = $this->createMock(Evaller::class);
@@ -216,9 +216,9 @@ class LispTest extends TestCase
     {
         $tokenizer = $this->createMock(Tokenizer::class);
         $reader = $this->createMock(Reader::class);
-        $macroExpander = $this->createMock(MacroExpander::class);
-        $compiler = $this->createMock(PhpCompiler::class);
-        $printer = $this->createMock(Printer::class);
+        $macroExpander = $this->createStub(MacroExpander::class);
+        $compiler = $this->createStub(PhpCompiler::class);
+        $printer = $this->createStub(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
         $defaultEnv = new Env('default');
@@ -247,7 +247,7 @@ class LispTest extends TestCase
         $this->assertSame('result', $lisp->readEval('input', $customEnv));
     }
 
-    public function repProvider(): array
+    public static function repProvider(): array
     {
         // This tests all main components together:
         // Tokenizer, Reader, Evaller, Printer
@@ -260,9 +260,7 @@ class LispTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider repProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('repProvider')]
     public function testRep(string $input, bool $readable, string $expected)
     {
         $tokenizer = new Tokenizer();
@@ -289,11 +287,11 @@ class LispTest extends TestCase
 
     public function testSetDebug()
     {
-        $tokenizer = $this->createMock(Tokenizer::class);
-        $reader = $this->createMock(Reader::class);
-        $macroExpander = $this->createMock(MacroExpander::class);
-        $compiler = $this->createMock(PhpCompiler::class);
-        $printer = $this->createMock(Printer::class);
+        $tokenizer = $this->createStub(Tokenizer::class);
+        $reader = $this->createStub(Reader::class);
+        $macroExpander = $this->createStub(MacroExpander::class);
+        $compiler = $this->createStub(PhpCompiler::class);
+        $printer = $this->createStub(Printer::class);
         $evaller = $this->createMock(Evaller::class);
 
         $evaller->expects($this->once())
@@ -311,12 +309,12 @@ class LispTest extends TestCase
         $newEnv = new Env('new');
 
         $lisp = new Lisp(
-            $this->createMock(Tokenizer::class),
-            $this->createMock(Reader::class),
-            $this->createMock(MacroExpander::class),
-            $this->createMock(PhpCompiler::class),
-            $this->createMock(Evaller::class),
-            $this->createMock(Printer::class),
+            $this->createStub(Tokenizer::class),
+            $this->createStub(Reader::class),
+            $this->createStub(MacroExpander::class),
+            $this->createStub(PhpCompiler::class),
+            $this->createStub(Evaller::class),
+            $this->createStub(Printer::class),
             $oldEnv
         );
 
@@ -330,12 +328,12 @@ class LispTest extends TestCase
         $env = new Env('env');
 
         $lisp = new Lisp(
-            $this->createMock(Tokenizer::class),
-            $this->createMock(Reader::class),
-            $this->createMock(MacroExpander::class),
-            $this->createMock(PhpCompiler::class),
-            $this->createMock(Evaller::class),
-            $this->createMock(Printer::class),
+            $this->createStub(Tokenizer::class),
+            $this->createStub(Reader::class),
+            $this->createStub(MacroExpander::class),
+            $this->createStub(PhpCompiler::class),
+            $this->createStub(Evaller::class),
+            $this->createStub(Printer::class),
             $env
         );
 

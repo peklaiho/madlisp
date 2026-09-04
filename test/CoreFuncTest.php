@@ -12,7 +12,7 @@ use MadLisp\MadLispException;
 
 class CoreFuncTest extends TestCase
 {
-    public function invalidArgsProvider(): array
+    public static function invalidArgsProvider(): array
     {
         return [
             [[1], 2, 2, "name requires exactly 2 arguments"],
@@ -23,9 +23,7 @@ class CoreFuncTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider invalidArgsProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidArgsProvider')]
     public function testInvalidArgs(array $args, int $min, int $max, string $message)
     {
         $this->expectException(MadLispException::class);

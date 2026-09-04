@@ -58,7 +58,7 @@ class CollectionsTest extends TestCase
         $this->assertSame([1, 2, 3], $result->getData());
     }
 
-    public function rangeProvider(): array
+    public static function rangeProvider(): array
     {
         return [
             [[4], [0, 1, 2, 3]],
@@ -66,7 +66,7 @@ class CollectionsTest extends TestCase
         ];
     }
 
-    /** @dataProvider rangeProvider */
+    #[\PHPUnit\Framework\Attributes\DataProvider('rangeProvider')]
     public function testRange(array $args, array $expected): void
     {
         $result = $this->getEnv()->get('range')->call($args);

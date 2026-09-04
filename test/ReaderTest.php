@@ -22,7 +22,7 @@ class ReaderTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function specialFormProvider(): array
+    public static function specialFormProvider(): array
     {
         return [
             ["'", 'quote'],
@@ -34,8 +34,8 @@ class ReaderTest extends TestCase
 
     /**
      * Test readSpecialForm.
-     * @dataProvider specialFormProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('specialFormProvider')]
     public function testReadSpecialForm(string $specialChar, string $symbolName)
     {
         $reader = new Reader();

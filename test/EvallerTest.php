@@ -256,7 +256,7 @@ class EvallerTest extends TestCase
     // Special form: and
     // ---
 
-    public function andProvider(): array
+    public static function andProvider(): array
     {
         return [
             [[], true],
@@ -265,9 +265,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider andProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('andProvider')]
     public function testAnd(array $args, $expected)
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -291,7 +289,7 @@ class EvallerTest extends TestCase
     // Special forms: case, case-strict
     // ---
 
-    public function caseProvider(): array
+    public static function caseProvider(): array
     {
         return [
             // basic match
@@ -328,9 +326,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider caseProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('caseProvider')]
     public function testCase(array $args, $expected)
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -340,7 +336,7 @@ class EvallerTest extends TestCase
         $this->assertSame($expected, $evaller->eval($input, $env));
     }
 
-    public function caseStrictProvider(): array
+    public static function caseStrictProvider(): array
     {
         return [
             // basic match
@@ -378,9 +374,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider caseStrictProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('caseStrictProvider')]
     public function testCaseStrict(array $args, $expected)
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -409,7 +403,7 @@ class EvallerTest extends TestCase
         }
     }
 
-    public function caseErrorProvider(): array
+    public static function caseErrorProvider(): array
     {
         $tests = [];
 
@@ -436,9 +430,7 @@ class EvallerTest extends TestCase
         return $tests;
     }
 
-    /**
-     * @dataProvider caseErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('caseErrorProvider')]
     public function testCaseExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -455,32 +447,30 @@ class EvallerTest extends TestCase
     // Special form: cond
     // ---
 
-    public function condProvider(): array
+    public static function condProvider(): array
     {
         return [
             [
                 [
-                    $this->buildForm([['=', 'n', 2], '"two"']),
-                    $this->buildForm([['=', 'n', 4], '"four"']),
-                    $this->buildForm([['=', 'n', 6], '"six"']),
+                    self::buildForm([['=', 'n', 2], '"two"']),
+                    self::buildForm([['=', 'n', 4], '"four"']),
+                    self::buildForm([['=', 'n', 6], '"six"']),
                 ],
                 'four'
             ],
             [
                 [
-                    $this->buildForm([['=', 'n', 1], '"one"']),
-                    $this->buildForm([['=', 'n', 3], '"three"']),
-                    $this->buildForm([['=', 'n', 5], '"five"']),
-                    $this->buildForm(['else', '"other"']),
+                    self::buildForm([['=', 'n', 1], '"one"']),
+                    self::buildForm([['=', 'n', 3], '"three"']),
+                    self::buildForm([['=', 'n', 5], '"five"']),
+                    self::buildForm(['else', '"other"']),
                 ],
                 'other'
             ]
         ];
     }
 
-    /**
-     * @dataProvider condProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('condProvider')]
     public function testCond(array $args, $expected)
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -520,7 +510,7 @@ class EvallerTest extends TestCase
         $this->assertNull($evaller->eval($input, $env));
     }
 
-    public function condErrorProvider(): array
+    public static function condErrorProvider(): array
     {
         return [
             [
@@ -538,9 +528,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider condErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('condErrorProvider')]
     public function testCondExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -568,7 +556,7 @@ class EvallerTest extends TestCase
         $this->assertSame($env->get('abc'), 123);
     }
 
-    public function defErrorProvider(): array
+    public static function defErrorProvider(): array
     {
         return [
             [
@@ -594,9 +582,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider defErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('defErrorProvider')]
     public function testDefExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -740,7 +726,7 @@ class EvallerTest extends TestCase
         $this->assertSame(15, $result);
     }
 
-    public function evalErrorProvider(): array
+    public static function evalErrorProvider(): array
     {
         return [
             [['eval']],
@@ -748,9 +734,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider evalErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('evalErrorProvider')]
     public function testEvalExceptions(array $data)
     {
         $this->expectException(MadLispException::class);
@@ -851,7 +835,7 @@ class EvallerTest extends TestCase
         $this->assertSame([3, 4, 5], $result->getData());
     }
 
-    public function fibonacciProvider(): array
+    public static function fibonacciProvider(): array
     {
         return [
             [0, 0],
@@ -868,9 +852,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider fibonacciProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('fibonacciProvider')]
     public function testRecursiveFn(int $n, int $expected)
     {
         // Test recursive function using simple Fibonacci series
@@ -960,7 +942,7 @@ class EvallerTest extends TestCase
 
     // Errors for fn, macro
 
-    public function fnErrorProvider(): array
+    public static function fnErrorProvider(): array
     {
         $tests = [];
 
@@ -987,9 +969,7 @@ class EvallerTest extends TestCase
         return $tests;
     }
 
-    /**
-     * @dataProvider fnErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('fnErrorProvider')]
     public function testFnExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1006,7 +986,7 @@ class EvallerTest extends TestCase
     // Special form: if
     // ---
 
-    public function ifProvider(): array
+    public static function ifProvider(): array
     {
         return [
             [[new MList([new Symbol('<'), 1, 2]), 'yes', 'no'], 'yes'],
@@ -1016,9 +996,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider ifProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('ifProvider')]
     public function testIf(array $args, $expected)
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -1040,21 +1018,17 @@ class EvallerTest extends TestCase
         $this->assertSame(456, $evaller->eval($input, $env));
     }
 
-    public function ifErrorProvider(): array
+    public static function ifErrorProvider(): array
     {
         return [
-            [
-                ['if'],
-                ['if', 1],
-                // 2 or 3 args is ok
-                ['if', 1, 2, 3, 4],
-            ],
+            [['if']],
+            [['if', 1]],
+            // 2 or 3 args is ok
+            [['if', 1, 2, 3, 4]],
         ];
     }
 
-    /**
-     * @dataProvider ifErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('ifErrorProvider')]
     public function testIfExceptions(array $data)
     {
         $this->expectException(MadLispException::class);
@@ -1147,7 +1121,7 @@ class EvallerTest extends TestCase
         $this->assertSame(5, $result);
     }
 
-    public function letErrorProvider(): array
+    public static function letErrorProvider(): array
     {
         return [
             [
@@ -1169,9 +1143,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider letErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('letErrorProvider')]
     public function testLetExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1235,7 +1207,7 @@ class EvallerTest extends TestCase
         $evaller->eval($input, $env);
     }
 
-    public function loadErrorProvider(): array
+    public static function loadErrorProvider(): array
     {
         return [
             [
@@ -1257,9 +1229,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider loadErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('loadErrorProvider')]
     public function testLoadExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1296,7 +1266,7 @@ class EvallerTest extends TestCase
         $this->assertSameForm($expected, $result);
     }
 
-    public function macroExpandErrorProvider(): array
+    public static function macroExpandErrorProvider(): array
     {
         return [
             [
@@ -1310,9 +1280,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider macroExpandErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('macroExpandErrorProvider')]
     public function testMacroExpandExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1384,7 +1352,7 @@ class EvallerTest extends TestCase
         $this->assertSameForm($expected, $result);
     }
 
-    public function metaErrorProvider(): array
+    public static function metaErrorProvider(): array
     {
         return [
             [
@@ -1424,9 +1392,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider metaErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('metaErrorProvider')]
     public function testMetaExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1442,7 +1408,7 @@ class EvallerTest extends TestCase
     // Special form: or
     // ---
 
-    public function orProvider(): array
+    public static function orProvider(): array
     {
         return [
             [[], false],
@@ -1451,9 +1417,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider orProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('orProvider')]
     public function testOr(array $args, $expected)
     {
         list($env, $evaller) = $this->getEnvAndEvaller();
@@ -1555,7 +1519,7 @@ class EvallerTest extends TestCase
         $this->assertSameForm($expected, $result);
     }
 
-    public function quoteErrorProvider(): array
+    public static function quoteErrorProvider(): array
     {
         $tests = [];
 
@@ -1592,9 +1556,7 @@ class EvallerTest extends TestCase
         return $tests;
     }
 
-    /**
-     * @dataProvider quoteErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('quoteErrorProvider')]
     public function testQuoteExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1648,7 +1610,7 @@ class EvallerTest extends TestCase
         $this->assertSame(9, $result);
     }
 
-    public function tryErrorProvider(): array
+    public static function tryErrorProvider(): array
     {
         return [
             [
@@ -1695,9 +1657,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider tryErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('tryErrorProvider')]
     public function testTryExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1728,7 +1688,7 @@ class EvallerTest extends TestCase
         $this->assertFalse($env->has('aa'));
     }
 
-    public function undefErrorProvider(): array
+    public static function undefErrorProvider(): array
     {
         return [
             [
@@ -1746,9 +1706,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider undefErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('undefErrorProvider')]
     public function testUndefExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1800,7 +1758,7 @@ class EvallerTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function whileErrorProvider(): array
+    public static function whileErrorProvider(): array
     {
         return [
             [
@@ -1814,9 +1772,7 @@ class EvallerTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider whileErrorProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('whileErrorProvider')]
     public function testWhileExceptions(array $data, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -1880,10 +1836,10 @@ class EvallerTest extends TestCase
     }
 
     // Helper for turning an array into MadLisp datatype
-    private function buildForm($shape, $arrayType = MList::class)
+    private static function buildForm($shape, $arrayType = MList::class)
     {
         if (is_array($shape)) {
-            return new $arrayType(array_map([$this, 'buildForm'], $shape));
+            return new $arrayType(array_map([self::class, 'buildForm'], $shape));
         } elseif (is_string($shape)) {
             // literal strings start with "
             if (substr($shape, 0, 1) === '"') {

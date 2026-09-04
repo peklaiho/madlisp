@@ -12,7 +12,7 @@ use MadLisp\Tokenizer;
 
 class TokenizerTest extends TestCase
 {
-    public function exceptionProvider(): array
+    public static function exceptionProvider(): array
     {
         return [
             ['"', 'unterminated string'],
@@ -37,8 +37,8 @@ class TokenizerTest extends TestCase
 
     /**
      * Test inputs that throw an exception.
-     * @dataProvider exceptionProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('exceptionProvider')]
     public function testException(string $input, string $message)
     {
         $this->expectException(MadLispException::class);
@@ -48,7 +48,7 @@ class TokenizerTest extends TestCase
         $tokenizer->tokenize($input);
     }
 
-    public function tokenProvider(): array
+    public static function tokenProvider(): array
     {
         return [
             // Ignored characters
@@ -101,8 +101,8 @@ class TokenizerTest extends TestCase
 
     /**
      * Test valid inputs.
-     * @dataProvider tokenProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('tokenProvider')]
     public function testTokenize(string $input, array $expected)
     {
         $tokenizer = new Tokenizer();
@@ -110,7 +110,7 @@ class TokenizerTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function unicodeProvider(): array
+    public static function unicodeProvider(): array
     {
         return [
             ["(∫≈♡)", ['(', '∫≈♡', ')']],
@@ -124,8 +124,8 @@ class TokenizerTest extends TestCase
 
     /**
      * Test Unicode inputs.
-     * @dataProvider unicodeProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('unicodeProvider')]
     public function testUnicode(string $input, array $expected)
     {
         if (!extension_loaded('mbstring')) {

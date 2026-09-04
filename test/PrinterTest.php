@@ -7,8 +7,9 @@
 
 use PHPUnit\Framework\TestCase;
 
-use MadLisp\Func;
+use MadLisp\Env;
 use MadLisp\Hash;
+use MadLisp\UserFunc;
 use MadLisp\MList;
 use MadLisp\Printer;
 use MadLisp\Symbol;
@@ -16,13 +17,10 @@ use MadLisp\Vector;
 
 class PrinterTest extends TestCase
 {
-    public function notReadableProvider(): array
+    public static function notReadableProvider(): array
     {
-        $mc = $this->createStub(Func::class);
-        $mc->method('isMacro')->willReturn(true);
-
-        $fn = $this->createStub(Func::class);
-        $fn->method('isMacro')->willReturn(false);
+        $mc = new UserFunc(fn () => null, null, new Env('test'), new MList([]), true);
+        $fn = new UserFunc(fn () => null, null, new Env('test'), new MList([]));
 
         return [
             [$mc, '<macro>'],
@@ -44,9 +42,7 @@ class PrinterTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider notReadableProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('notReadableProvider')]
     public function testPrintStringNotReadable($input, string $expected)
     {
         $printer = new Printer();
@@ -54,9 +50,7 @@ class PrinterTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    /**
-     * @dataProvider notReadableProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('notReadableProvider')]
     public function testPrintNotReadable($input, string $expected)
     {
         $printer = new Printer();
@@ -69,7 +63,7 @@ class PrinterTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    public function readableProvider(): array
+    public static function readableProvider(): array
     {
         return [
             [new Hash(['aa' => 'bb', 'cc' => new Hash(['dd' => 'ee'])]), '{"aa":"bb" "cc":{"dd":"ee"}}'],
@@ -81,9 +75,7 @@ class PrinterTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider readableProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('readableProvider')]
     public function testPrintStringReadable($input, string $expected)
     {
         $printer = new Printer();
@@ -91,9 +83,7 @@ class PrinterTest extends TestCase
         $this->assertSame($expected, $result);
     }
 
-    /**
-     * @dataProvider readableProvider
-     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('readableProvider')]
     public function testPrintReadable($input, string $expected)
     {
         $printer = new Printer();
