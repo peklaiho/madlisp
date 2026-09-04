@@ -292,18 +292,22 @@ class PhpCompiler
                 $this->compileFormattedExpression($arguments, '%s->count()', 1, 'len', $body, $target, $indent);
                 return;
             case 'car':
-                $this->compileFormattedExpression($arguments, '%s->getData()[0]', 1, 'car', $body, $target, $indent);
+            case 'first':
+                $this->compileFormattedExpression($arguments, '%s->getData()[0]', 1, $operator, $body, $target, $indent);
                 return;
             case 'cdr':
+            case 'tail':
                 // Positional sprintf placeholder reuses the argument without compiling it twice.
-                $this->compileFormattedExpression($arguments, '%1$s::new(array_slice(%1$s->getData(), 1))', 1, 'cdr', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%1$s::new(array_slice(%1$s->getData(), 1))', 1, $operator,
+                    $body, $target, $indent);
                 return;
             case 'cons':
                 $this->compileCons($arguments, $body, $target, $indent);
                 return;
             case 'last':
                 // Positional sprintf placeholder reuses the argument without compiling it twice.
-                $this->compileFormattedExpression($arguments, '%1$s->getData()[%1$s->count() - 1]', 1, 'last', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%1$s->getData()[%1$s->count() - 1]', 1, 'last', $body,
+                    $target, $indent);
                 return;
             case 'get':
                 $this->compileFormattedExpression($arguments, '%s->get(%s)', 2, 'get', $body, $target, $indent);

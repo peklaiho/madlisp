@@ -644,6 +644,7 @@ class PhpCompilerTest extends TestCase
 
         $cases = [
             ['car', new MList([new Symbol('quote'), new MList([9, 10])]), 9, 'getData()[0]'],
+            ['first', new MList([new Symbol('quote'), new MList([9, 10])]), 9, 'getData()[0]'],
             ['abs', -5, 5, 'abs(-5)'],
             ['floor', 2.9, 2, 'intval(floor(2.9))'],
             ['ceil', 2.1, 3, 'intval(ceil(2.1))'],
@@ -713,17 +714,20 @@ class PhpCompilerTest extends TestCase
         $this->assertSame([1, 2, 3], $vector->execute($env)->getData());
     }
 
-    public function testCompilesCdrDirectly(): void
+    public function testCompilesCdrAndTailDirectly(): void
     {
         $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
-        $program = $compiler->compile(new MList([
-            new Symbol('cdr'),
-            new MList([new Symbol('quote'), new MList([1, 2, 3])]),
-        ]));
 
-        $this->assertStringContainsString('::new(array_slice(', $program->getSource());
-        $this->assertSame([2, 3], $program->execute($env)->getData());
+        foreach (['cdr', 'tail'] as $operator) {
+            $program = $compiler->compile(new MList([
+                new Symbol($operator),
+                new MList([new Symbol('quote'), new MList([1, 2, 3])]),
+            ]));
+
+            $this->assertStringContainsString('::new(array_slice(', $program->getSource());
+            $this->assertSame([2, 3], $program->execute($env)->getData());
+        }
     }
 
     public function testCompilesGetAndKeyPredicateDirectly(): void
@@ -754,7 +758,9 @@ class PhpCompilerTest extends TestCase
 
         foreach ([
             ['car', 0, 'car requires exactly 1 argument'],
+            ['first', 0, 'first requires exactly 1 argument'],
             ['cdr', 0, 'cdr requires exactly 1 argument'],
+            ['tail', 0, 'tail requires exactly 1 argument'],
             ['cons', 1, 'cons requires at least 2 arguments'],
             ['last', 0, 'last requires exactly 1 argument'],
             ['get', 1, 'get requires exactly 2 arguments'],
