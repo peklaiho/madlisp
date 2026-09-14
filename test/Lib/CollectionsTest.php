@@ -246,6 +246,15 @@ class CollectionsTest extends TestCase
         ]));
     }
 
+    public function testApplyWithClosure(): void
+    {
+        $closure = fn (...$args) => array_sum($args);
+
+        $this->assertSame(15, $this->getEnv()->get('apply')->call([
+            $closure, 1, 2, new MList([3, 4, 5])
+        ]));
+    }
+
     public function testApplyWithNonFunctionException(): void
     {
         $this->expectException(MadLispException::class);

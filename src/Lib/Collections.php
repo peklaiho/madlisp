@@ -131,7 +131,7 @@ class Collections implements ILib
                 $fn = $args[0];
                 $seq = $args[count($args) - 1];
 
-                if (!($fn instanceof Func)) {
+                if (!($fn instanceof Func) && !($fn instanceof \Closure)) {
                     throw new MadLispException('first argument to apply is not function');
                 } elseif (!($seq instanceof Seq)) {
                     throw new MadLispException('last argument to apply is not sequence');
@@ -145,7 +145,11 @@ class Collections implements ILib
                     $args2[] = $a;
                 }
 
-                return $fn->call($args2);
+                if ($fn instanceof Func) {
+                    return $fn->call($args2);
+                }
+
+                return $fn(...$args2);
             }
         ));
 
