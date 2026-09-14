@@ -285,6 +285,9 @@ class PhpCompiler
                 return;
 
             // Collections
+            case 'apply':
+                $this->compileApply($arguments, $body, $target, $indent);
+                return;
             case 'empty?':
                 $this->compileFormattedExpression($arguments, '%s->count() === 0', 1, 'empty?', $body, $target, $indent);
                 return;
@@ -1021,6 +1024,25 @@ class PhpCompiler
             $this->emit($body, $indent, "$temporary = $value;");
             $pending[$index][1] = $temporary;
         }
+    }
+
+    private function compileApply(array $arguments, array &$body, ?string $target, int $indent): void
+    {
+        if (count($arguments) < 2) {
+            throw new MadLispException('apply requires at least 2 arguments');
+        }
+
+        $values = $this->compileArguments($arguments, $body, $indent);
+        $function = array_shift($values);
+        $sequence = array_pop($values);
+        $callArguments = array_merge($values, ['...' . $sequence . '->getData()']);
+
+        $this->emitResult(
+            $body,
+            $indent,
+            $target,
+            "$function(" . implode(', ', $callArguments) . ')'
+        );
     }
 
     private function compileCallNative(array $arguments, array $functions, int $arity, string $lispName,

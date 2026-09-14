@@ -259,6 +259,28 @@ class PhpCompilerTest extends TestCase
         $this->assertSame(42, $program->execute($env));
     }
 
+    public function testApplyCompilesToDirectVariadicCall(): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $env->set('join', new CoreFunc('join', 'doc', 0, -1, fn (...$values) => implode('', $values)));
+        $ast = new MList([
+            new Symbol('apply'),
+            new Symbol('join'),
+            '',
+            new MList([
+                new Symbol('quote'),
+                new MList(['a', 'b']),
+            ]),
+        ]);
+
+        $program = $compiler->compile($ast);
+
+        $this->assertStringNotContainsString("get('apply')", $program->getSource());
+        $this->assertStringContainsString('->getData()', $program->getSource());
+        $this->assertSame('ab', $program->execute($env));
+    }
+
     public function testDynamicCallEvaluatesArgumentsInOrder(): void
     {
         $compiler = new PhpCompiler(new Options());
