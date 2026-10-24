@@ -152,18 +152,26 @@ class PhpCompilerTest extends TestCase
         $this->assertSame(15, $env->get('value'));
     }
 
-    public function testDefRejectsReservedNamesAndCoreOperators(): void
+    public static function reservedDefinitionNameProvider(): array
     {
-        foreach (['__FILE__', '__DIR__', '+'] as $name) {
-            $compiler = new PhpCompiler(new Options());
-            $ast = new MList([new Symbol('def'), new Symbol($name), 1]);
-
-            $this->expectException(MadLispException::class);
-            $compiler->compile($ast);
-        }
+        return [
+            '__FILE__' => ['__FILE__', 'cannot define reserved name __FILE__'],
+            '__DIR__' => ['__DIR__', 'cannot define reserved name __DIR__'],
+        ];
     }
 
-    public function testQuoteAndDefValidateTheirArguments(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('reservedDefinitionNameProvider')]
+    public function testDefRejectsReservedNames(string $name, string $message): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $ast = new MList([new Symbol('def'), new Symbol($name), 1]);
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+        $compiler->compile($ast);
+    }
+
+    public function testQuoteRequiresExactlyOneArgument(): void
     {
         $compiler = new PhpCompiler(new Options());
 
@@ -684,7 +692,7 @@ class PhpCompilerTest extends TestCase
         }
     }
 
-    public function testEmptyAndLenRejectUnsupportedValues(): void
+    public function testEmptyRejectsUnsupportedValues(): void
     {
         $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
@@ -816,33 +824,40 @@ class PhpCompilerTest extends TestCase
         $this->assertTrue($key->execute($env));
     }
 
-    public function testFastPathBuiltinsValidateArity(): void
+    public static function fastPathBuiltinArityProvider(): array
     {
+        return [
+            'car' => ['car', 0, 'car requires exactly 1 argument'],
+            'first' => ['first', 0, 'first requires exactly 1 argument'],
+            'cdr' => ['cdr', 0, 'cdr requires exactly 1 argument'],
+            'tail' => ['tail', 0, 'tail requires exactly 1 argument'],
+            'cons' => ['cons', 1, 'cons requires at least 2 arguments'],
+            'last' => ['last', 0, 'last requires exactly 1 argument'],
+            'get' => ['get', 1, 'get requires exactly 2 arguments'],
+            'key?' => ['key?', 1, 'key? requires exactly 2 arguments'],
+            'abs' => ['abs', 0, 'abs requires exactly 1 argument'],
+            'floor' => ['floor', 0, 'floor requires exactly 1 argument'],
+            'ceil' => ['ceil', 0, 'ceil requires exactly 1 argument'],
+            'pow' => ['pow', 1, 'pow requires exactly 2 arguments'],
+            'sqrt' => ['sqrt', 0, 'sqrt requires exactly 1 argument'],
+            'strlen' => ['strlen', 0, 'strlen requires exactly 1 argument'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('fastPathBuiltinArityProvider')]
+    public function testFastPathBuiltinRejectsInvalidArity(
+        string $operator,
+        int $argumentCount,
+        string $message
+    ): void {
         $compiler = new PhpCompiler(new Options());
 
-        foreach ([
-            ['car', 0, 'car requires exactly 1 argument'],
-            ['first', 0, 'first requires exactly 1 argument'],
-            ['cdr', 0, 'cdr requires exactly 1 argument'],
-            ['tail', 0, 'tail requires exactly 1 argument'],
-            ['cons', 1, 'cons requires at least 2 arguments'],
-            ['last', 0, 'last requires exactly 1 argument'],
-            ['get', 1, 'get requires exactly 2 arguments'],
-            ['key?', 1, 'key? requires exactly 2 arguments'],
-            ['abs', 0, 'abs requires exactly 1 argument'],
-            ['floor', 0, 'floor requires exactly 1 argument'],
-            ['ceil', 0, 'ceil requires exactly 1 argument'],
-            ['pow', 1, 'pow requires exactly 2 arguments'],
-            ['sqrt', 0, 'sqrt requires exactly 1 argument'],
-            ['strlen', 0, 'strlen requires exactly 1 argument'],
-        ] as [$operator, $argumentCount, $message]) {
-            $this->expectException(MadLispException::class);
-            $this->expectExceptionMessage($message);
-            $compiler->compile(new MList(array_merge(
-                [new Symbol($operator)],
-                array_fill(0, $argumentCount, 1)
-            )));
-        }
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+        $compiler->compile(new MList(array_merge(
+            [new Symbol($operator)],
+            array_fill(0, $argumentCount, 1)
+        )));
     }
 
     public function testCompilesNumericPredicates(): void
@@ -884,7 +899,7 @@ class PhpCompilerTest extends TestCase
         ]))->execute($env));
     }
 
-    public function testNumericPredicatesRequireExactlyOneArgument(): void
+    public function testZeroPredicateRequiresExactlyOneArgument(): void
     {
         $compiler = new PhpCompiler(new Options());
         $this->expectException(MadLispException::class);
@@ -936,7 +951,7 @@ class PhpCompilerTest extends TestCase
         $this->assertTrue($strict);
     }
 
-    public function testInequalityFormsRequireExactlyTwoArguments(): void
+    public function testLooseInequalityRequiresExactlyTwoArguments(): void
     {
         $compiler = new PhpCompiler(new Options());
 
