@@ -4,7 +4,7 @@ MadLisp 2.0 includes a `PhpCompiler` which compiles Lisp code into PHP code. Com
 
 If performance is important, you should use the compiled version of the language and work around the limitations that it has.
 
-On the other hand, if you need more dynamic features of the language, and are working with a situation where performance is not so critical, use the evaluated version of the language.
+On the other hand, if you need more dynamic features of the language and performance is not so critical, use the evaluated version of the language.
 
 ## Performance optimizations
 
@@ -29,17 +29,17 @@ Comparisons using `=`, `==`, `!=`, `!==` and comparisons done by `case` and `cas
 
 ## Macros
 
-The compiler supports the following built-in macros:
+`Lisp::compile()` expands macros available in the compilation environment before compilation. `PhpCompiler::compile()` accepts only expanded ASTs and does not process macro definitions or calls.
+
+The default environment provides these compiler-relevant macros:
 
 * `defn`
 * `when`
 * `unless`
 
-User-defined macros are not supported.
-
 ## Unsupported special forms
 
-The following special forms are not supported by the compiler:
+The following special forms are not supported when passed directly to the compiler:
 
 * `eval`
 * `load`
@@ -52,7 +52,9 @@ The following special forms are not supported by the compiler:
 ## Other changes in compiled version
 
 * Compiling an empty unquoted list is an error (in the evaluated version empty list returns itself)
-* User-defined functions with variadic parameters using the `&` symbol are not supported
+* User-defined functions have fixed arity; variadic parameters using the `&` symbol are not supported
+* Integer division (`//`) and comparison operators require exactly two arguments
+* Named-let calls must be in tail position and compile to labeled goto restarts
 
 ## Library changes
 

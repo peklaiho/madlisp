@@ -1,6 +1,8 @@
 # MadLisp
 
-MadLisp is a [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) interpreter written in PHP.
+MadLisp is a [Lisp](https://en.wikipedia.org/wiki/Lisp_%28programming_language%29) interpreter and Lisp-to-PHP compiler written in PHP.
+
+MadLisp 2.0 includes a compiler that generates PHP closures for a performance-oriented subset of the language. The evaluated and compiled versions have different capabilities. See the [changes](./CHANGES.md) for details.
 
 ## Requirements
 
@@ -30,22 +32,20 @@ You can evaluate Lisp code interactively inside the REPL:
 6
 ```
 
-Alternatively you can evaluate a file that contains Lisp code:
+Alternatively you can evaluate a file that contains Lisp code (with optional `-p` to print out the result):
 
 ```text
 $ echo "(+ 1 2 3)" > mylisp.mad
-$ vendor/bin/madlisp mylisp.mad
+$ vendor/bin/madlisp -p mylisp.mad
 6
 ```
 
+Use `-c` to run code in compiled mode. Add `-s` to display the generated PHP source.
+
 ## Documentation
 
-The full [documentation](http://madlisp.com/) is available on the project website.
-
-## Status
-
-The language seems stable at this point so I am releasing it as 1.0. Please report any issues.
+The full [documentation](https://madlisp.com/) is available on the project website.
 
 ## License
 
-MIT
+[MIT](./LICENSE)
