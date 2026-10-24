@@ -1122,6 +1122,10 @@ class PhpCompiler
         }
 
         $operator = $data[0]->getName();
+        if ($this->resolveLocal($operator) !== null) {
+            return null;
+        }
+
         $arguments = array_slice($data, 1);
         $values = [];
         foreach ($arguments as $argument) {

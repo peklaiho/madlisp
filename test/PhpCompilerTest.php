@@ -457,6 +457,48 @@ class PhpCompilerTest extends TestCase
         $this->assertStringNotContainsString('$t0 = $v0;', $while->getSource());
     }
 
+    public function testInlineConditionRespectsShadowedBuiltin(): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([
+                new Symbol('inc'),
+                new MList([new Symbol('fn'), new MList([new Symbol('x')]), false]),
+            ]),
+            new MList([
+                new Symbol('if'),
+                new MList([new Symbol('inc'), 1]),
+                10,
+                20,
+            ]),
+        ]);
+
+        $this->assertSame(20, $compiler->compile($ast)->execute($env));
+    }
+
+    public function testInlineConditionRespectsNestedShadowedBuiltin(): void
+    {
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $ast = new MList([
+            new Symbol('let'),
+            new MList([
+                new Symbol('inc'),
+                new MList([new Symbol('fn'), new MList([new Symbol('x')]), 100]),
+            ]),
+            new MList([
+                new Symbol('if'),
+                new MList([new Symbol('<'), new MList([new Symbol('inc'), 1]), 10]),
+                10,
+                20,
+            ]),
+        ]);
+
+        $this->assertSame(20, $compiler->compile($ast)->execute($env));
+    }
+
     public function testInlineExpressionConditionsRenderNestedNativeOperations(): void
     {
         $compiler = new PhpCompiler(new Options());
