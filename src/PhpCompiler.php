@@ -13,6 +13,7 @@ class PhpCompiler
     private int $temporaryCount;
     // Counts generated local variables so lexical bindings have unique names.
     private int $localCount;
+    private int $labelCount;
     // Tracks lexical scopes so symbols can resolve to generated local variables.
     private array $scopes;
     // Tracks function boundaries so captured locals are identified correctly.
@@ -33,6 +34,7 @@ class PhpCompiler
         // Reset internal state
         $this->temporaryCount = 0;
         $this->localCount = 0;
+        $this->labelCount = 0;
         $this->scopes = [[]];
         $this->functionScopes = [];
         $this->functionCaptures = [];
@@ -622,19 +624,20 @@ class PhpCompiler
             'variable' => ($definitionName !== null) ? $closureTarget : null,
             'used' => false,
             'tailUsed' => false,
+            'label' => 'restart' . $this->labelCount++,
             'parameterVariables' => $parameterVariables,
         ];
 
         $functionBody = [];
 
         // Compile the function body in tail position so direct self-calls can
-        // become parameter updates and continue instead of closure calls.
+        // become parameter updates and jumps instead of closure calls.
         $this->compileExpression($arguments[1], $functionBody, '$result', $indent + 1, true);
 
         $functionIndex = array_key_last($this->tailContexts);
         $selfContext = $this->tailContexts[$functionIndex];
         if ($selfContext['tailUsed']) {
-            $functionBody = $this->wrapTailLoop($functionBody, $indent + 1);
+            array_unshift($functionBody, str_repeat('    ', $indent + 1) . $selfContext['label'] . ':');
         }
         $this->emit($functionBody, $indent + 1, 'return $result;');
 
@@ -697,7 +700,7 @@ class PhpCompiler
         bool $tailPosition = false): void
     {
         if (isset($arguments[0]) && $arguments[0] instanceof Symbol) {
-            $this->compileNamedLet($arguments, $body, $target, $indent);
+            $this->compileNamedLet($arguments, $body, $target, $indent, $tailPosition);
             return;
         }
 
@@ -712,7 +715,8 @@ class PhpCompiler
         array_pop($this->scopes);
     }
 
-    private function compileNamedLet(array $arguments, array &$body, ?string $target, int $indent): void
+    private function compileNamedLet(array $arguments, array &$body, ?string $target, int $indent,
+        bool $tailPosition): void
     {
         if (count($arguments) < 3) {
             throw new MadLispException('named let requires name, bindings and body');
@@ -725,10 +729,12 @@ class PhpCompiler
 
         $this->tailContexts[] = [
             'kind' => 'named-let',
+            'tailToParent' => $tailPosition,
             'name' => $name,
             'variable' => null,
             'used' => false,
             'tailUsed' => false,
+            'label' => 'restart' . $this->labelCount++,
             'parameterVariables' => $parameterVariables,
         ];
 
@@ -737,7 +743,7 @@ class PhpCompiler
         $contextIndex = array_key_last($this->tailContexts);
         $context = $this->tailContexts[$contextIndex];
         if ($context['tailUsed']) {
-            $loopBody = $this->wrapTailLoop($loopBody, $indent);
+            array_unshift($loopBody, str_repeat('    ', $indent) . $context['label'] . ':');
         }
         array_push($body, ...$loopBody);
 
@@ -909,17 +915,6 @@ class PhpCompiler
         $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
     }
 
-    private function wrapTailLoop(array $loopBody, int $indent): array
-    {
-        // The body is emitted one level inside the restart loop. A normal
-        // completion falls through to break; a tail transition emits continue.
-        $loopBody = array_map(fn ($line) => '    ' . $line, $loopBody);
-        array_unshift($loopBody, str_repeat('    ', $indent) . 'while (true) {');
-        $loopBody[] = str_repeat('    ', $indent + 1) . 'break;';
-        $loopBody[] = str_repeat('    ', $indent) . '}';
-        return $loopBody;
-    }
-
     private function compileCallGlobal(string $name, array $arguments, array &$body, ?string $target,
         int $indent, bool $tailPosition = false): void
     {
@@ -940,6 +935,12 @@ class PhpCompiler
         }
 
         if ($contextIndex !== null) {
+            // An inner named-let may restart itself even when its result has
+            // pending work. Restarting an outer context must preserve that work.
+            for ($i = count($this->tailContexts) - 1; $i > $contextIndex; $i--) {
+                $tailPosition = $tailPosition && $this->tailContexts[$i]['tailToParent'];
+            }
+
             $context = &$this->tailContexts[$contextIndex];
 
             // Compile every argument before changing any parameter. Besides
@@ -965,7 +966,7 @@ class PhpCompiler
                     $body,
                     $indent
                 );
-                $this->emit($body, $indent, 'continue;');
+                $this->emit($body, $indent, 'goto ' . $context['label'] . ';');
                 unset($context);
                 return;
             }

@@ -1500,7 +1500,7 @@ class PhpCompilerTest extends TestCase
         $this->assertNull($program->execute($env));
     }
 
-    public function testRecursiveDefinitionUsesACompiledLoopWithoutSelfCapture(): void
+    public function testRecursiveDefinitionUsesADirectJumpWithoutSelfCapture(): void
     {
         $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
@@ -1527,8 +1527,8 @@ class PhpCompilerTest extends TestCase
 
         $this->assertSame(0, $function(20));
         $this->assertStringNotContainsString('$env->get(\'count-down\')', $program->getSource());
-        $this->assertStringContainsString('while (true)', $program->getSource());
-        $this->assertStringContainsString('continue;', $program->getSource());
+        $this->assertMatchesRegularExpression('/(restart\d+):.*goto \1;/s', $program->getSource());
+        $this->assertStringNotContainsString('while (true)', $program->getSource());
         $this->assertStringNotContainsString('&$', $program->getSource());
     }
 
@@ -1612,7 +1612,92 @@ class PhpCompilerTest extends TestCase
         $this->assertMatchesRegularExpression('/\$t\d+ = \$v\d+;/', $program->getSource());
     }
 
-    public function testNamedLetCompilesAsARecursiveLoop(): void
+    public function testNestedRestartsReinitializeInnerNamedLet(): void
+    {
+        // The outer loop runs with n = 2, 1, then 0. Each time, the inner
+        // loop starts at i = 1 and visits its body twice, at i = 1 and i = 0.
+        // Restarting the outer loop must reset i, giving 3 * 2 = 6 visits.
+
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $reader = new \MadLisp\Reader();
+        $tokenizer = new \MadLisp\Tokenizer();
+        $ast = $reader->read($tokenizer->tokenize('
+            (do
+              (def visits 0)
+              (let outer [n 2]
+                (let inner [i 1]
+                  (def visits (inc visits))
+                  (if (> i 0)
+                    (inner (dec i))
+                    (if (> n 0)
+                      (outer (dec n))
+                      visits)))))
+        '));
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(6, $program->execute($env));
+    }
+
+    public function testFunctionRestartReinitializesInnerNamedLet(): void
+    {
+        // The function counts down through n = 2, 1, then 0. Each function
+        // restart must initialize the inner loop again, visiting its body
+        // at i = 1 and i = 0. Three function iterations give 3 * 2 = 6 visits.
+
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $reader = new \MadLisp\Reader();
+        $tokenizer = new \MadLisp\Tokenizer();
+        $ast = $reader->read($tokenizer->tokenize('
+            (do
+              (def visits 0)
+              (def count-down
+                (fn [n]
+                  (let inner [i 1]
+                    (def visits (inc visits))
+                    (if (> i 0)
+                      (inner (dec i))
+                      (if (> n 0)
+                        (count-down (dec n))
+                        visits)))))
+              (count-down 2))
+        '));
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(6, $program->execute($env));
+    }
+
+    public function testFunctionCallInsideNonTailNamedLetPreservesPendingArithmetic(): void
+    {
+        // At n = 0, the named-let returns 0 and the function adds 1.
+        // Each caller at n = 1, 2, and 3 must also add its pending 1 after
+        // the recursive call returns, so the final result is 4.
+
+        $compiler = new PhpCompiler(new Options());
+        $env = new Env('root');
+        $reader = new \MadLisp\Reader();
+        $tokenizer = new \MadLisp\Tokenizer();
+        $ast = $reader->read($tokenizer->tokenize('
+            (do
+              (def count-down
+                (fn [n]
+                  (+ 1
+                     (let inner []
+                       (if (= n 0)
+                         0
+                         (count-down (dec n)))))))
+              (count-down 3))
+        '));
+
+        $program = $compiler->compile($ast);
+
+        $this->assertSame(4, $program->execute($env));
+    }
+
+    public function testNamedLetCompilesWithADirectRestartJump(): void
     {
         $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
@@ -1635,12 +1720,12 @@ class PhpCompilerTest extends TestCase
         $program = $compiler->compile($ast);
 
         $this->assertSame(210, $program->execute($env));
-        $this->assertStringContainsString('while (true)', $program->getSource());
-        $this->assertStringContainsString('continue;', $program->getSource());
+        $this->assertMatchesRegularExpression('/(restart\d+):.*goto \1;/s', $program->getSource());
+        $this->assertStringNotContainsString('while (true)', $program->getSource());
         $this->assertStringNotContainsString('$env->get(\'loop\')', $program->getSource());
     }
 
-    public function testTailCallsThroughControlFormsUseTheRestartLoop(): void
+    public function testTailCallsThroughControlFormsUseDirectRestartJumps(): void
     {
         $compiler = new PhpCompiler(new Options());
         $env = new Env('root');
@@ -1689,7 +1774,7 @@ class PhpCompilerTest extends TestCase
             ]));
 
             $this->assertSame(0, $program->execute($env));
-            $this->assertStringContainsString('continue;', $program->getSource());
+            $this->assertMatchesRegularExpression('/(restart\d+):.*goto \1;/s', $program->getSource());
         }
     }
 
