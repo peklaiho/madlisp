@@ -453,7 +453,7 @@ class PhpCompilerTest extends TestCase
             new MList([new Symbol('while'), new Symbol('condition'), 1]),
         ]));
         $this->assertNull($while->execute($env));
-        $this->assertStringContainsString('if (!$v0) {', $while->getSource());
+        $this->assertStringContainsString('if (!($v0)) {', $while->getSource());
         $this->assertStringNotContainsString('$t0 = $v0;', $while->getSource());
     }
 

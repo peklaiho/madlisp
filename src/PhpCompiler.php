@@ -850,7 +850,7 @@ class PhpCompiler
         $this->emit($body, $indent, 'while (true) {');
 
         $condition = $this->compileConditionExpression($arguments[0], $body, $indent + 1);
-        $this->emit($body, $indent + 1, "if (!$condition) {");
+        $this->emit($body, $indent + 1, "if (!($condition)) {");
         $this->emit($body, $indent + 2, 'break;');
         $this->emit($body, $indent + 1, '}');
         $this->compileDo(array_slice($arguments, 1), $body, $target, $indent + 1);
