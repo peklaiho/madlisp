@@ -1139,19 +1139,22 @@ class PhpCompiler
         }
 
         $binaryOperators = [
-            '+' => [1, '+'],
-            '-' => [1, '-'],
-            '*' => [2, '*'],
-            '/' => [2, '/'],
-            '%' => [2, '%'],
-            '<' => [2, '<'],
-            '<=' => [2, '<='],
-            '>' => [2, '>'],
-            '>=' => [2, '>='],
+            '+' => [1, -1, '+'],
+            '-' => [1, -1, '-'],
+            '*' => [2, -1, '*'],
+            '/' => [2, -1, '/'],
+            '%' => [2, -1, '%'],
+            '<' => [2, 2, '<'],
+            '<=' => [2, 2, '<='],
+            '>' => [2, 2, '>'],
+            '>=' => [2, 2, '>='],
         ];
-        if (isset($binaryOperators[$operator])) {
-            [$minimum, $phpOperator] = $binaryOperators[$operator];
+        if (array_key_exists($operator, $binaryOperators)) {
+            [$minimum, $maximum, $phpOperator] = $binaryOperators[$operator];
             if (count($values) < $minimum) {
+                return null;
+            }
+            if ($maximum >= 0 && count($values) > $maximum) {
                 return null;
             }
             if ($operator === '-' && count($values) === 1) {
@@ -1166,7 +1169,7 @@ class PhpCompiler
             '!=' => '!=',
             '!==' => '!==',
         ];
-        if (isset($comparisons[$operator])) {
+        if (array_key_exists($operator, $comparisons)) {
             if (count($values) !== 2) {
                 return null;
             }
@@ -1186,7 +1189,7 @@ class PhpCompiler
             'one?' => [1, '%s === 1'],
             '//' => [2, 'intdiv(%s, %s)'],
         ];
-        if (!isset($formatted[$operator]) || count($values) !== $formatted[$operator][0]) {
+        if (!array_key_exists($operator, $formatted) || count($values) !== $formatted[$operator][0]) {
             return null;
         }
 
