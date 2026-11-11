@@ -2033,5 +2033,21 @@ class PhpCompilerTest extends TestCase
         ];
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('negativeLiteralNegationProvider')]
+    public function testUnaryMinusOnNegativeLiteral(string $source, int $expected): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->assertSame($expected, $lisp->readEvalCompiled($source));
+    }
+
+    public static function negativeLiteralNegationProvider(): array
+    {
+        return [
+            'arithmetic expression' => ['(- -1)', 1],
+            'inline condition' => ['(if (= (- -1) 1) 7 9)', 7],
+        ];
+    }
+
 }
 

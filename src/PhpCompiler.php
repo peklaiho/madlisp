@@ -1179,7 +1179,7 @@ class PhpCompiler
                 return null;
             }
             if ($operator === '-' && count($values) === 1) {
-                return "-{$values[0]}";
+                return "-({$values[0]})";
             }
             return implode(" $phpOperator ", $values);
         }
@@ -1228,7 +1228,7 @@ class PhpCompiler
         $values = $this->compileArguments($arguments, $body, $indent);
 
         if ($operator === '-' && count($values) === 1) {
-            $this->emitResult($body, $indent, $target, "-{$values[0]}");
+            $this->emitResult($body, $indent, $target, "-({$values[0]})");
             return;
         }
 
