@@ -1947,5 +1947,91 @@ class PhpCompilerTest extends TestCase
         ];
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('namedLetShadowingProvider')]
+    public function testNamedLetResolvesCallsByLexicalScope(string $source, int $expected): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->assertSame($expected, $lisp->readEvalCompiled($source));
+    }
+
+    public static function namedLetShadowingProvider(): array
+    {
+        return [
+            'loop shadows builtin' => [
+                '(let inc [x 0] (if (< x 3) (inc (+ x 1)) x))', 3,
+            ],
+            'loop shadows outer local' => [
+                '(let [loop (fn [x] 99)]
+                   (let loop [x 0] (if (< x 3) (loop (inc x)) x)))', 3,
+            ],
+            'inner local shadows loop' => [
+                '(let loop [x 0] (let [loop (fn [n] 99)] (loop x)))', 99,
+            ],
+            'nested function parameter shadows loop' => [
+                '(let loop [x 0] ((fn [loop] (loop x)) (fn [n] 99)))', 99,
+            ],
+            'nested loops share name' => [
+                '(let loop [x 0]
+                   (if (< x 3)
+                     (loop (let loop [y 0] (if (< y 2) (loop (inc y)) (+ x 1))))
+                     x))', 3,
+            ],
+            'initializer sees outer local' => [
+                '(let [loop (fn [x] (+ x 1))]
+                   (let loop [x (loop 0)] (if (< x 3) (loop (inc x)) x)))', 3,
+            ],
+            'initializer sees builtin' => [
+                '(let inc [x (inc 0)] (if (< x 3) (inc (+ x 1)) x))', 3,
+            ],
+        ];
+    }
+
+    public function testNamedLetShadowingBuiltinRetainsDirectRestart(): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+        $program = $lisp->compile($lisp->read(
+            '(let inc [x 0] (if (< x 3) (inc (+ x 1)) x))'
+        ));
+
+        $this->assertSame(3, $lisp->execute($program));
+        $this->assertMatchesRegularExpression('/(restart\d+):.*goto \1;/s', $program->getSource());
+        $this->assertStringNotContainsString('$env->get', $program->getSource());
+        $this->assertSame(1, substr_count($program->getSource(), 'static function ('));
+    }
+
+    public function testInlineBuiltinCannotBypassNamedLetTailRestriction(): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('named let inc can only be called in tail position');
+        $lisp->compile($lisp->read('(let inc [x 0] (if (inc x) 1 2))'));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('unsupportedNamedLetReferenceProvider')]
+    public function testNamedLetCannotFallThroughToOuterBinding(string $source, string $message): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+        $lisp->compile($lisp->read($source));
+    }
+
+    public static function unsupportedNamedLetReferenceProvider(): array
+    {
+        return [
+            'nested function cannot jump into loop' => [
+                '(let [loop (fn [x] 99)] (let loop [x 0] ((fn [] (loop x)))))',
+                'named let loop cannot be called from a nested function',
+            ],
+            'loop is not a function value' => [
+                '(let [loop (fn [x] 99)] (let loop [x 0] (apply loop [x])))',
+                'named let loop cannot be used as a value',
+            ],
+        ];
+    }
+
 }
 

@@ -14,7 +14,7 @@ class PhpCompiler
     // Counts generated local variables so lexical bindings have unique names.
     private int $localCount;
     private int $labelCount;
-    // Tracks lexical scopes so symbols can resolve to generated local variables.
+    // Scope entries are generated local variables or integer named-let context indices.
     private array $scopes;
     // Tracks function boundaries so captured locals are identified correctly.
     private array $functionScopes;
@@ -191,9 +191,13 @@ class PhpCompiler
                 return;
         }
 
-        // Resolve local functions next so local bindings can
-        // shadow fast-path functions
-        if ($this->resolveLocal($operator) !== null) {
+        // Lexical bindings take precedence over built-in operations.
+        $binding = $this->resolveBinding($operator);
+        if (is_int($binding)) {
+            $this->compileCallContext($binding, $operator, $arguments, $body, $target, $indent, $tailPosition);
+            return;
+        }
+        if ($binding !== null) {
             $this->compileCallLocal($data, $body, $target, $indent);
             return;
         }
@@ -737,6 +741,7 @@ class PhpCompiler
             'label' => 'restart' . $this->labelCount++,
             'parameterVariables' => $parameterVariables,
         ];
+        $this->scopes[array_key_last($this->scopes)][$name] = array_key_last($this->tailContexts);
 
         $loopBody = [];
         $this->compileDo(array_slice($arguments, 2), $loopBody, $target, $indent, true);
@@ -920,69 +925,14 @@ class PhpCompiler
     private function compileCallGlobal(string $name, array $arguments, array &$body, ?string $target,
         int $indent, bool $tailPosition = false): void
     {
-        // Resolve the innermost named-let target or current function target.
-        $contextIndex = null;
         for ($i = count($this->tailContexts) - 1; $i >= 0; $i--) {
-            if ($this->tailContexts[$i]['kind'] === 'named-let' &&
-                $this->tailContexts[$i]['name'] === $name) {
-                $contextIndex = $i;
-                break;
-            }
             if ($this->tailContexts[$i]['kind'] === 'function') {
                 if ($this->tailContexts[$i]['name'] === $name) {
-                    $contextIndex = $i;
+                    $this->compileCallContext($i, $name, $arguments, $body, $target, $indent, $tailPosition);
+                    return;
                 }
                 break;
             }
-        }
-
-        if ($contextIndex !== null) {
-            // An inner named-let may restart itself even when its result has
-            // pending work. Restarting an outer context must preserve that work.
-            for ($i = count($this->tailContexts) - 1; $i > $contextIndex; $i--) {
-                $tailPosition = $tailPosition && $this->tailContexts[$i]['tailToParent'];
-            }
-
-            $context = &$this->tailContexts[$contextIndex];
-
-            // Compile every argument before changing any parameter. Besides
-            // preserving evaluation order, this makes argument swapping safe.
-            $values = $this->compileArguments($arguments, $body, $indent);
-
-            if ($tailPosition) {
-                if (count($values) !== count($context['parameterVariables'])) {
-                    throw new MadLispException("$name requires exactly " .
-                        count($context['parameterVariables']) . ' argument' .
-                        (count($context['parameterVariables']) === 1 ? '' : 's'));
-                }
-
-                $context['tailUsed'] = true;
-
-                // Evaluate all arguments before changing any parameters. The
-                // resulting values are then assigned in a dependency-safe
-                // order, using an extra temporary only for cycles such as a
-                // two-parameter swap.
-                $this->compileTailAssignments(
-                    $values,
-                    $context['parameterVariables'],
-                    $body,
-                    $indent
-                );
-                $this->emit($body, $indent, 'goto ' . $context['label'] . ';');
-                unset($context);
-                return;
-            }
-
-            if ($context['kind'] === 'named-let') {
-                unset($context);
-                throw new MadLispException("named let $name can only be called in tail position");
-            }
-
-            $context['used'] = true;
-            $selfVariable = $context['variable'];
-            $this->emitResult($body, $indent, $target, "$selfVariable(" . implode(', ', $values) . ')');
-            unset($context);
-            return;
         }
 
         $function = $this->temporary();
@@ -990,6 +940,59 @@ class PhpCompiler
         $values = $this->compileArguments($arguments, $body, $indent);
         $this->compileFunctionGuard($function, $body, $indent);
         $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
+    }
+
+    private function compileCallContext(int $contextIndex, string $name, array $arguments,
+        array &$body, ?string $target, int $indent, bool $tailPosition): void
+    {
+        // Restarting an outer context must preserve pending work and stay
+        // within the same PHP function.
+        for ($i = count($this->tailContexts) - 1; $i > $contextIndex; $i--) {
+            if ($this->tailContexts[$i]['kind'] === 'function') {
+                throw new MadLispException("named let $name cannot be called from a nested function");
+            }
+            $tailPosition = $tailPosition && $this->tailContexts[$i]['tailToParent'];
+        }
+
+        $context = &$this->tailContexts[$contextIndex];
+
+        // Compile every argument before changing any parameter. Besides
+        // preserving evaluation order, this makes argument swapping safe.
+        $values = $this->compileArguments($arguments, $body, $indent);
+
+        if ($tailPosition) {
+            if (count($values) !== count($context['parameterVariables'])) {
+                throw new MadLispException("$name requires exactly " .
+                    count($context['parameterVariables']) . ' argument' .
+                    (count($context['parameterVariables']) === 1 ? '' : 's'));
+            }
+
+            $context['tailUsed'] = true;
+
+            // Evaluate all arguments before changing any parameters. The
+            // resulting values are then assigned in a dependency-safe
+            // order, using an extra temporary only for cycles such as a
+            // two-parameter swap.
+            $this->compileTailAssignments(
+                $values,
+                $context['parameterVariables'],
+                $body,
+                $indent
+            );
+            $this->emit($body, $indent, 'goto ' . $context['label'] . ';');
+            unset($context);
+            return;
+        }
+
+        if ($context['kind'] === 'named-let') {
+            unset($context);
+            throw new MadLispException("named let $name can only be called in tail position");
+        }
+
+        $context['used'] = true;
+        $selfVariable = $context['variable'];
+        $this->emitResult($body, $indent, $target, "$selfVariable(" . implode(', ', $values) . ')');
+        unset($context);
     }
 
     private function compileTailAssignments(array $values, array $parameters, array &$body, int $indent): void
@@ -1140,7 +1143,7 @@ class PhpCompiler
         }
 
         $operator = $data[0]->getName();
-        if ($this->resolveLocal($operator) !== null) {
+        if ($this->resolveBinding($operator) !== null) {
             return null;
         }
 
@@ -1283,12 +1286,26 @@ class PhpCompiler
 
     private function resolveLocal(string $name): ?string
     {
+        $binding = $this->resolveBinding($name);
+        if (is_int($binding)) {
+            throw new MadLispException("named let $name cannot be used as a value");
+        }
+
+        return $binding;
+    }
+
+    private function resolveBinding(string $name): string|int|null
+    {
         for ($i = count($this->scopes) - 1; $i >= 0; $i--) {
             if (!array_key_exists($name, $this->scopes[$i])) {
                 continue;
             }
 
             $local = $this->scopes[$i][$name];
+            if (is_int($local)) {
+                return $local;
+            }
+
             foreach ($this->functionScopes as $functionIndex => $functionScope) {
                 if ($i < $functionScope) {
                     $this->functionCaptures[$functionIndex][$name] = $local;
