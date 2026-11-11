@@ -128,10 +128,6 @@ class TokenizerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('unicodeProvider')]
     public function testUnicode(string $input, array $expected)
     {
-        if (!extension_loaded('mbstring')) {
-            $this->markTestSkipped('The mbstring extension is not available.');
-        }
-
         $tokenizer = new Tokenizer();
         $result = $tokenizer->tokenize($input);
         $this->assertSame($expected, $result);

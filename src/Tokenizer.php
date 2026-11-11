@@ -28,17 +28,10 @@ class Tokenizer
             }
         };
 
-        // Use mbstring extension if available to support Unicode characters
-        if (extension_loaded('mbstring')) {
-            $lenfn = 'mb_strlen';
-            $subfn = 'mb_substr';
-        } else {
-            $lenfn = 'strlen';
-            $subfn = 'substr';
-        }
+        $length = strlen($a);
 
-        for ($i = 0; $i < $lenfn($a); $i++) {
-            $c = $subfn($a, $i, 1);
+        for ($i = 0; $i < $length; $i++) {
+            $c = $a[$i];
 
             if ($isString) {
                 if ($isEscape) {
