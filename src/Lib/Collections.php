@@ -319,7 +319,7 @@ class Collections implements ILib
         ));
 
         $env->set('usort', new CoreFunc('usort', 'Sort the sequence using custom comparison function.', 2, 2,
-            function (Func $f, Seq $a) {
+            function (\Closure|Func $f, Seq $a) {
                 $data = $a->getData();
                 $closure = ($f instanceof \Closure) ? $f : $f->getClosure();
                 usort($data, $closure);
