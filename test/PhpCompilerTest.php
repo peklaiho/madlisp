@@ -1927,5 +1927,25 @@ class PhpCompilerTest extends TestCase
 
         $this->assertSame(15, $program->execute($env));
     }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('macroBindingRegressionProvider')]
+    public function testMacroExpansionPreservesBindingSemantics(string $source, int $expected): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->assertSame($expected, $lisp->readEvalCompiled($source));
+    }
+
+    public static function macroBindingRegressionProvider(): array
+    {
+        return [
+            'list parameters' => ['((fn (when x y) x) 1 2 3)', 2],
+            'vector bindings' => ['(let [when (fn [a b] a)] (when 1 2))', 1],
+            'list bindings' => ['(let (when (fn [a b] a)) (when 1 2))', 1],
+            'literal case label' => ["(case '(when true 1) ((when true 1) 7) (else 9))", 7],
+            'catch binding' => ['(try (throw "error") (catch when (do when 7)))', 7],
+        ];
+    }
+
 }
 
