@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use MadLisp\CoreFunc;
 use MadLisp\Env;
 use MadLisp\Hash;
+use MadLisp\LispFactory;
 use MadLisp\MadLispException;
 use MadLisp\MList;
 use MadLisp\PhpCompiledProgram;
@@ -287,6 +288,51 @@ class PhpCompilerTest extends TestCase
         $this->assertStringNotContainsString("get('apply')", $program->getSource());
         $this->assertStringContainsString('->getData()', $program->getSource());
         $this->assertSame('ab', $program->execute($env));
+    }
+
+    public static function dynamicCallProvider(): array
+    {
+        return [
+            'expression' => ['(CALLEE "abc")'],
+            'local' => ['(let [f CALLEE] (f "abc"))'],
+            'global' => ['(do (def f CALLEE) (f "abc"))'],
+            'apply' => ['(apply CALLEE ["abc"])'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('dynamicCallProvider')]
+    public function testSafeModeRejectsStringFunctions(string $source): void
+    {
+        $options = new Options();
+        $options->safemode = true;
+        $lisp = (new LispFactory())->make($options);
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage('attempt to call non-function');
+        $lisp->readEvalCompiled(str_replace('CALLEE', '"strlen"', $source));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('dynamicCallProvider')]
+    public function testNormalModeAllowsStringFunctionsWithoutGuards(string $source): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+        $program = $lisp->compile($lisp->read(str_replace('CALLEE', '"strlen"', $source)));
+
+        $this->assertStringNotContainsString('instanceof', $program->getSource());
+        $this->assertStringNotContainsString('attempt to call non-function', $program->getSource());
+        $this->assertSame(3, $lisp->execute($program));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('dynamicCallProvider')]
+    public function testSafeModeAllowsClosuresAndCoreFunctions(string $source): void
+    {
+        $options = new Options();
+        $options->safemode = true;
+        $lisp = (new LispFactory())->make($options);
+        $lisp->setEnvValue('callback', new CoreFunc('callback', 'doc', 1, 1, fn ($value) => strlen($value)));
+
+        $this->assertSame(3, $lisp->readEvalCompiled(str_replace('CALLEE', '(fn [x] 3)', $source)));
+        $this->assertSame(3, $lisp->readEvalCompiled(str_replace('CALLEE', '(if true callback null)', $source)));
     }
 
     public function testDynamicCallEvaluatesArgumentsInOrder(): void

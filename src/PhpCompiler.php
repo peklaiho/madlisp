@@ -904,6 +904,7 @@ class PhpCompiler
         $function = $this->temporary();
         $this->compileExpression($functionExpression, $body, $function, $indent);
         $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
+        $this->compileFunctionGuard($function, $body, $indent);
         $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
     }
 
@@ -912,6 +913,7 @@ class PhpCompiler
         $functionExpression = $data[0];
         $function = $this->resolveLocal($functionExpression->getName());
         $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
+        $this->compileFunctionGuard($function, $body, $indent);
         $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
     }
 
@@ -986,6 +988,7 @@ class PhpCompiler
         $function = $this->temporary();
         $this->emit($body, $indent, "$function = \$env->get(" . var_export($name, true) . ');');
         $values = $this->compileArguments($arguments, $body, $indent);
+        $this->compileFunctionGuard($function, $body, $indent);
         $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
     }
 
@@ -1037,6 +1040,7 @@ class PhpCompiler
         $function = array_shift($values);
         $sequence = array_pop($values);
         $callArguments = array_merge($values, ['...' . $sequence . '->getData()']);
+        $this->compileFunctionGuard($function, $body, $indent);
 
         $this->emitResult(
             $body,
@@ -1044,6 +1048,19 @@ class PhpCompiler
             $target,
             "$function(" . implode(', ', $callArguments) . ')'
         );
+    }
+
+    private function compileFunctionGuard(string $function, array &$body, int $indent): void
+    {
+        if (!$this->options->safemode) {
+            return;
+        }
+
+        $this->emit($body, $indent, "if (!($function instanceof \\Closure) && " .
+            "!($function instanceof \\MadLisp\\CoreFunc)) {");
+        $this->emit($body, $indent + 1,
+            "throw new \\MadLisp\\MadLispException('attempt to call non-function');");
+        $this->emit($body, $indent, '}');
     }
 
     private function compileCallNative(array $arguments, array $functions, int $arity, string $lispName,
