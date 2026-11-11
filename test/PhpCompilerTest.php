@@ -2092,5 +2092,47 @@ class PhpCompilerTest extends TestCase
         ];
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('knownInvalidCallArityProvider')]
+    public function testRejectsKnownInvalidCallArityDuringCompilation(string $source, string $message): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+        $lisp->compile($lisp->read($source));
+    }
+
+    public static function knownInvalidCallArityProvider(): array
+    {
+        return [
+            'tail self-call missing argument' => ['(def f (fn [x] (f)))', 'f requires exactly 1 argument'],
+            'tail self-call extra argument' => ['(def f (fn [x] (f x x)))', 'f requires exactly 1 argument'],
+            'non-tail self-call missing argument' => ['(def f (fn [x] (+ 1 (f))))', 'f requires exactly 1 argument'],
+            'non-tail self-call extra argument' => ['(def f (fn [x] (+ 1 (f x x))))', 'f requires exactly 1 argument'],
+            'immediate call missing argument' => ['((fn [x] x))', 'fn requires exactly 1 argument'],
+            'immediate call extra argument' => ['((fn [x] x) 1 2)', 'fn requires exactly 1 argument'],
+            'immediate zero-parameter call extra argument' => ['((fn [] 1) 2)', 'fn requires exactly 0 arguments'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('validKnownAndDynamicCallProvider')]
+    public function testExecutesValidKnownAndUncheckedDynamicCalls(string $source, int $expected): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->assertSame($expected, $lisp->readEvalCompiled($source));
+    }
+
+    public static function validKnownAndDynamicCallProvider(): array
+    {
+        return [
+            'immediate call' => ['((fn [x y] (+ x y)) 2 3)', 5],
+            'immediate zero-parameter call' => ['((fn [] 7))', 7],
+            'non-tail self-call' => ['(do (def f (fn [x] (if (zero? x) 0 (+ 1 (f (dec x)))))) (f 3))', 3],
+            'dynamic parameter call ignores excess arguments' => ['((fn [f] (f 1 2)) (fn [x] x))', 1],
+            'lexical binding call ignores excess arguments' => ['(let [f (fn [x] x)] (f 1 2))', 1],
+        ];
+    }
+
 }
 

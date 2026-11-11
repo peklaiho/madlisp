@@ -910,6 +910,16 @@ class PhpCompiler
         $functionExpression = $data[0];
         $function = $this->temporary();
         $this->compileExpression($functionExpression, $body, $function, $indent);
+        if ($functionExpression instanceof MList) {
+            $form = $functionExpression->getData();
+            if (($form[0] ?? null) instanceof Symbol && $form[0]->getName() === 'fn') {
+                $arity = count($form[1]->getData());
+                if (count($data) - 1 !== $arity) {
+                    throw new MadLispException("fn requires exactly $arity argument" .
+                        ($arity === 1 ? '' : 's'));
+                }
+            }
+        }
         $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
         $this->compileFunctionGuard($function, $body, $indent);
         $this->emitResult($body, $indent, $target, "$function(" . implode(', ', $values) . ')');
@@ -917,6 +927,7 @@ class PhpCompiler
 
     private function compileCallLocal(array $data, array &$body, ?string $target, int $indent): void
     {
+        // Future: track known signatures in lexical bindings for compile-time arity checks.
         $functionExpression = $data[0];
         $function = $this->resolveLocal($functionExpression->getName());
         $values = $this->compileArguments(array_slice($data, 1), $body, $indent);
@@ -958,17 +969,17 @@ class PhpCompiler
 
         $context = &$this->tailContexts[$contextIndex];
 
+        if (count($arguments) !== count($context['parameterVariables'])) {
+            throw new MadLispException("$name requires exactly " .
+                count($context['parameterVariables']) . ' argument' .
+                (count($context['parameterVariables']) === 1 ? '' : 's'));
+        }
+
         // Compile every argument before changing any parameter. Besides
         // preserving evaluation order, this makes argument swapping safe.
         $values = $this->compileArguments($arguments, $body, $indent);
 
         if ($tailPosition) {
-            if (count($values) !== count($context['parameterVariables'])) {
-                throw new MadLispException("$name requires exactly " .
-                    count($context['parameterVariables']) . ' argument' .
-                    (count($context['parameterVariables']) === 1 ? '' : 's'));
-            }
-
             $context['tailUsed'] = true;
 
             // Evaluate all arguments before changing any parameters. The
