@@ -1591,6 +1591,7 @@ class PhpCompilerTest extends TestCase
         $this->assertMatchesRegularExpression('/(restart\d+):.*goto \1;/s', $program->getSource());
         $this->assertStringNotContainsString('while (true)', $program->getSource());
         $this->assertStringNotContainsString('&$', $program->getSource());
+        $this->assertStringNotContainsString('unset(', $program->getSource());
     }
 
     public function testTailCallAssignmentsReuseEvaluatedValues(): void
@@ -1857,6 +1858,7 @@ class PhpCompilerTest extends TestCase
 
         $this->assertSame(42, $program->execute($env)(42));
         $this->assertStringNotContainsString('&$', $program->getSource());
+        $this->assertStringNotContainsString('unset(', $program->getSource());
     }
 
     public function testLooksUpUnboundSymbolInEnvironment(): void
@@ -2046,6 +2048,47 @@ class PhpCompilerTest extends TestCase
         return [
             'arithmetic expression' => ['(- -1)', 1],
             'inline condition' => ['(if (= (- -1) 1) 7 9)', 7],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('repeatedRecursiveClosureProvider')]
+    public function testRepeatedRecursiveClosuresKeepIndependentSelfReferences(string $source): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->assertSame([4, 2], $lisp->readEvalCompiled($source)->getData());
+    }
+
+    public static function repeatedRecursiveClosureProvider(): array
+    {
+        return [
+            'named-let restart' => ['
+                (do
+                  (def saved [])
+                  (let loop [n 2]
+                    (if (> n 0)
+                      (do
+                        (def f (fn [x]
+                          (if (zero? x) n (+ n (f (dec x))))))
+                        (def saved (push saved f))
+                        (loop (dec n)))
+                      saved))
+                  (map (fn [f] (f 1)) saved))
+            '],
+            'function restart' => ['
+                (do
+                  (def saved [])
+                  (def collect (fn [n]
+                    (if (> n 0)
+                      (do
+                        (def f (fn [x]
+                          (if (zero? x) n (+ n (f (dec x))))))
+                        (def saved (push saved f))
+                        (collect (dec n)))
+                      saved)))
+                  (collect 2)
+                  (map (fn [f] (f 1)) saved))
+            '],
         ];
     }
 

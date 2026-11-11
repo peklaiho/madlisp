@@ -666,6 +666,8 @@ class PhpCompiler
         // The closure must capture its generated variable by reference so the
         // variable can be assigned the closure immediately after construction.
         if ($selfUsed) {
+            // Detach the reference retained by any previously constructed closure.
+            $this->emit($body, $indent, "unset($selfVariable);");
             $this->emit($body, $indent, "$selfVariable = null;");
             $use[] = '&' . $selfVariable;
         }
