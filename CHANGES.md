@@ -61,3 +61,4 @@ The following special forms are not supported when passed directly to the compil
 * Functions `empty?`, `len` and `reverse` only work on collections, not strings
 * New functions `strlen` and `strrev` have been added for strings
 * The `range` function does not support the third step-argument
+* The `car`, `first`, `second`, `last` and `penult` functions require the requested element to exist

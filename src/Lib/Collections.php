@@ -91,24 +91,24 @@ class Collections implements ILib
         // Get partial seq
 
         foreach (['car', 'first'] as $name) {
-            $env->set($name, new CoreFunc($name, 'Return the first element of a sequence or null.', 1, 1,
-                fn (Seq $a) => $a->getData()[0] ?? null
+            $env->set($name, new CoreFunc($name, 'Return the first element of a sequence that is not empty.', 1, 1,
+                fn (Seq $a) => $a->getData()[0]
             ));
         }
 
-        $env->set('second', new CoreFunc('second', 'Return the second element of a sequence or null.', 1, 1,
-            fn (Seq $a) => $a->getData()[1] ?? null
+        $env->set('second', new CoreFunc('second', 'Return the second element of a sequence that has at least 2 elements.', 1, 1,
+            fn (Seq $a) => $a->getData()[1]
         ));
 
-        $env->set('last', new CoreFunc('last', 'Return the last element of a sequence or null.', 1, 1,
+        $env->set('last', new CoreFunc('last', 'Return the last element of a sequence that is not empty.', 1, 1,
             function (Seq $a) {
-                return $a->getData()[$a->count() - 1] ?? null;
+                return $a->getData()[$a->count() - 1];
             }
         ));
 
-        $env->set('penult', new CoreFunc('penult', 'Return the second last element of a sequence or null.', 1, 1,
+        $env->set('penult', new CoreFunc('penult', 'Return the second last element of a sequence that has at least 2 elements.', 1, 1,
             function (Seq $a) {
-                return $a->getData()[$a->count() - 2] ?? null;
+                return $a->getData()[$a->count() - 2];
             }
         ));
 

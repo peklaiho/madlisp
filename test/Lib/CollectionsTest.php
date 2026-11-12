@@ -197,6 +197,53 @@ class CollectionsTest extends TestCase
         }
     }
 
+    public static function missingSequenceElementProvider(): array
+    {
+        return [
+            ['car', [], 0],
+            ['first', [], 0],
+            ['last', [], -1],
+            ['second', [], 1],
+            ['second', [1], 1],
+            ['penult', [], -2],
+            ['penult', [1], -1],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('missingSequenceElementProvider')]
+    #[\PHPUnit\Framework\Attributes\WithoutErrorHandler]
+    public function testMissingSequenceElementWarns(string $name, array $data, int $index): void
+    {
+        $function = $this->getEnv()->get($name);
+
+        foreach ([MList::class, Vector::class] as $type) {
+            $warnings = [];
+            set_error_handler(function (int $severity, string $message) use (&$warnings) {
+                $warnings[] = [$severity, $message];
+                return true;
+            }, E_WARNING);
+
+            try {
+                $function->call([new $type($data)]);
+            } finally {
+                restore_error_handler();
+            }
+
+            $this->assertSame([[E_WARNING, "Undefined array key $index"]], $warnings);
+        }
+    }
+
+    public function testSequenceElementCanBeNull(): void
+    {
+        $env = $this->getEnv();
+
+        foreach ([MList::class, Vector::class] as $type) {
+            foreach (['car', 'first', 'second', 'last', 'penult'] as $name) {
+                $this->assertNull($env->get($name)->call([new $type([null, null])]));
+            }
+        }
+    }
+
     public function testHead(): void
     {
         foreach ([MList::class, Vector::class] as $type) {
