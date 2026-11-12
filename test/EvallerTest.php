@@ -1195,6 +1195,39 @@ class EvallerTest extends TestCase
         unlink($filename);
     }
 
+    public static function loadQuotedResultProvider(): array
+    {
+        return [
+            ["'unbound-load-result"],
+            ["'(def load-side-effect true)"],
+            ["'[unbound-load-result]"],
+            ["'{\"value\" unbound-load-result}"],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('loadQuotedResultProvider')]
+    public function testLoadReturnsQuotedResult(string $contents)
+    {
+        $filename = tempnam('/tmp', 'madlisp-test');
+
+        try {
+            file_put_contents($filename, $contents);
+
+            list($env, $evaller) = $this->getEnvAndEvaller();
+            $env->set('load-side-effect', false);
+
+            $reader = new Reader();
+            $tokenizer = new Tokenizer();
+            $expected = $reader->read($tokenizer->tokenize(substr($contents, 1)));
+            $input = new MList([new Symbol('load'), $filename]);
+
+            $this->assertEquals($expected, $evaller->eval($input, $env));
+            $this->assertFalse($env->get('load-side-effect'));
+        } finally {
+            unlink($filename);
+        }
+    }
+
     public function testLoadDisabledInSafeMode()
     {
         $this->expectException(MadLispException::class);
