@@ -358,7 +358,7 @@ class Evaller
                     }
 
                     // Wrap input in a do to process multiple expressions
-                    $input = "(do $input)";
+                    $input = "(do\n$input\n)";
 
                     $expr = $this->reader->read($this->tokenizer->tokenize($input));
 
