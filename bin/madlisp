@@ -175,7 +175,16 @@ $lisp->setEnvValue('argv', new MadLisp\Vector($passedArgs));
 if ($loadInit) {
     $initfile = $_SERVER['HOME'] . DIRECTORY_SEPARATOR . '.madlisp_init';
     if (is_readable($initfile)) {
-        ml_eval($lisp, "(load \"$initfile\")", $compiledMode, false);
+        if ($compiledMode) {
+            // Compiled mode does not have 'load' special form
+            $initfile = realpath($initfile);
+            $init = file_get_contents($initfile);
+            $previousConstants = $lisp->getEnv()->setMagicConstants($initfile);
+            ml_eval($lisp, "(do $init)", $compiledMode, false);
+            $lisp->getEnv()->restoreMagicConstants($previousConstants);
+        } else {
+            ml_eval($lisp, "(load \"$initfile\")", $compiledMode, false);
+        }
     }
 }
 

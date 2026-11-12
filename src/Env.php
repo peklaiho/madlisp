@@ -51,4 +51,21 @@ class Env extends Hash
     {
         return $this->parent ? $this->parent->getRoot() : $this;
     }
+
+    public function setMagicConstants(string $filename): array
+    {
+        $root = $this->getRoot();
+        $previous = [$root->get('__FILE__'), $root->get('__DIR__')];
+        $root->set('__FILE__', $filename);
+        $root->set('__DIR__', dirname($filename) . \DIRECTORY_SEPARATOR);
+
+        return $previous;
+    }
+
+    public function restoreMagicConstants(array $previous): void
+    {
+        $root = $this->getRoot();
+        $root->set('__FILE__', $previous[0]);
+        $root->set('__DIR__', $previous[1]);
+    }
 }

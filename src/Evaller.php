@@ -362,18 +362,12 @@ class Evaller
 
                     $expr = $this->reader->read($this->tokenizer->tokenize($input));
 
-                    // Handle special constants
-                    $rootEnv = $env->getRoot();
-                    $prevFile = $rootEnv->get('__FILE__');
-                    $prevDir = $rootEnv->get('__DIR__');
-                    $rootEnv->set('__FILE__', $targetFile);
-                    $rootEnv->set('__DIR__', dirname($targetFile) . \DIRECTORY_SEPARATOR);
+                    $previousConstants = $env->setMagicConstants($targetFile);
 
                     try {
                         return $this->eval($expr, $env, $depth + 1);
                     } finally {
-                        $rootEnv->set('__FILE__', $prevFile);
-                        $rootEnv->set('__DIR__', $prevDir);
+                        $env->restoreMagicConstants($previousConstants);
                     }
                 } elseif ($symbolName == 'macroexpand') {
                     if ($astLength != 2) {

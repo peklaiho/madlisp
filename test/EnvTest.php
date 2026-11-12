@@ -38,6 +38,32 @@ class EnvTest extends TestCase
         $this->assertSame($aa, $cc->getRoot());
     }
 
+    public function testMagicConstantsRestoreNestedFileContexts()
+    {
+        $root = new Env('root');
+        $child = new Env('child', $root);
+        $root->set('__FILE__', null);
+        $root->set('__DIR__', null);
+
+        $previous = $child->setMagicConstants('/outer/file.mad');
+        $this->assertSame('/outer/file.mad', $root->get('__FILE__'));
+        $this->assertSame('/outer/', $root->get('__DIR__'));
+        $this->assertFalse($child->has('__FILE__'));
+        $this->assertFalse($child->has('__DIR__'));
+
+        $outer = $child->setMagicConstants('/inner/file.mad');
+        $this->assertSame('/inner/file.mad', $child->get('__FILE__'));
+        $this->assertSame('/inner/', $child->get('__DIR__'));
+
+        $child->restoreMagicConstants($outer);
+        $this->assertSame('/outer/file.mad', $root->get('__FILE__'));
+        $this->assertSame('/outer/', $root->get('__DIR__'));
+
+        $child->restoreMagicConstants($previous);
+        $this->assertNull($root->get('__FILE__'));
+        $this->assertNull($root->get('__DIR__'));
+    }
+
     public function testNotFound()
     {
         $this->expectException(MadLispException::class);
