@@ -31,7 +31,8 @@ class Json implements ILib
     private function getJsonData($a)
     {
         if ($a instanceof Collection) {
-            return array_map([$this, 'getJsonData'], $a->getData());
+            $data = array_map([$this, 'getJsonData'], $a->getData());
+            return ($a instanceof Hash) ? ((object) $data) : $data;
         } elseif (is_object($a) || is_resource($a)) {
             throw new MadLispException("invalid type for json");
         } else {
