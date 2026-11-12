@@ -48,7 +48,7 @@ class Http implements ILib
 
                 $responseHeaders = [];
                 curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $header) use (&$responseHeaders) {
-                    $parts = explode(':', $header);
+                    $parts = explode(':', $header, 2);
                     if (count($parts) == 2) {
                         $key = trim($parts[0]);
                         $val = trim($parts[1]);
@@ -64,8 +64,6 @@ class Http implements ILib
                 }
 
                 $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-                curl_close($ch);
 
                 return new Hash([
                     'status' => $status,
