@@ -62,7 +62,7 @@ class CollectionsTest extends TestCase
     {
         return [
             [[4], [0, 1, 2, 3]],
-            [[2, 7, 2], [2, 4, 6]],
+            [[2, 5], [2, 3, 4]],
         ];
     }
 

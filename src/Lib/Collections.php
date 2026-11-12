@@ -36,12 +36,20 @@ class Collections implements ILib
             fn (...$args) => new Vector($args)
         ));
 
-        $env->set('range', new CoreFunc('range', 'Return vector which contains values from 0 to first argument (exclusive). Two arguments can be used to give start and end values.', 1, 3,
+        $env->set('range', new CoreFunc('range', 'Return vector which contains values from 0 to first argument (exclusive). Two arguments can be used to give start and end values.', 1, 2,
             function (...$args) {
                 if (count($args) == 1) {
-                    $data = range(0, $args[0] - 1);
+                    $start = 0;
+                    $end = intval($args[0]);
                 } else {
-                    $data = range($args[0], $args[1] - 1, $args[2] ?? 1);
+                    $start = intval($args[0]);
+                    $end = intval($args[1]);
+                }
+
+                if ($end <= $start) {
+                    $data = [];
+                } else {
+                    $data = range($start, $end - 1);
                 }
 
                 return new Vector($data);
