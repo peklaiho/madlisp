@@ -369,14 +369,12 @@ class Evaller
                     $rootEnv->set('__FILE__', $targetFile);
                     $rootEnv->set('__DIR__', dirname($targetFile) . \DIRECTORY_SEPARATOR);
 
-                    // Evaluate the contents
-                    $result = $this->eval($expr, $env, $depth + 1);
-
-                    // Restore the special constants to previous values
-                    $rootEnv->set('__FILE__', $prevFile);
-                    $rootEnv->set('__DIR__', $prevDir);
-
-                    return $result;
+                    try {
+                        return $this->eval($expr, $env, $depth + 1);
+                    } finally {
+                        $rootEnv->set('__FILE__', $prevFile);
+                        $rootEnv->set('__DIR__', $prevDir);
+                    }
                 } elseif ($symbolName == 'macroexpand') {
                     if ($astLength != 2) {
                         throw new MadLispException("macroexpand requires exactly 1 argument");

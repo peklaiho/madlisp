@@ -1195,6 +1195,31 @@ class EvallerTest extends TestCase
         unlink($filename);
     }
 
+    public function testLoadRestoresFileContextOnFailure()
+    {
+        $filename = tempnam('/tmp', 'madlisp-test');
+
+        try {
+            file_put_contents($filename, '(throw "failure")');
+
+            list($env, $evaller) = $this->getEnvAndEvaller();
+            $env->set('__FILE__', '/path/to/file');
+            $env->set('__DIR__', '/path/to/');
+
+            $input = $this->buildForm([
+                'try',
+                ['load', '"' . $filename . '"'],
+                ['catch', 'error', 'error'],
+            ]);
+
+            $this->assertSame('failure', $evaller->eval($input, $env));
+            $this->assertSame('/path/to/file', $env->get('__FILE__'));
+            $this->assertSame('/path/to/', $env->get('__DIR__'));
+        } finally {
+            unlink($filename);
+        }
+    }
+
     public static function loadQuotedResultProvider(): array
     {
         return [
