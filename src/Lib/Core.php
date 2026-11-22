@@ -45,8 +45,12 @@ class Core implements ILib
             $env->set('__DIR__', null);
         }
 
-        $env->set('compile', new CoreFunc('compile', 'Compile Lisp code into PHP code.', 1, 1,
-            function ($ast) {
+        $env->set('compile', new CoreFunc('compile', 'Compile Lisp code into PHP code. Expand macros if env is given as second argument.', 1, 2,
+            function ($ast, ?Env $runtimeEnv = null) {
+                if ($runtimeEnv !== null) {
+                    $ast = $this->macroExpander->expand($ast, $runtimeEnv);
+                }
+
                 return $this->compiler->compile($ast);
             }
         ));

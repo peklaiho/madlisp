@@ -44,6 +44,19 @@ class CoreTest extends TestCase
         $this->assertSame(3, $program->execute($env));
     }
 
+    public function testCompileExpandsMacrosFromSuppliedEnvironment()
+    {
+        [$env, $evaller] = $this->getEnv();
+        $runtimeEnv = new Env('runtime', $env);
+        $read = $env->get('read');
+        $evaller->eval($read->call(['(def expand-body (macro [body] body))']), $runtimeEnv);
+        $ast = $read->call(['(expand-body (+ 20 22))']);
+
+        $program = $env->get('compile')->call([$ast, $runtimeEnv]);
+
+        $this->assertSame(42, $program->execute($runtimeEnv));
+    }
+
     public function testDebug()
     {
         [$env, $evaller] = $this->getEnv();
