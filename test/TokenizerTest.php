@@ -32,6 +32,9 @@ class TokenizerTest extends TestCase
             ['())', 'unexpected closing )'],
             ['[]]', 'unexpected closing ]'],
             ['{}}', 'unexpected closing }'],
+            ['[{]}', 'unexpected closing ]'],
+            ['{(})', 'unexpected closing }'],
+            ['([{', 'missing closing }'],
         ];
     }
 
@@ -71,6 +74,7 @@ class TokenizerTest extends TestCase
 
             // Parens
             ["aa(bb[cc{dd}ee]gg)ff", ['aa', '(', 'bb', '[', 'cc', '{', 'dd', '}', 'ee', ']', 'gg', ')', 'ff']],
+            ["([{\"key\" \")]\" ; }])\n}])", ['(', '[', '{', '"key"', '")]"', '}', ']', ')']],
             // Special characters: '`~
             ["aa'bb`cc~dd~ee`gg'ff", ['aa', "'", 'bb', '`', 'cc', '~', 'dd', '~', 'ee', '`', 'gg', "'", 'ff']],
             // Other non-alphabet characters are symbols

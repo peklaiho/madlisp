@@ -18,8 +18,8 @@ class Tokenizer
         $isComment = false;
         $isEscape = false;
 
-        $parens = [0, 0, 0];
-        $parenIndexes = ['(' => 0, ')' => 0, '[' => 1, ']' => 1, '{' => 2, '}' => 2];
+        $expectedClosers = [];
+        $closingDelimiters = ['(' => ')', '[' => ']', '{' => '}'];
 
         $addCurrent = function () use (&$tokens, &$current) {
             if ($current !== '') {
@@ -81,19 +81,18 @@ class Tokenizer
                 } elseif ($c == ' ' || $c == "\t" || $c == "\n" || $c == "\r" || $c == "\v" || $c == "\0" || $c == ':') {
                     // Whitespace and colon are ignored
                     $addCurrent();
-                } elseif ($c == '(' || $c == '[' || $c == '{') {
+                } elseif (isset($closingDelimiters[$c])) {
                     // Start of collection
                     $addCurrent();
                     $tokens[] = $c;
-                    $parens[$parenIndexes[$c]]++;
+                    $expectedClosers[] = $closingDelimiters[$c];
                 } elseif ($c == ')' || $c == ']' || $c == '}') {
                     // End of collection
-                    if ($parens[$parenIndexes[$c]] == 0) {
+                    if ($c !== array_pop($expectedClosers)) {
                         throw new MadLispException("unexpected closing $c");
                     }
                     $addCurrent();
                     $tokens[] = $c;
-                    $parens[$parenIndexes[$c]]--;
                 } elseif ($c == "'" || $c == "`" || $c == "~") {
                     // Other special characters
                     $addCurrent();
@@ -119,12 +118,9 @@ class Tokenizer
         // Check for errors
         if ($isString) {
             throw new MadLispException("unterminated string");
-        } elseif ($parens[0] != 0) {
-            throw new MadLispException("missing closing )");
-        } elseif ($parens[1] != 0) {
-            throw new MadLispException("missing closing ]");
-        } elseif ($parens[2] != 0) {
-            throw new MadLispException("missing closing }");
+        } elseif ($expectedClosers !== []) {
+            $expected = end($expectedClosers);
+            throw new MadLispException("missing closing $expected");
         }
 
         return $tokens;
