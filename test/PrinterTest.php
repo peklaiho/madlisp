@@ -12,7 +12,9 @@ use MadLisp\Hash;
 use MadLisp\UserFunc;
 use MadLisp\MList;
 use MadLisp\Printer;
+use MadLisp\Reader;
 use MadLisp\Symbol;
+use MadLisp\Tokenizer;
 use MadLisp\Vector;
 
 class PrinterTest extends TestCase
@@ -94,6 +96,18 @@ class PrinterTest extends TestCase
         ob_end_clean();
 
         $this->assertSame($expected, $result);
+    }
+
+    public function testReadableHashWithNumericStringKeysRoundTrips(): void
+    {
+        $reader = new Reader();
+        $tokenizer = new Tokenizer();
+        $hash = $reader->read($tokenizer->tokenize('{"0" "a" "01" "b" "-1" "c"}'));
+
+        $printed = (new Printer())->pstr($hash, true);
+
+        $this->assertSame('{"0":"a" "01":"b" "-1":"c"}', $printed);
+        $this->assertSame($hash->getData(), $reader->read($tokenizer->tokenize($printed))->getData());
     }
 
     public function testPrintResource()

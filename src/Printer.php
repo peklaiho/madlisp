@@ -32,7 +32,7 @@ class Printer
         } elseif ($a instanceof Vector) {
             return '[' . implode(' ', array_map(fn ($b) => $this->doPrint($b, $readable), $a->getData())) . ']';
         } elseif ($a instanceof Hash) {
-            return '{' . implode(' ', array_map(fn ($key, $val) => $this->doPrint($key, $readable) . ':' . $this->doPrint($val, $readable),
+            return '{' . implode(' ', array_map(fn ($key, $val) => $this->doPrint((string) $key, $readable) . ':' . $this->doPrint($val, $readable),
                                                 array_keys($a->getData()), array_values($a->getData()))) . '}';
         } elseif ($a instanceof Symbol) {
             return $a->getName();
