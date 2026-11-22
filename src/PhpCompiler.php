@@ -1129,7 +1129,13 @@ class PhpCompiler
     private function compileSimpleExpression($ast): ?string
     {
         if ($ast === null || is_bool($ast) || is_int($ast) || is_float($ast) || is_string($ast)) {
-            return var_export($ast, true);
+            $literal = var_export($ast, true);
+            // var_export uses subtraction for PHP_INT_MIN and concatenation for NUL bytes.
+            if ($ast === PHP_INT_MIN || (is_string($ast) && str_contains($ast, "\0"))) {
+                return "($literal)";
+            }
+
+            return $literal;
         }
 
         if ($ast instanceof Symbol) {

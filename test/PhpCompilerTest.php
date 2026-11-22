@@ -755,6 +755,24 @@ class PhpCompilerTest extends TestCase
         $compiler->compile(new MList([new Symbol('len')]));
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('literalOperandPrecedenceProvider')]
+    public function testPreservesLiteralOperandPrecedence(string $source, bool|int $expected): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $this->assertSame($expected, $lisp->readEvalCompiled($source));
+    }
+
+    public static function literalOperandPrecedenceProvider(): array
+    {
+        return [
+            'NUL string under not' => ['(not "a\0b")', false],
+            'NUL string in an inline condition' => ['(if (not "a\0b") 1 0)', 0],
+            'minimum integer under multiplication' => ['(* 0 ' . PHP_INT_MIN . ')', 0],
+            'minimum integer in an inline condition' => ['(if (== (* 0 ' . PHP_INT_MIN . ') 0) 1 0)', 1],
+        ];
+    }
+
     public function testCompilesCarAndMathBuiltinsDirectly(): void
     {
         $compiler = new PhpCompiler(new Options());
