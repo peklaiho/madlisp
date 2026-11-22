@@ -80,6 +80,11 @@ function ml_repl(MadLisp\Lisp $lisp, bool $compiledMode)
     while (true) {
         $input = readline('> ');
 
+        // readline returns false at EOF
+        if ($input === false) {
+            break;
+        }
+
         try {
             $lisp->print(ml_eval($lisp, $input, $compiledMode, false), true);
         } catch (MadLisp\MadLispUserException $ex) {
@@ -232,7 +237,7 @@ if ($runRepl) {
 }
 
 // Finally, if we had no other actions, read input from stdin
-if (!$evalCode && !$filename) {
+if (!$evalCode && !$filename && !$runRepl) {
     $input = file_get_contents('php://stdin');
     $result = ml_eval($lisp, $input, $compiledMode, $showSource);
     if ($printResult) {
