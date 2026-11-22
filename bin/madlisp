@@ -210,6 +210,7 @@ if ($evalCode) {
 if ($filename) {
     if (is_readable($filename)) {
         if ($compiledMode) {
+            $filename = realpath($filename);
             $source = file_get_contents($filename);
 
             // Remove #! from the beginning that is used by shell scripts
@@ -217,7 +218,9 @@ if ($filename) {
                 $source = preg_replace('/^#![^\n\r]*[\n\r]+/', '', $source, 1);
             }
 
+            $previousConstants = $lisp->getEnv()->setMagicConstants($filename);
             $result = ml_eval($lisp, "(do\n$source\n)", true, $showSource);
+            $lisp->getEnv()->restoreMagicConstants($previousConstants);
         } else {
             $result = ml_eval($lisp, "(load \"$filename\")", $compiledMode, $showSource);
         }
