@@ -1139,6 +1139,16 @@ class PhpCompilerTest extends TestCase
         $this->assertSame(42, $program->execute($env));
     }
 
+    public function testCompiledCatchCanReadThrownValue(): void
+    {
+        $lisp = (new LispFactory())->make(new Options());
+
+        $value = $lisp->readEvalCompiled('(try (throw {"code" 42}) (catch error (error-value error)))');
+
+        $this->assertInstanceOf(Hash::class, $value);
+        $this->assertSame(42, $value->get('code'));
+    }
+
     public function testTryValidatesItsCatchForm(): void
     {
         $compiler = new PhpCompiler(new Options());

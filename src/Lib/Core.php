@@ -154,5 +154,10 @@ class Core implements ILib
                 throw new MadLispUserException($error);
             }
         ));
+
+        // Compiled catch handlers receive the exception object, so they need an accessor for the thrown value.
+        $env->set('error-value', new CoreFunc('error-value', 'Return the value passed to throw.', 1, 1,
+            fn (MadLispUserException $error) => $error->getValue()
+        ));
     }
 }
