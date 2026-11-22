@@ -1946,6 +1946,10 @@ class PhpCompilerTest extends TestCase
             'list bindings' => ['(let (when (fn [a b] a)) (when 1 2))', 1],
             'literal case label' => ["(case '(when true 1) ((when true 1) 7) (else 9))", 7],
             'catch binding' => ['(try (throw "error") (catch when (do when 7)))', 7],
+            'recursive definition shadows macro' => [
+                '(do (def when (fn [n extra] (if (zero? n) 7 (when (dec n) 99)))) (apply when [1 99]))',
+                7,
+            ],
         ];
     }
 

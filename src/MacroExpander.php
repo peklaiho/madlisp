@@ -93,6 +93,16 @@ class MacroExpander
                 }
                 return new MList($data);
             case 'def':
+                if (count($data) === 3 && $data[1] instanceof Symbol && $data[2] instanceof MList) {
+                    $operator = $data[2]->getData()[0] ?? null;
+                    if ($operator instanceof Symbol && $operator->getName() === 'fn') {
+                        $functionScope = $bound;
+                        $functionScope[$data[1]->getName()] = true;
+                        $data[2] = $this->expandExpression($data[2], $env, $functionScope);
+                        return new MList($data);
+                    }
+                }
+                return new MList($this->expandData($data, $env, $bound, 2));
             case 'undef':
                 return new MList($this->expandData($data, $env, $bound, 2));
         }

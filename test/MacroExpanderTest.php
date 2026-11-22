@@ -150,6 +150,14 @@ class MacroExpanderTest extends TestCase
                 '(def when (unless false 1))',
                 '(def when (if false null 1))',
             ],
+            'recursive definition shadows macro only inside the function' => [
+                '(do (def when (fn [n] (unless (zero? n) (when (dec n))))) (when true 7))',
+                '(do (def when (fn [n] (if (zero? n) null (when (dec n))))) (if true 7 null))',
+            ],
+            'ordinary definition initializer can use the previous macro binding' => [
+                '(def when (when true 7))',
+                '(def when (if true 7 null))',
+            ],
         ];
     }
 
