@@ -295,20 +295,23 @@ class PhpCompiler
                 $this->compileApply($arguments, $body, $target, $indent);
                 return;
             case 'empty?':
-                $this->compileFormattedExpression($arguments, '%s->count() === 0', 1, 'empty?', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s->count() === 0', 1, 'empty?', $body, $target,
+                    $indent, Collection::class);
                 return;
             case 'len':
-                $this->compileFormattedExpression($arguments, '%s->count()', 1, 'len', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s->count()', 1, 'len', $body, $target,
+                    $indent, Collection::class);
                 return;
             case 'car':
             case 'first':
-                $this->compileFormattedExpression($arguments, '%s->getData()[0]', 1, $operator, $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s->getData()[0]', 1, $operator, $body, $target,
+                    $indent, Seq::class);
                 return;
             case 'cdr':
             case 'tail':
                 // Positional sprintf placeholder reuses the argument without compiling it twice.
                 $this->compileFormattedExpression($arguments, '%1$s::new(array_slice(%1$s->getData(), 1))', 1, $operator,
-                    $body, $target, $indent);
+                    $body, $target, $indent, Seq::class);
                 return;
             case 'cons':
                 $this->compileCons($arguments, $body, $target, $indent);
@@ -316,13 +319,15 @@ class PhpCompiler
             case 'last':
                 // Positional sprintf placeholder reuses the argument without compiling it twice.
                 $this->compileFormattedExpression($arguments, '%1$s->getData()[%1$s->count() - 1]', 1, 'last', $body,
-                    $target, $indent);
+                    $target, $indent, Seq::class);
                 return;
             case 'get':
-                $this->compileFormattedExpression($arguments, '%s->get(%s)', 2, 'get', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s->get(%s)', 2, 'get', $body, $target,
+                    $indent, Collection::class);
                 return;
             case 'key?':
-                $this->compileFormattedExpression($arguments, '%s->has(%s)', 2, 'key?', $body, $target, $indent);
+                $this->compileFormattedExpression($arguments, '%s->has(%s)', 2, 'key?', $body, $target,
+                    $indent, Hash::class);
                 return;
 
             // Strings
@@ -908,6 +913,7 @@ class PhpCompiler
     private function compileCallExpression(array $data, array &$body, ?string $target, int $indent): void
     {
         $functionExpression = $data[0];
+        $this->validateLiteralOperand($functionExpression, \Closure::class, 'attempt to call non-function');
         $function = $this->temporary();
         $this->compileExpression($functionExpression, $body, $function, $indent);
         if ($functionExpression instanceof MList) {
@@ -1051,6 +1057,10 @@ class PhpCompiler
         if (count($arguments) < 2) {
             throw new MadLispException('apply requires at least 2 arguments');
         }
+
+        $this->validateLiteralOperand($arguments[0], \Closure::class, 'first argument to apply is not function');
+        $this->validateLiteralOperand($arguments[array_key_last($arguments)], Seq::class,
+            'last argument to apply is not sequence');
 
         $values = $this->compileArguments($arguments, $body, $indent);
         $function = array_shift($values);
@@ -1255,11 +1265,16 @@ class PhpCompiler
     }
 
     private function compileFormattedExpression(array $arguments, string $template, int $arity,
-        string $lispName, array &$body, ?string $target, int $indent): void
+        string $lispName, array &$body, ?string $target, int $indent, ?string $receiverType = null): void
     {
         if (count($arguments) !== $arity) {
             throw new MadLispException("$lispName requires exactly $arity argument" .
                 (($arity === 1) ? '' : 's'));
+        }
+
+        if ($receiverType !== null) {
+            $this->validateLiteralOperand($arguments[0], $receiverType,
+                "first argument to $lispName must be an instance of $receiverType");
         }
 
         $values = $this->compileArguments($arguments, $body, $indent);
@@ -1285,6 +1300,9 @@ class PhpCompiler
             throw new MadLispException('cons requires at least 2 arguments');
         }
 
+        $this->validateLiteralOperand($arguments[array_key_last($arguments)], Seq::class,
+            'last argument to cons is not sequence');
+
         $values = $this->compileArguments($arguments, $body, $indent);
         $sequence = $values[count($values) - 1];
         $prefix = array_slice($values, 0, -1);
@@ -1296,6 +1314,25 @@ class PhpCompiler
             $target,
             "{$sequence}::new(array_merge([$data], {$sequence}->getData()))"
         );
+    }
+
+    private function validateLiteralOperand($operand, string $expectedType, string $message): void
+    {
+        if ($operand instanceof Symbol) {
+            return;
+        }
+
+        if ($operand instanceof MList) {
+            $form = $operand->getData();
+            if (count($form) !== 2 || !($form[0] instanceof Symbol) || $form[0]->getName() !== 'quote') {
+                return;
+            }
+            $operand = $form[1];
+        }
+
+        if (!($operand instanceof $expectedType)) {
+            throw new MadLispException($message);
+        }
     }
 
     private function temporary(): string

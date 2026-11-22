@@ -293,10 +293,10 @@ class PhpCompilerTest extends TestCase
     public static function dynamicCallProvider(): array
     {
         return [
-            'expression' => ['(CALLEE "abc")'],
+            'expression' => ['((if true CALLEE null) "abc")'],
             'local' => ['(let [f CALLEE] (f "abc"))'],
             'global' => ['(do (def f CALLEE) (f "abc"))'],
-            'apply' => ['(apply CALLEE ["abc"])'],
+            'apply' => ['(let [f CALLEE] (apply f ["abc"]))'],
         ];
     }
 
@@ -313,7 +313,7 @@ class PhpCompilerTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('dynamicCallProvider')]
-    public function testNormalModeAllowsStringFunctionsWithoutGuards(string $source): void
+    public function testNormalModeAllowsDynamicStringFunctionsWithoutGuards(string $source): void
     {
         $lisp = (new LispFactory())->make(new Options());
         $program = $lisp->compile($lisp->read(str_replace('CALLEE', '"strlen"', $source)));
@@ -738,13 +738,38 @@ class PhpCompilerTest extends TestCase
         }
     }
 
-    public function testEmptyRejectsUnsupportedValues(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidLiteralOperandProvider')]
+    public function testRejectsInvalidLiteralOperandsDuringCompilation(
+        string $source,
+        string $message,
+        bool $safeMode = false
+    ): void
     {
-        $compiler = new PhpCompiler(new Options());
-        $env = new Env('root');
+        $options = new Options();
+        $options->safemode = $safeMode;
+        $lisp = (new LispFactory())->make($options);
 
-        $this->expectException(Error::class);
-        $compiler->compile(new MList([new Symbol('empty?'), 1]))->execute($env);
+        $this->expectException(MadLispException::class);
+        $this->expectExceptionMessage($message);
+        $lisp->compile($lisp->read($source));
+    }
+
+    public static function invalidLiteralOperandProvider(): array
+    {
+        return [
+            'string callee' => ['("trim" "text")', 'attempt to call non-function'],
+            'string callee in safe mode' => ['("trim" "text")', 'attempt to call non-function', true],
+            'boolean callee' => ['(false 1)', 'attempt to call non-function'],
+            'quoted symbol callee' => ["('trim \"text\")", 'attempt to call non-function'],
+            'apply string callee' => ['(apply "trim" ["text"])', 'first argument to apply is not function'],
+            'apply integer callee' => ['(apply 1 [])', 'first argument to apply is not function'],
+            'apply string sequence' => ['(apply trim "text")', 'last argument to apply is not sequence'],
+            'apply hash sequence' => ['(apply trim {"0" "text"})', 'last argument to apply is not sequence'],
+            'cdr integer sequence' => ['(cdr 1)', 'first argument to cdr'],
+            'cdr string sequence with discarded result' => ['(do (cdr "text") 0)', 'first argument to cdr'],
+            'cons quoted non-sequence' => ["(cons 1 'x)", 'last argument to cons is not sequence'],
+            'empty integer collection in condition' => ['(if (empty? 1) 0 1)', 'first argument to empty?'],
+        ];
     }
 
     public function testEmptyAndLenRequireExactlyOneArgument(): void
