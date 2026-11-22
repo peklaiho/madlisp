@@ -206,6 +206,12 @@ if ($filename) {
     if (is_readable($filename)) {
         if ($compiledMode) {
             $source = file_get_contents($filename);
+
+            // Remove #! from the beginning that is used by shell scripts
+            if (extension_loaded('pcre')) {
+                $source = preg_replace('/^#![^\n\r]*[\n\r]+/', '', $source, 1);
+            }
+
             $result = ml_eval($lisp, "(do\n$source\n)", true, $showSource);
         } else {
             $result = ml_eval($lisp, "(load \"$filename\")", $compiledMode, $showSource);
